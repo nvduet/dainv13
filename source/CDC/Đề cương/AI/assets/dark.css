@@ -1,7 +1,0 @@
-/* Dark-theme fix-ups (only under html[data-theme="dark"]). */
-html[data-theme="dark"]{--ink:#c0cbe2;--paper:#171d2b;--card:#1e2537;--line:#2e384c;--muted:#8f9bb2;--green:#5cc48a}html[data-theme="dark"] body{color:#cdd4e1}html[data-theme="dark"] .step.cur,
-html[data-theme="dark"] .tapnav a.cur{background:#2b3f78;border-color:#2b3f78;color:#fff}html[data-theme="dark"] .step .sn{background:#27324a;color:#cdd4e1}html[data-theme="dark"] th{background:#1c2a4d}html[data-theme="dark"] svg[viewBox]:not([viewBox="0 0 24 24"]):not(.nav-ico){background:#dde2ea;border-radius:10px}html[data-theme="dark"] .tg-pop{background:#202b29!important;color:#d8e3df!important;border-color:#33463f!important;border-top-color:#7cc8b2!important;box-shadow:0 10px 28px rgba(0,0,0,.6)!important}html[data-theme="dark"] .tg-pop .tg-h{color:#9fdcc9!important}html[data-theme="dark"] .tg-pop .tg-full{color:#e3906f!important}html[data-theme="dark"] .tg-pop .tg-vi{color:#cfdcd7!important}html[data-theme="dark"] .tg-pop .tg-x{color:#93a59f!important}html[data-theme="dark"] .tg-pop .tg-x:hover{background:#22332e!important;color:#fff!important}html[data-theme="dark"] button.tg-term:hover,
-html[data-theme="dark"] button.tg-term[aria-expanded="true"]{background:rgba(226,189,105,.22)!important}
-
-html[data-theme="dark"] tr:nth-child(even) td{background:#1a2132}
-html[data-theme="dark"] table{background:var(--card)}
