@@ -1,5 +1,3 @@
-import { calculateBalances } from "../public/accounting.mjs";
-
 const encoder = new TextEncoder();
 const MAX_AMOUNT_VND = 1_000_000_000_000;
 const MAX_MEMBERS = 50;
@@ -72,10 +70,6 @@ async function readJson(request) {
 
 function validName(value) {
   return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 80;
-}
-
-function validAmount(value) {
-  return Number.isSafeInteger(value) && value > 0 && value <= MAX_AMOUNT_VND;
 }
 
 function validSignedAmount(value) {
@@ -275,53 +269,6 @@ async function validateExpensePatch(env, body, before) {
   return null;
 }
 
-async function memberBalance(env, memberId) {
-  const [membersResult, expensesResult, participantResult, paymentsResult, adjustmentsResult] = await Promise.all([
-    env.DB.prepare("SELECT id, name, position FROM members ORDER BY position, name COLLATE NOCASE").all(),
-    env.DB.prepare(`
-      SELECT id, amount_vnd AS amountVnd, payer_id AS payerId, description
-      FROM expenses ORDER BY position, created_at, id
-    `).all(),
-    env.DB.prepare(`
-      SELECT ep.expense_id AS expenseId, ep.member_id AS memberId
-      FROM expense_participants ep
-      JOIN members m ON m.id = ep.member_id
-      ORDER BY m.position, m.name COLLATE NOCASE
-    `).all(),
-    env.DB.prepare(`
-      SELECT direction, amount_vnd AS amountVnd
-      FROM payments WHERE member_id = ? AND status = 'confirmed'
-    `).bind(memberId).all(),
-    env.DB.prepare(`
-      SELECT amount_delta_vnd AS amountVnd
-      FROM payment_adjustments WHERE member_id = ?
-    `).bind(memberId).all(),
-  ]);
-  const participantIds = new Map();
-  for (const row of participantResult.results) {
-    const ids = participantIds.get(row.expenseId) || [];
-    ids.push(row.memberId);
-    participantIds.set(row.expenseId, ids);
-  }
-  const expenses = expensesResult.results.map((expense) => ({
-    ...expense,
-    amountVnd: Number(expense.amountVnd),
-    participantIds: participantIds.get(expense.id) || [],
-  })).filter((expense) => expense.payerId && expense.description.trim() &&
-    expense.amountVnd > 0 && expense.participantIds.length > 0);
-  const payments = paymentsResult.results.map((payment) => ({
-    ...payment,
-    amountVnd: Number(payment.amountVnd),
-  }));
-  payments.push(...adjustmentsResult.results.map((adjustment) => ({
-    direction: "member_to_admin",
-    amountVnd: Number(adjustment.amountVnd),
-    status: "confirmed",
-  })));
-  return calculateBalances(membersResult.results, expenses, payments)
-    .find((member) => member.id === memberId)?.balanceVnd ?? null;
-}
-
 async function state(request, env) {
   const [membersResult, expensesResult, participantResult, paymentsResult, adjustmentsResult, settingsResult, fontSizeResult, admin] = await Promise.all([
     env.DB.prepare("SELECT id, name, position FROM members ORDER BY position, name COLLATE NOCASE").all(),
@@ -334,7 +281,7 @@ async function state(request, env) {
     env.DB.prepare(`
       SELECT id, member_id AS memberId, direction, amount_vnd AS amountVnd,
              status, created_at AS createdAt, confirmed_at AS confirmedAt
-      FROM payments ORDER BY created_at DESC, id DESC
+      FROM payments WHERE status = 'confirmed' ORDER BY created_at DESC, id DESC
     `).all(),
     env.DB.prepare(`
       SELECT id, member_id AS memberId, amount_delta_vnd AS amountVnd,
@@ -415,7 +362,6 @@ async function handleApi(request, env) {
   const admin = await isAdmin(request, env);
   const adminOnly = new Set([
     "POST /api/members",
-    "POST /api/admin/refunds",
     "PUT /api/admin/payments/total",
     "PUT /api/admin/font-size",
     "POST /api/admin/history-points",
@@ -423,8 +369,6 @@ async function handleApi(request, env) {
   const routeKey = `${method} ${path}`;
   if ((adminOnly.has(routeKey) || /^PATCH \/api\/members\/[^/]+$/.test(routeKey) ||
        /^DELETE \/api\/members\/[^/]+$/.test(routeKey) ||
-       /^POST \/api\/payments\/[^/]+\/confirm$/.test(routeKey) ||
-       /^DELETE \/api\/payments\/[^/]+$/.test(routeKey) ||
        (method === "POST" && /^\/api\/admin\/history-points\/[^/]+\/restore$/.test(path)) ||
        (method === "PUT" && path === "/api/admin/column-widths") ||
        path === "/api/admin/audit" ||
@@ -497,8 +441,21 @@ async function handleApi(request, env) {
 
   const historyRestoreMatch = path.match(/^\/api\/admin\/history-points\/([^/]+)\/restore$/);
   if (method === "POST" && historyRestoreMatch) {
-    if (!await rateLimit(request, env, "write", 500, 15 * 60 * 1000)) {
-      return error("Đã vượt giới hạn thao tác. Hãy thử lại sau.", 429);
+    if (!await rateLimit(request, env, "restore-password", 10, 15 * 60 * 1000)) {
+      return error("Đã vượt số lần nhập mật khẩu khôi phục. Hãy thử lại sau.", 429);
+    }
+    if (!env.HISTORY_RESTORE_PASSWORD) {
+      return error("Chưa cấu hình mật khẩu khôi phục riêng phía máy chủ.", 503);
+    }
+    if (await secureEqual(env.HISTORY_RESTORE_PASSWORD, env.ADMIN_PASSWORD || "")) {
+      return error("Mật khẩu khôi phục phải khác mật khẩu Admin. Hãy cấu hình lại secret.", 503);
+    }
+    const body = await readJson(request);
+    if (typeof body.password !== "string" || body.password.length === 0) {
+      return error("Nhập mật khẩu khôi phục riêng.");
+    }
+    if (!await secureEqual(body.password, env.HISTORY_RESTORE_PASSWORD)) {
+      return error("Mật khẩu khôi phục không đúng.", 401);
     }
     const id = decodeURIComponent(historyRestoreMatch[1]);
     const point = await env.DB.prepare(
@@ -843,102 +800,6 @@ async function handleApi(request, env) {
       ),
     ]);
     return json({ deleted: true, impactedExpenses: Number(impact.count) });
-  }
-
-  if (method === "POST" && path === "/api/payments") {
-    const body = await readJson(request);
-    if (!validId(body.memberId) || !validAmount(body.amountVnd)) {
-      return error("Chọn thành viên và nhập số tiền dương hợp lệ.");
-    }
-    const member = await env.DB.prepare("SELECT id FROM members WHERE id = ?").bind(body.memberId).first();
-    if (!member) return error("Thành viên không tồn tại.");
-    const id = crypto.randomUUID();
-    const payment = {
-      id,
-      memberId: body.memberId,
-      direction: "member_to_admin",
-      amountVnd: body.amountVnd,
-      status: "pending",
-    };
-    await env.DB.batch([
-      env.DB.prepare(`
-        INSERT INTO payments (id, member_id, direction, amount_vnd, status)
-        VALUES (?, ?, 'member_to_admin', ?, 'pending')
-      `).bind(id, payment.memberId, payment.amountVnd),
-      audit(env, "public", "report", "payment", id, null, payment),
-    ]);
-    return json({ payment }, 201);
-  }
-
-  if (method === "POST" && path === "/api/admin/refunds") {
-    const body = await readJson(request);
-    if (!validId(body.memberId) || !validAmount(body.amountVnd)) {
-      return error("Chọn thành viên và nhập số tiền hoàn dương hợp lệ.");
-    }
-    const member = await env.DB.prepare("SELECT id FROM members WHERE id = ?").bind(body.memberId).first();
-    if (!member) return error("Thành viên không tồn tại.");
-    const balance = await memberBalance(env, body.memberId);
-    if (balance === null || balance >= 0 || body.amountVnd > Math.abs(balance)) {
-      return error("Tiền hoàn không được vượt số tiền Admin còn nợ thành viên.", 409);
-    }
-    const id = crypto.randomUUID();
-    const payment = {
-      id,
-      memberId: body.memberId,
-      direction: "admin_to_member",
-      amountVnd: body.amountVnd,
-      status: "confirmed",
-    };
-    await env.DB.batch([
-      env.DB.prepare(`
-        INSERT INTO payments (
-          id, member_id, direction, amount_vnd, status, confirmed_at, confirmed_by
-        ) VALUES (?, ?, 'admin_to_member', ?, 'confirmed', CURRENT_TIMESTAMP, 'admin')
-      `).bind(id, payment.memberId, payment.amountVnd),
-      audit(env, "admin", "refund", "payment", id, null, payment),
-    ]);
-    return json({ payment }, 201);
-  }
-
-  const confirmMatch = path.match(/^\/api\/payments\/([^/]+)\/confirm$/);
-  if (confirmMatch && method === "POST") {
-    const id = decodeURIComponent(confirmMatch[1]);
-    const before = await env.DB.prepare(`
-      SELECT id, member_id AS memberId, direction, amount_vnd AS amountVnd, status
-      FROM payments WHERE id = ?
-    `).bind(id).first();
-    if (!before || before.direction !== "member_to_admin" || before.status !== "pending") {
-      return error("Không tìm thấy khoản nộp đang chờ xác nhận.", 404);
-    }
-    const balance = await memberBalance(env, before.memberId);
-    if (balance === null || balance <= 0 || before.amountVnd > balance) {
-      return error("Số tiền đã báo vượt số còn phải nộp. Xóa yêu cầu này và báo lại đúng số tiền.", 409);
-    }
-    const after = { ...before, status: "confirmed" };
-    const result = await env.DB.batch([
-      env.DB.prepare(`
-        UPDATE payments SET status = 'confirmed', confirmed_at = CURRENT_TIMESTAMP,
-          confirmed_by = 'admin' WHERE id = ? AND status = 'pending'
-      `).bind(id),
-      audit(env, "admin", "confirm", "payment", id, before, after),
-    ]);
-    if (Number(result[0]?.meta?.changes || 0) !== 1) return error("Khoản nộp đã được xử lý ở nơi khác.", 409);
-    return json({ payment: after });
-  }
-
-  const paymentMatch = path.match(/^\/api\/payments\/([^/]+)$/);
-  if (paymentMatch && method === "DELETE") {
-    const id = decodeURIComponent(paymentMatch[1]);
-    const before = await env.DB.prepare(`
-      SELECT id, member_id AS memberId, direction, amount_vnd AS amountVnd, status
-      FROM payments WHERE id = ?
-    `).bind(id).first();
-    if (!before || before.status !== "pending") return error("Chỉ xóa được khoản nộp đang chờ.", 404);
-    await env.DB.batch([
-      env.DB.prepare("DELETE FROM payments WHERE id = ?").bind(id),
-      audit(env, "admin", "delete", "payment", id, before, null),
-    ]);
-    return json({ deleted: true });
   }
 
   return error("Không tìm thấy API.", 404);

@@ -80,7 +80,7 @@ const viNumber = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 });
 let noticeTimer;
 let resolveActionDialog;
 
-function showActionDialog({ title, message = "", inputLabel = "", initialValue = "", confirmLabel = "Xác nhận", danger = false }) {
+function showActionDialog({ title, message = "", inputLabel = "", initialValue = "", inputType = "text", preserveInput = false, confirmLabel = "Xác nhận", danger = false }) {
   document.querySelector("#action-dialog-title").textContent = title;
   const messageElement = document.querySelector("#action-dialog-message");
   messageElement.textContent = message;
@@ -91,6 +91,9 @@ function showActionDialog({ title, message = "", inputLabel = "", initialValue =
   inputLabelElement.htmlFor = "action-dialog-input";
   inputLabelElement.hidden = !inputLabel;
   input.value = initialValue;
+  input.type = inputType;
+  input.dataset.preserveInput = String(preserveInput);
+  input.autocomplete = inputType === "password" ? "new-password" : "off";
   input.hidden = !inputLabel;
   input.dataset.needsValue = String(Boolean(inputLabel));
   document.querySelector("#action-dialog-error").textContent = "";
@@ -105,7 +108,10 @@ function showActionDialog({ title, message = "", inputLabel = "", initialValue =
 document.querySelector("#action-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const input = document.querySelector("#action-dialog-input");
-  if (input.dataset.needsValue === "true" && !input.value.trim()) {
+  const isEmpty = input.dataset.preserveInput === "true"
+    ? input.value.length === 0
+    : !input.value.trim();
+  if (input.dataset.needsValue === "true" && isEmpty) {
     document.querySelector("#action-dialog-error").textContent = "Trường này không được để trống.";
     return;
   }
@@ -128,7 +134,9 @@ actionDialog.addEventListener("close", () => {
   resolve(actionDialog.returnValue === "confirm"
     ? (document.querySelector("#action-dialog-input").hidden
       ? true
-      : document.querySelector("#action-dialog-input").value.trim())
+      : (document.querySelector("#action-dialog-input").dataset.preserveInput === "true"
+        ? document.querySelector("#action-dialog-input").value
+        : document.querySelector("#action-dialog-input").value.trim()))
     : null);
 });
 
@@ -449,9 +457,6 @@ function renderSummary() {
       </tr>`;
   }
 
-  const pending = state.payments.filter((payment) => payment.status === "pending");
-  document.querySelector("#payment-pending-count").textContent =
-    state.isAdmin && pending.length ? `${pending.length} khoản chờ xác nhận` : "";
 }
 
 function renderMembers() {
@@ -465,31 +470,12 @@ function renderMembers() {
     </li>`).join("") || `<li>Chưa có thành viên.</li>`;
 }
 
-function renderPendingPayments() {
-  const pending = state.payments.filter((payment) => payment.status === "pending");
-  const memberById = new Map(state.members.map((member) => [member.id, member]));
-  document.querySelector("#pending-payments").innerHTML = pending.length
-    ? pending.map((payment) => `
-      <div class="pending-item">
-        <div class="pending-copy">
-          <strong>${escapeHtml(memberById.get(payment.memberId)?.name || "Thành viên")}</strong>
-          <span>Báo đã nộp ${formatVnd(payment.amountVnd)} · ${escapeHtml(payment.createdAt)}</span>
-        </div>
-        <div class="pending-actions">
-          <button class="button button-light button-small" type="button" data-action="confirm-payment" data-payment-id="${escapeHtml(payment.id)}">Đã nhận</button>
-          <button class="icon-button delete" type="button" data-action="delete-payment" data-payment-id="${escapeHtml(payment.id)}" aria-label="Xóa báo nộp">×</button>
-        </div>
-      </div>`).join("")
-    : `<p class="section-description">Chưa có khoản nộp nào chờ xác nhận.</p>`;
-}
-
 function render() {
   renderExpenses();
   renderHeader();
   renderSummary();
   if (state.isAdmin) {
     renderMembers();
-    renderPendingPayments();
   }
 }
 
@@ -598,22 +584,22 @@ async function handleClick(event) {
   if (!button) return;
   const action = button.dataset.action;
   try {
-    if (action === "delete-expense-row") {
-      return;
-    }
     if (action === "restore-history-point") {
       const point = state.historyPoints.find((item) => item.id === button.dataset.pointId);
-      const confirmed = await showActionDialog({
+      const restorePassword = await showActionDialog({
         title: "Khôi phục điểm dữ liệu?",
         message: `Dữ liệu Detail và Summary sẽ được thay bằng điểm lưu ${point?.createdAt || ""}. Cấu hình giao diện và nhật ký sẽ không bị thay đổi.`,
+        inputLabel: "Mật khẩu khôi phục (khác mật khẩu Admin)",
+        inputType: "password",
+        preserveInput: true,
         confirmLabel: "Khôi phục",
         danger: true,
       });
-      if (!confirmed) return;
+      if (restorePassword === null) return;
       await flushPendingChanges();
       await api(`/api/admin/history-points/${encodeURIComponent(button.dataset.pointId)}/restore`, {
         method: "POST",
-        body: "{}",
+        body: JSON.stringify({ password: restorePassword }),
       });
       await loadState();
       showNotice("Đã khôi phục dữ liệu từ điểm đã chọn.");
@@ -679,30 +665,6 @@ async function handleClick(event) {
       showNotice(`Đã xóa thành viên và ${result.impactedExpenses} khoản chi liên quan.`);
       return;
     }
-    if (action === "confirm-payment") {
-      const confirmed = await showActionDialog({
-        title: "Xác nhận khoản nộp?",
-        message: "Xác nhận đã nhận đủ số tiền thành viên báo?",
-        confirmLabel: "Xác nhận",
-      });
-      if (!confirmed) return;
-      await api(`/api/payments/${encodeURIComponent(button.dataset.paymentId)}/confirm`, { method: "POST", body: "{}" });
-      await loadState();
-      showNotice("Đã xác nhận nhận tiền.");
-      return;
-    }
-    if (action === "delete-payment") {
-      const confirmed = await showActionDialog({
-        title: "Xóa yêu cầu nộp?",
-        message: "Yêu cầu báo đã nộp này sẽ bị xóa.",
-        confirmLabel: "Xóa",
-        danger: true,
-      });
-      if (!confirmed) return;
-      await api(`/api/payments/${encodeURIComponent(button.dataset.paymentId)}`, { method: "DELETE" });
-      await loadState();
-      showNotice("Đã xóa yêu cầu thanh toán.");
-    }
   } catch (caught) {
     showNotice(caught.message, "error");
   }
@@ -736,15 +698,6 @@ async function handleSubmit(event) {
       await loadState();
       showNotice("Đăng nhập Admin thành công.");
       return;
-    }
-    if (form.dataset.action === "refund-payment") {
-      const amountVnd = parseThousandInput(new FormData(form).get("amount"));
-      await api("/api/admin/refunds", {
-        method: "POST",
-        body: JSON.stringify({ memberId: form.dataset.memberId, amountVnd }),
-      });
-      await loadState();
-      showNotice("Đã ghi nhận khoản Admin hoàn tiền.");
     }
   } catch (caught) {
     if (form.id === "login-form") {
@@ -868,9 +821,9 @@ document.querySelector("#add-expense").addEventListener("click", async () => {
     const { expense } = await api("/api/expenses", { method: "POST", body: "{}" });
     state.expenses.push(expense);
     renderExpenses();
-    document.querySelector(`#expense-body tr[data-expense-id="${CSS.escape(expense.id)}"] .payer-input`)?.focus();
     renderHeader();
     renderSummary();
+    document.querySelector("#add-expense").focus({ preventScroll: true });
   } catch (caught) {
     showNotice(caught.message, "error");
   }

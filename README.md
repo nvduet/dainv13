@@ -1,6 +1,6 @@
 # Sổ chi nhóm bạn
 
-Website thay bảng tính chi tiêu chung cho hội bạn: ghi khoản chi theo bảng, chia đều cho người tham gia, xem số dư với Admin và ghi nhận nộp/hoàn tiền.
+Website thay bảng tính chi tiêu chung cho hội bạn: ghi khoản chi theo bảng, chia đều cho người tham gia và xem số dư với Admin.
 
 Đặc tả và quyền truy cập: [SPEC.md](./SPEC.md).
 
@@ -16,7 +16,7 @@ Từ thư mục dự án, mở PowerShell và chạy:
 powershell -ExecutionPolicy Bypass -File .\Start-Local.ps1
 ```
 
-Script cài Wrangler và runtime cần thiết vào `.local` ở lần chạy đầu, tạo `.dev.vars` cục bộ bằng mật khẩu Admin bạn nhập, chạy migration, nhập tab Detail và khởi động web. Mở URL local Wrangler in ra; nhấn `Ctrl+C` để dừng. Chạy lại script được; dữ liệu nhập không bị nhân đôi. Các gói và database local đều nằm trong `.local`, đã được Git bỏ qua.
+Script cài Wrangler và runtime cần thiết vào `.local` ở lần chạy đầu, tạo `.dev.vars` cục bộ bằng mật khẩu Admin và mật khẩu khôi phục riêng bạn nhập, chạy migration, nhập tab Detail và khởi động web. Mở URL local Wrangler in ra; nhấn `Ctrl+C` để dừng. Chạy lại script được; dữ liệu nhập không bị nhân đôi. Các gói và database local đều nằm trong `.local`, đã được Git bỏ qua.
 
 Nếu vừa cài Node.js mà PowerShell báo không tìm thấy `node`, đóng/mở lại terminal. Script cũng thử tìm Node.js tại `C:\Program Files\nodejs`.
 
@@ -84,17 +84,14 @@ node --test tests\accounting.test.mjs tests\worker.test.mjs
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=thay-bang-mat-khau-manh-rieng
 ADMIN_SESSION_SECRET=thay-bang-chuoi-bi-mat-ngau-nhien-dai
+HISTORY_RESTORE_PASSWORD=mat-khau-khoi-phuc-rieng-khac-admin
 ```
 
-Đặt các secrets cho môi trường Cloudflare production bằng lệnh riêng:
+Script `Set-CloudflareSecrets.ps1` cấu hình các secrets production. Mật khẩu Admin và mật khẩu khôi phục chỉ cần có ít nhất một ký tự; không có yêu cầu độ dài khác. Hãy dùng mật khẩu mạnh và không chia sẻ chúng. Secret phiên được tạo ngẫu nhiên dài. Không đưa `.dev.vars`, mật khẩu, hoặc secret vào Git.
 
-```powershell
-& $wrangler secret put ADMIN_USERNAME
-& $wrangler secret put ADMIN_PASSWORD
-& $wrangler secret put ADMIN_SESSION_SECRET
-```
+Mật khẩu khôi phục điểm dữ liệu là secret riêng, bắt buộc khác mật khẩu Admin. `Start-Local.ps1` sẽ hỏi mật khẩu này nếu chưa có trong `.dev.vars`. Script thiết lập secrets production sẽ hỏi cả mật khẩu Admin và mật khẩu khôi phục riêng, sau đó lưu cả hai vào Cloudflare. Chạy lại script này khi muốn đổi một trong hai mật khẩu; deploy không thay đổi secrets.
 
-Mật khẩu Admin chỉ cần có ít nhất một ký tự; không có yêu cầu độ dài khác. Vì vậy hãy dùng mật khẩu mạnh và không chia sẻ mật khẩu. Secret phiên vẫn được tạo ngẫu nhiên dài. Không đưa `.dev.vars`, mật khẩu, hoặc secret vào Git.
+Khi chọn **Khôi phục**, Admin vẫn phải đăng nhập và nhập thêm mật khẩu khôi phục riêng. Máy chủ từ chối restore nếu secret này chưa được cấu hình hoặc trùng với mật khẩu Admin.
 
 Chỉ có một danh sách thành viên. Admin là người duy nhất được thêm, đổi tên hoặc xóa thành viên; toàn bộ thành viên trong danh sách được hiển thị thành cột ở bảng chi và trong bảng tổng hợp.
 
@@ -102,26 +99,26 @@ Sau khi đăng nhập Admin, mở mục **Cấu hình độ rộng cột** ở �
 
 Nhật ký quản trị ghi riêng từng thay đổi trường của khoản chi (người chi, ngày, nội dung, số tiền), thao tác đánh dấu/bỏ đánh dấu người tham gia và điều chỉnh tổng tiền chuyển khoản; nhật ký hiển thị giá trị trước/sau cho các thay đổi này. Mỗi thay đổi được gửi lưu riêng, không cần hoàn thiện cả dòng. Nút thêm khoản chi tạo ngay một dòng nháp trong D1; các dòng thiếu dữ liệu không được tính vào Summary cho đến khi đủ người chi, nội dung, số tiền dương và ít nhất một người tham gia.
 
-Admin có thể bấm **Store** để tạo một điểm khôi phục dữ liệu Detail/Summary. Mỗi điểm gồm danh sách thành viên, khoản chi/ngày/người tham gia, thanh toán và điều chỉnh cần thiết để dựng lại Summary; không chứa cấu hình giao diện hay nhật ký. Giữ tối đa 50 điểm gần nhất. Chọn **Khôi phục** sẽ thay thế dữ liệu nghiệp vụ bằng điểm đã chọn, giữ nguyên cấu hình giao diện và nhật ký, và yêu cầu xác nhận trước khi thực hiện.
+Admin có thể bấm **Store** để tạo một điểm khôi phục dữ liệu Detail/Summary. Mỗi điểm gồm danh sách thành viên, khoản chi/ngày/người tham gia, giao dịch lịch sử và điều chỉnh cần thiết để dựng lại Summary; không chứa cấu hình giao diện hay nhật ký. Giữ tối đa 50 điểm gần nhất. Chọn **Khôi phục** sẽ thay thế dữ liệu nghiệp vụ bằng điểm đã chọn, giữ nguyên cấu hình giao diện và nhật ký, đồng thời yêu cầu mật khẩu khôi phục riêng.
 
 ## Deploy
 
-Sau khi đăng nhập Wrangler (`& $wrangler login`) và tạo D1, cập nhật `database_id` trong `wrangler.toml`. Để thiết lập credentials production mà không nhập mật khẩu vào chat, chạy script sau trong PowerShell; mật khẩu được nhập ở prompt bảo mật và khóa phiên được tạo ngẫu nhiên:
+Sau khi đăng nhập Wrangler (`& $wrangler login`) và tạo D1, cập nhật `database_id` trong `wrangler.toml`. Để thiết lập username Admin, mật khẩu Admin và mật khẩu khôi phục production mà không nhập mật khẩu vào chat, chạy script sau trong PowerShell; hai mật khẩu được nhập ở prompt bảo mật và khóa phiên được tạo ngẫu nhiên:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Set-CloudflareSecrets.ps1
 ```
 
-Script dùng Wrangler local trong `.local`; các secrets được gửi trực tiếp đến Cloudflare Workers, không ghi vào tệp dự án. Không deploy ứng dụng công khai trước khi thiết lập đủ secrets Admin.
+Script hỏi username Admin, mật khẩu Admin và mật khẩu khôi phục riêng (không được trùng nhau), rồi gửi các secrets trực tiếp đến Cloudflare Workers mà không ghi vào tệp dự án. Chạy lại script này khi muốn đổi thông tin đăng nhập hoặc mật khẩu khôi phục. Không deploy ứng dụng công khai trước khi thiết lập đủ secrets.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Deploy-Cloudflare.ps1
 ```
 
-Script kiểm tra đăng nhập Cloudflare và đủ secrets, áp dụng các migration còn thiếu vào D1 remote, deploy Worker/assets, rồi kiểm tra endpoint trạng thái. Dùng lại cùng lệnh sau mỗi lần muốn đưa thay đổi mới lên production. `wrangler.toml` chứa tên Worker và D1 production. Database được giữ nguyên qua các lần deploy; không có bước nhập dữ liệu local/workbook tự động. Sao lưu D1 định kỳ trước khi đưa dữ liệu thật vào.
+Script deploy kiểm tra đăng nhập Cloudflare và đủ bốn secrets (username Admin, mật khẩu Admin, secret phiên và mật khẩu khôi phục), áp dụng các migration còn thiếu vào D1 remote, deploy Worker/assets, rồi kiểm tra endpoint trạng thái. Nếu thiếu secret, script yêu cầu chạy script thiết lập secrets trước. Chạy lại lệnh deploy này sau mỗi lần muốn đưa thay đổi mới lên production; mật khẩu sẽ không bị hỏi hoặc đổi trong quá trình deploy. `wrangler.toml` chứa tên Worker và D1 production. Database được giữ nguyên qua các lần deploy; không có bước nhập dữ liệu local/workbook tự động. Sao lưu D1 định kỳ trước khi đưa dữ liệu thật vào.
 
 ## Quyền truy cập và sao lưu
 
-Trang đọc công khai và khách chưa đăng nhập có thể sửa/xóa khoản chi. Điều này cho phép cả người lạ trên Internet thay đổi dữ liệu; giới hạn tần suất và nhật ký không xác minh được danh tính. Admin là người duy nhất được quản lý thành viên và xác nhận khoản nộp/ghi nhận hoàn tiền. Hãy cân nhắc kỹ trước khi dùng với dữ liệu thật.
+Trang đọc công khai và khách chưa đăng nhập có thể sửa/xóa khoản chi. Điều này cho phép cả người lạ trên Internet thay đổi dữ liệu; giới hạn tần suất và nhật ký không xác minh được danh tính. Admin là người duy nhất được quản lý thành viên và chỉnh tổng chuyển khoản. Hãy cân nhắc kỹ trước khi dùng với dữ liệu thật.
 
 Trước khi deploy, kiểm tra lại hạn mức Cloudflare, tạo quy trình sao lưu D1 và thử khôi phục bản sao lưu. Xóa thành viên sẽ xóa cứng các khoản chi có liên quan và thanh toán lịch sử của người đó.

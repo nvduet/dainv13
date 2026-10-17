@@ -93,13 +93,61 @@ if (-not (Test-Path -LiteralPath $devVarsPath -PathType Leaf)) {
     $securePassword.Dispose()
 }
 
-$requiredVariables = @("ADMIN_USERNAME", "ADMIN_PASSWORD", "ADMIN_SESSION_SECRET")
 $devVarsText = Get-Content -LiteralPath $devVarsPath -Raw
+$restorePasswordMatch = [regex]::Match($devVarsText, '(?m)^HISTORY_RESTORE_PASSWORD=(.*)$')
+if (-not $restorePasswordMatch.Success -or [string]::IsNullOrEmpty($restorePasswordMatch.Groups[1].Value)) {
+    $adminPasswordMatch = [regex]::Match($devVarsText, '(?m)^ADMIN_PASSWORD=(.*)$')
+    if (-not $adminPasswordMatch.Success) {
+        throw ".dev.vars is missing ADMIN_PASSWORD; cannot configure the separate restore password."
+    }
+
+    $secureRestorePassword = Read-Host "Enter a separate local history-restore password" -AsSecureString
+    $restorePasswordPointer = [IntPtr]::Zero
+    $restorePassword = $null
+    try {
+        if ($secureRestorePassword.Length -lt 1) {
+            throw "The history-restore password must contain at least 1 character."
+        }
+        $restorePasswordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureRestorePassword)
+        $restorePassword = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($restorePasswordPointer)
+        if ($restorePassword.Contains("`r") -or $restorePassword.Contains("`n")) {
+            throw "The password cannot contain a newline."
+        }
+        if ([string]::Equals($restorePassword, $adminPasswordMatch.Groups[1].Value, [System.StringComparison]::Ordinal)) {
+            throw "The history-restore password must differ from the Admin password."
+        }
+
+        $separator = if ($devVarsText.EndsWith("`n")) { "" } else { "`n" }
+        [IO.File]::AppendAllText(
+            $devVarsPath,
+            "${separator}HISTORY_RESTORE_PASSWORD=$restorePassword`n",
+            [Text.UTF8Encoding]::new($false)
+        )
+    }
+    finally {
+        if ($restorePasswordPointer -ne [IntPtr]::Zero) {
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($restorePasswordPointer)
+        }
+        $restorePassword = $null
+        $secureRestorePassword.Dispose()
+    }
+    $devVarsText = Get-Content -LiteralPath $devVarsPath -Raw
+}
+
+$requiredVariables = @("ADMIN_USERNAME", "ADMIN_PASSWORD", "ADMIN_SESSION_SECRET", "HISTORY_RESTORE_PASSWORD")
 foreach ($variable in $requiredVariables) {
     if ($devVarsText -notmatch "(?m)^$variable=.+$") {
         throw ".dev.vars is missing ${variable}. Add it and run the script again."
     }
 }
+$adminPasswordValue = [regex]::Match($devVarsText, '(?m)^ADMIN_PASSWORD=(.*)$').Groups[1].Value
+$restorePasswordValue = [regex]::Match($devVarsText, '(?m)^HISTORY_RESTORE_PASSWORD=(.*)$').Groups[1].Value
+if ([string]::Equals($adminPasswordValue, $restorePasswordValue, [System.StringComparison]::Ordinal)) {
+    throw "HISTORY_RESTORE_PASSWORD must differ from ADMIN_PASSWORD."
+}
+$adminPasswordValue = $null
+$restorePasswordValue = $null
+$devVarsText = $null
 
 $localDirectory = Join-Path $projectRoot ".local"
 New-Item -ItemType Directory -Path $localDirectory -Force | Out-Null

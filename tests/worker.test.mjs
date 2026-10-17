@@ -104,8 +104,8 @@ class MockStatement {
     if (this.sql.includes("SELECT member_id AS memberId FROM expense_participants")) {
       return { results: this.database.expenseParticipants.map((memberId) => ({ memberId })) };
     }
-    if (this.sql.includes("FROM payments ORDER BY")) {
-      return { results: this.database.payments };
+    if (this.sql.includes("FROM payments") && this.sql.includes("ORDER BY")) {
+      return { results: this.database.payments.filter((payment) => payment.status === "confirmed") };
     }
     return { results: [] };
   }
@@ -492,6 +492,29 @@ test("the admin-managed member list is the only member list and only Admin can e
   assert.equal("tableMembers" in state, false);
 });
 
+test("retired payment request and refund APIs are no longer available", async () => {
+  const DB = new MockDatabase();
+  const request = (path, body) => new Request(`https://example.test${path}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: "https://example.test",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const reportResponse = await worker.fetch(request("/api/payments", {
+    memberId: "member-1",
+    amountVnd: 1000,
+  }), { DB });
+  const refundResponse = await worker.fetch(request("/api/admin/refunds", {
+    memberId: "member-1",
+    amountVnd: 1000,
+  }), { DB });
+  assert.equal(reportResponse.status, 404);
+  assert.equal(refundResponse.status, 404);
+});
+
 test("expense edits audit each changed field and participant checkbox action separately", async () => {
   const DB = new MockDatabase();
   const response = await worker.fetch(new Request("https://example.test/api/expenses/expense-1", {
@@ -595,6 +618,7 @@ test("history points are Admin-only and restore business data without changing s
     ADMIN_USERNAME: "admin",
     ADMIN_PASSWORD: "secret",
     ADMIN_SESSION_SECRET: "a-long-session-secret-for-tests",
+    HISTORY_RESTORE_PASSWORD: "restore-secret",
   };
   const request = (path, { method = "GET", body, cookie } = {}) => new Request(
     `https://example.test${path}`,
@@ -636,13 +660,38 @@ test("history points are Admin-only and restore business data without changing s
     "adjustments", "expenses", "members", "participants", "payments",
   ]);
 
+  delete env.HISTORY_RESTORE_PASSWORD;
+  const missingSecret = await worker.fetch(request(`/api/admin/history-points/${pointId}/restore`, {
+    method: "POST",
+    body: { password: "restore-secret" },
+    cookie,
+  }), env);
+  assert.equal(missingSecret.status, 503);
+  env.HISTORY_RESTORE_PASSWORD = "restore-secret";
+
+  const wrongPassword = await worker.fetch(request(`/api/admin/history-points/${pointId}/restore`, {
+    method: "POST",
+    body: { password: "secret" },
+    cookie,
+  }), env);
+  assert.equal(wrongPassword.status, 401);
+
+  env.HISTORY_RESTORE_PASSWORD = env.ADMIN_PASSWORD;
+  const sameAsAdmin = await worker.fetch(request(`/api/admin/history-points/${pointId}/restore`, {
+    method: "POST",
+    body: { password: "secret" },
+    cookie,
+  }), env);
+  assert.equal(sameAsAdmin.status, 503);
+  env.HISTORY_RESTORE_PASSWORD = "restore-secret";
+
   DB.members = [];
   DB.expense = null;
   DB.expenseParticipants = [];
   DB.columnWidths.expense.date = 177;
   const restore = await worker.fetch(request(`/api/admin/history-points/${pointId}/restore`, {
     method: "POST",
-    body: {},
+    body: { password: "restore-secret" },
     cookie,
   }), env);
   assert.equal(restore.status, 200);

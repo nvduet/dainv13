@@ -50,10 +50,13 @@ catch {
     throw "Wrangler returned an unreadable secret list; refusing to deploy."
 }
 $secretNames = @($secrets | ForEach-Object { $_.name })
-$requiredSecrets = @("ADMIN_USERNAME", "ADMIN_PASSWORD", "ADMIN_SESSION_SECRET")
+$requiredSecrets = @("ADMIN_USERNAME", "ADMIN_PASSWORD", "ADMIN_SESSION_SECRET", "HISTORY_RESTORE_PASSWORD")
 $missingSecrets = @($requiredSecrets | Where-Object { $_ -notin $secretNames })
 if ($missingSecrets.Count -gt 0) {
-    throw "Missing Worker secrets: $($missingSecrets -join ', '). Run Set-CloudflareSecrets.ps1 before deploying."
+    if ("HISTORY_RESTORE_PASSWORD" -in $missingSecrets) {
+        throw "Missing Worker secret HISTORY_RESTORE_PASSWORD. Run .\Set-CloudflareSecrets.ps1 to set Admin and history-restore passwords before deploying."
+    }
+    throw "Missing Worker secrets: $($missingSecrets -join ', '). Run .\Set-CloudflareSecrets.ps1 before deploying."
 }
 
 Write-Host "Applying pending migrations to remote D1 '$databaseName'..." -ForegroundColor Cyan

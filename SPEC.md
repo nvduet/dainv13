@@ -16,8 +16,7 @@ Khởi tạo dữ liệu từ tab **Detail** trong workbook tham chiếu: danh s
 - Bảng 1: người chi, ngày, nội dung, chi phí, checkbox tham gia cho từng thành viên, số người chia và số tiền trung bình/người.
 - Bảng 2: mỗi người, tổng chi phí họ chịu, tổng khoản họ trả thay, khoản họ đã nộp Admin, khoản Admin đã hoàn và số dư còn phải tất toán.
 - Người xem không cần tài khoản. Có thể thêm/sửa/xóa khoản chi và chọn/bỏ chọn người tham gia. Chỉ Admin được thêm, đổi tên hoặc xóa thành viên; danh sách này được dùng cho các cột ở bảng chi và bảng tổng hợp.
-- Người dùng có thể báo một lần nộp tiền cho Admin (cho phép trả nhiều lần/trả một phần); khoản báo này ở trạng thái chờ cho đến khi Admin xác nhận đã nhận.
-- Admin đăng nhập để quản lý thành viên, xem và xác nhận khoản nộp, ghi nhận tiền hoàn cho thành viên, và quản lý toàn bộ dữ liệu.
+- Các giao dịch nộp/hoàn đã xác nhận từ dữ liệu lịch sử vẫn được tính vào số dư; giao diện hiện tại không tạo yêu cầu nộp hoặc ghi nhận khoản hoàn mới.
 - Admin đăng nhập để tùy chỉnh và lưu độ rộng mọi vai trò cột trên cả bảng chi (kể cả ngày) và bảng tổng hợp. Các cột thành viên có cùng vai trò dùng chung cấu hình; cấu hình được dùng chung cho mọi khách truy cập.
 - Admin đăng nhập để chỉnh cỡ chữ toàn giao diện (75%–200%); giá trị được lưu chung trong D1 và áp dụng cho tất cả người truy cập.
 - Thêm khoản chi tạo ngay một dòng nháp được lưu trong D1. Mỗi thay đổi trường (bao gồm ngày) hoặc checkbox được tự lưu riêng, không cần hoàn thiện toàn bộ dòng; dòng chưa đầy đủ hoặc chưa có số tiền dương/người tham gia không ảnh hưởng Summary.
@@ -30,9 +29,8 @@ Ngoài phạm vi: tích hợp chuyển khoản ngân hàng, nhiều loại tiề
 
 ## 3. Quyền truy cập và cảnh báo công khai
 
-- **Khách:** đọc toàn bộ dữ liệu công khai; được tạo/sửa/xóa khoản chi; được đánh dấu người tham gia; có thể gửi yêu cầu ghi nhận đã nộp tiền cho Admin.
-- **Admin:** đăng nhập; có toàn quyền với khoản chi và danh sách thành viên gốc; xác nhận tiền thành viên nộp đã nhận; ghi nhận Admin đã hoàn tiền. Chỉ Admin có thể thay đổi trạng thái thanh toán sang đã xác nhận.
-- Không có tài khoản Normal cho từng người. Khách chọn tên thành viên trong danh sách để báo khoản đã nộp; vì không đăng nhập nên không thể xác minh người gửi báo cáo là chính thành viên đó.
+- **Khách:** đọc toàn bộ dữ liệu công khai; được tạo/sửa/xóa khoản chi và chọn/bỏ chọn người tham gia.
+- **Admin:** đăng nhập; có toàn quyền với khoản chi và danh sách thành viên gốc, đồng thời chỉnh tổng tiền chuyển khoản qua bút toán điều chỉnh.
 - Website và API đọc công khai. Khách có thể sửa dữ liệu từ Internet; bất kỳ ai biết địa chỉ website đều có thể phá hoại hoặc xóa dữ liệu. Kiểm tra dữ liệu, giới hạn tần suất và nhật ký thay đổi chỉ giảm thiệt hại, không xác thực người sửa. Cần cân nhắc rủi ro và sao lưu trước khi mở website công khai.
 
 ## 4. Quy tắc dữ liệu và tiền
@@ -47,7 +45,7 @@ Ngoài phạm vi: tích hợp chuyển khoản ngân hàng, nhiều loại tiề
    - `admin_da_hoan` = tổng thanh toán Admin đã ghi nhận hoàn cho thành viên.
    - `so_du` = `chi_phi_chiu - da_tra_thay - da_nop_admin + admin_da_hoan`.
    - Số dư dương: thành viên còn nộp cho Admin. Số dư âm: Admin còn hoàn cho thành viên. Không ghép cặp nợ giữa các thành viên.
-5. Yêu cầu nộp tiền đang chờ xác nhận không thay đổi số dư. Admin hoàn tiền được ghi nhận trực tiếp là đã hoàn theo lựa chọn hiện tại.
+5. Các giao dịch nộp/hoàn đã xác nhận được lưu từ trước vẫn được tính vào số dư. Yêu cầu nộp đang chờ không được tính.
 6. Xóa thành viên là xóa cứng. Để không giữ khoản chi mất người trả/người tham gia, khi xóa thành viên hệ thống cũng xóa mọi khoản chi mà người đó trả hoặc tham gia, cùng các thanh toán liên quan; cảnh báo rõ tác động và tính lại số dư. Đây là thao tác không thể khôi phục nếu không có bản sao lưu.
 7. API kiểm tra đầu vào, ràng buộc thành viên/khoản chi hợp lệ và giới hạn tần suất ghi/đăng nhập. Mật khẩu Admin và khóa phiên chỉ được lưu trong secrets phía server, không nằm trong frontend/repository.
 
@@ -56,8 +54,8 @@ Ngoài phạm vi: tích hợp chuyển khoản ngân hàng, nhiều loại tiề
 1. Khách mở website, xem sổ và sửa/thêm khoản chi hoặc người tham gia.
 2. Ứng dụng lưu dữ liệu và cập nhật bảng tổng hợp số dư.
 3. Thành viên chọn tên của mình, gửi số tiền đã chuyển tới Admin; giao dịch hiển thị đang chờ.
-4. Admin đăng nhập để quản lý danh sách thành viên. Toàn bộ thành viên xuất hiện ở bảng chi và bảng tổng hợp. Admin cũng xác nhận khoản nộp đã nhận hoặc ghi nhận khoản hoàn đã chuyển cho thành viên.
-5. Bảng số dư cập nhật chỉ từ khoản nộp/hoàn đã xác nhận.
+4. Admin đăng nhập để quản lý danh sách thành viên. Toàn bộ thành viên xuất hiện ở bảng chi và bảng tổng hợp. Admin có thể điều chỉnh tổng tiền chuyển khoản, Store điểm dữ liệu, và cần nhập mật khẩu khôi phục riêng để khôi phục một điểm.
+5. Bảng số dư cập nhật từ khoản chi, dữ liệu thanh toán lịch sử đã xác nhận và các bút toán điều chỉnh.
 
 ## 6. Công nghệ và triển khai
 
@@ -65,7 +63,7 @@ Ngoài phạm vi: tích hợp chuyển khoản ngân hàng, nhiều loại tiề
 - Cloudflare Worker phục vụ frontend và API.
 - Cloudflare D1 (SQLite) làm database; migrations SQL nằm trong `migrations/`.
 - Cloudflare free tier dùng cho thử nghiệm; cần rà lại hạn mức, sao lưu và giá hiện hành trước khi dùng lâu dài. Không cần mua tên miền cho bản thử.
-- Cấu hình Admin qua Cloudflare secrets: `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`. Không đặt giá trị thật trong `wrangler.toml`, mã nguồn hay tài liệu.
+- Cấu hình xác thực qua Cloudflare secrets: `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` và `HISTORY_RESTORE_PASSWORD` riêng biệt. Không đặt giá trị thật trong `wrangler.toml`, mã nguồn hay tài liệu.
 - Backup/export định kỳ trước khi dùng dữ liệu thật.
 
 ## 7. Tiêu chí nghiệm thu MVP
@@ -73,15 +71,15 @@ Ngoài phạm vi: tích hợp chuyển khoản ngân hàng, nhiều loại tiề
 - Tab Detail được khởi tạo với các thành viên và khoản chi có dữ liệu; giá trị nghìn đồng đã được chuyển sang đồng nguyên.
 - Có thể nhập, sửa, xóa khoản chi và chọn nhiều người tham gia; số người/phần chia tự tính đúng.
 - Tổng các phần chịu luôn bằng số tiền khoản chi; số dư mỗi người khớp công thức tại mục 4 và tổng nộp/hoàn được tính đúng.
-- Khách chưa đăng nhập có thể sửa khoản chi nhưng không thể quản lý thành viên hoặc xác nhận thanh toán.
-- Admin có thể đăng nhập, quản lý thành viên, xác nhận khoản nộp và ghi nhận khoản hoàn.
+- Khách chưa đăng nhập có thể sửa khoản chi nhưng không thể quản lý thành viên hoặc cấu hình.
+- Admin có thể đăng nhập và quản lý danh sách thành viên.
 - Admin có thể cấu hình độ rộng mọi cột theo vai trò, kể cả Date, áp dụng cấu hình cho mọi người dùng và đặt lại mặc định; các cột thành viên cùng vai trò dùng chung độ rộng và số lượng cột được hiển thị; khách chưa đăng nhập không thể lưu thay đổi.
-- Admin có thể cấu hình cỡ chữ, áp dụng ngay và dùng chung cho tất cả khách; các thao tác nhập tên/xác nhận/xóa dùng hộp thoại giao diện, không dùng prompt/confirm của trình duyệt.
+- Admin có thể cấu hình cỡ chữ, áp dụng ngay và dùng chung cho tất cả khách; thao tác nhập tên/xóa dùng hộp thoại giao diện, không dùng prompt/confirm của trình duyệt.
 - Admin có thể sửa tổng tiền đã chuyển khoản, bao gồm đặt về 0; bút toán điều chỉnh phải cập nhật bảng số dư và nhật ký mà không thay đổi giao dịch gốc. Nhật ký nêu riêng từng trường khoản chi thay đổi, đánh dấu/bỏ đánh dấu người tham gia và giá trị trước/sau của tổng chuyển khoản.
 - Nút **Done** trong chế độ Admin đặt tiền đã chuyển khoản về `Tiền phải chịu - Đã chi` cho người tương ứng.
 - Mỗi trường và trạng thái checkbox của khoản chi tự lưu độc lập; có thể tải lại trang khi dòng còn thiếu trường mà dữ liệu đã nhập vẫn còn. Dòng không hoàn chỉnh không làm sai số dư.
 - Date nằm giữa Người chi và Nội dung, nhận ngày hợp lệ và được lưu cùng khoản chi.
-- Admin tạo được điểm khôi phục bằng Store, danh sách giữ tối đa 50 điểm; khôi phục đúng dữ liệu nghiệp vụ nhưng không ghi đè cấu hình hoặc nhật ký.
+- Admin tạo được điểm khôi phục bằng Store, danh sách giữ tối đa 50 điểm; khôi phục chỉ thành công với mật khẩu khôi phục riêng khác mật khẩu Admin, và không ghi đè cấu hình hoặc nhật ký.
 - API hiển thị lỗi khi dữ liệu sai, thiếu quyền Admin hoặc vượt giới hạn; không báo thành công giả.
 - Xóa khoản chi thực hiện ngay; xóa thành viên có cảnh báo số khoản chi và thanh toán sẽ bị xóa theo.
 - Dùng được trên điện thoại/desktop và hỗ trợ HTTPS khi deploy.

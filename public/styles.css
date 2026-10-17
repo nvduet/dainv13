@@ -194,16 +194,10 @@ th {
 .balance-positive { color: #a4422b; font-weight: 650; }
 .balance-negative { color: var(--green); font-weight: 650; }
 .balance-zero { color: var(--muted); }
-.report-form { display: flex; align-items: center; gap: 4px; }
-.report-form input { width: 84px; height: 27px; padding: 0 6px; border: 1px solid var(--line); border-radius: 3px; font-size: calc(var(--font-scale, 1) * 13.2px); }
-.report-form button { min-height: 27px; padding: 0 7px; white-space: nowrap; font-size: calc(var(--font-scale, 1) * 12px); }
 .done-transfer-button { min-width: 70px; }
-.admin-refund-form { margin-top: 3px; }
-.pending-count { padding: 5px 8px; border-radius: 3px; background: var(--coral-pale); color: var(--coral); font-size: calc(var(--font-scale, 1) * 12px); font-weight: 650; }
-.pending-count:empty { display: none; }
 
 .admin-card { background: var(--surface); }
-.admin-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 12px; }
+.admin-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
 .admin-subcard { min-width: 0; padding: 12px; border: 1px solid var(--line); }
 .history-points-card { margin-top: 12px; }
 .history-points-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -213,10 +207,8 @@ th {
 .admin-subcard h3 { margin-bottom: 9px; }
 .inline-form { display: flex; gap: 6px; }
 .inline-form input { min-width: 0; flex: 1; height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: 3px; background: #fff; }
-.member-management { display: flex; align-items: center; gap: 8px; margin: 6px 0 8px; font-size: calc(var(--font-scale, 1) * 13.2px); }
-.member-management-divider { color: var(--muted); }
-.member-list, .pending-list { margin: 9px 0 0; padding: 0; list-style: none; }
-.member-list li, .pending-item {
+.member-list { margin: 9px 0 0; padding: 0; list-style: none; }
+.member-list li {
   min-height: 34px;
   display: flex;
   align-items: center;
@@ -227,10 +219,6 @@ th {
 }
 .member-name-actions { display: flex; align-items: center; gap: 4px; }
 .member-edit { width: 24px; height: 24px; border: 0; background: transparent; color: var(--green); }
-.pending-item { align-items: flex-start; padding: 8px 0; }
-.pending-copy { display: grid; gap: 3px; }
-.pending-copy span { color: var(--muted); font-size: calc(var(--font-scale, 1) * 12px); }
-.pending-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .audit-details { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; color: var(--green); font-size: calc(var(--font-scale, 1) * 13.2px); }
 .audit-details summary { cursor: pointer; font-weight: 600; }
 .column-width-card { margin-top: 12px; }
@@ -306,7 +294,6 @@ th {
   .ledger-footer { gap: 8px; font-size: calc(var(--font-scale, 1) * 10.8px); }
   .summary-table { min-width: 820px; }
 .summary-table thead th { position: sticky; top: 0; z-index: 2; background: #eef1f4; }
-  .admin-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 420px) {
@@ -314,5 +301,4 @@ th {
   .section-heading > .button { padding: 0 6px; font-size: calc(var(--font-scale, 1) * 10.8px); }
   .ledger-footer { display: grid; }
   .overview-stats { gap: 7px; font-size: calc(var(--font-scale, 1) * 12px); }
-  .report-form input { width: 72px; }
 }

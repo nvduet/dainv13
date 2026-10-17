@@ -31,8 +31,16 @@
             <h4>Cỡ chữ toàn giao diện</h4>
             <div class="width-inputs">
               <label>Cỡ chữ: <input type="number" id="font-size-percent" min="75" max="200" step="5" value="100" required>%</label>
-              <button id="apply-font-size" class="button button-dark button-small" type="button">Áp dụng</button>
             </div>
+            <button id="apply-font-size" class="button button-dark button-small" type="button">Áp dụng</button>
+          </div>
+          <div class="config-group">
+            <h4>Bảng "Tổng hợp số dư"</h4>
+            <div class="width-inputs">
+              <label>Tên chỉ tiêu: <input type="number" id="col-width-summary-label" min="24" max="2000" value="120" required>px</label>
+              <label>Cột thành viên <span id="summary-member-column-count"></span>: <input type="number" id="col-width-summary-member" min="24" max="2000" value="130" required>px</label>
+            </div>
+            <button id="apply-summary-widths" class="button button-dark button-small" type="button">Áp dụng</button>
           </div>
           <div class="config-group">
             <h4>Bảng "Detail"</h4>
@@ -47,14 +55,6 @@
               <label>Xóa: <input type="number" id="col-width-actions" min="24" max="2000" value="68" required>px</label>
             </div>
             <button id="apply-expense-widths" class="button button-dark button-small" type="button">Áp dụng</button>
-          </div>
-          <div class="config-group">
-            <h4>Bảng "Tổng hợp số dư"</h4>
-            <div class="width-inputs">
-              <label>Tên chỉ tiêu: <input type="number" id="col-width-summary-label" min="24" max="2000" value="120" required>px</label>
-              <label>Cột thành viên <span id="summary-member-column-count"></span>: <input type="number" id="col-width-summary-member" min="24" max="2000" value="130" required>px</label>
-            </div>
-            <button id="apply-summary-widths" class="button button-dark button-small" type="button">Áp dụng</button>
           </div>
           <button id="reset-column-widths" class="button button-light button-small" type="button">Đặt lại mặc định</button>
         </div>
@@ -75,7 +75,6 @@
           <div>
             <h2 id="summary-title">Summary</h2>
           </div>
-          <span id="payment-pending-count" class="pending-count"></span>
         </div>
         <div class="table-scroll summary-scroll">
           <table class="summary-table">
@@ -110,7 +109,7 @@
         <div class="section-heading">
           <div>
             <h2 id="admin-title">Quản trị</h2>
-            <p class="section-description">Quản lý danh sách tên, xác nhận tiền nộp và ghi nhận tiền hoàn.</p>
+            <p class="section-description">Quản lý danh sách tên và điểm khôi phục dữ liệu.</p>
           </div>
         </div>
 
@@ -123,10 +122,6 @@
               <button class="button button-dark" type="submit">Thêm tên</button>
             </form>
             <ul id="member-list" class="member-list"></ul>
-          </div>
-          <div class="admin-subcard">
-            <h3>Đang chờ xác nhận</h3>
-            <div id="pending-payments" class="pending-list"></div>
           </div>
         </div>
 
@@ -156,8 +151,8 @@
     <dialog id="login-dialog" class="login-dialog">
       <form id="login-form" method="dialog">
         <button id="close-login" class="dialog-close" type="button" aria-label="Đóng">×</button>
-        <h2>Chào Admin <span aria-hidden="true">✿</span></h2>
-        <p class="section-description">Đăng nhập để quản lý thành viên, thanh toán và giao diện.</p>
+        <h2>Admin mode <span aria-hidden="true"></span></h2>
+        <p class="section-description">Login with admin account.</p>
         <label for="username">Tên đăng nhập</label>
         <input id="username" name="username" autocomplete="username" required>
         <label for="password">Mật khẩu</label>
