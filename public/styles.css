@@ -158,6 +158,8 @@ th {
 .icon-button.delete:hover { background: var(--coral-pale); color: var(--coral); }
 .empty-cell { padding: 18px !important; color: var(--muted); text-align: center; }
 .ledger-footer { padding: 8px 1px 0; display: flex; justify-content: space-between; color: var(--muted); font-size: calc(var(--font-scale, 1) * 12px); }
+#save-status { text-align: right; }
+#save-status[data-state="error"] { color: var(--coral); }
 .summary-table { width: 100%; min-width: max-content; font-size: calc(var(--font-scale, 1) * 14.4px); }
 .summary-table th, .summary-table td {
   padding: 8px 9px;

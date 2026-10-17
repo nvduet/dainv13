@@ -392,4 +392,12 @@ test("expense edits audit each changed field and participant checkbox action sep
     ],
   );
   assert.deepEqual(DB.expenseParticipants, ["member-2"]);
+  assert.deepEqual(
+    {
+      payerId: DB.expense.payerId,
+      description: DB.expense.description,
+      amountVnd: DB.expense.amountVnd,
+    },
+    { payerId: "member-1", description: "Ăn tối", amountVnd: 125_000 },
+  );
 });

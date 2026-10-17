@@ -102,6 +102,8 @@ Sau khi đăng nhập Admin, mở mục **Cấu hình độ rộng cột** ở �
 
 Nhật ký quản trị ghi riêng từng thay đổi trường của khoản chi (người chi, nội dung, số tiền), thao tác đánh dấu/bỏ đánh dấu người tham gia và điều chỉnh tổng tiền chuyển khoản; nhật ký hiển thị giá trị trước/sau cho các thay đổi này.
 
+Các thay đổi trong bảng chi được tự lưu vào D1 sau khi hoàn tất dòng; khi rời hoặc tải lại trang, các thay đổi hợp lệ còn đang chờ sẽ được gửi lưu bằng yêu cầu nền. Trạng thái lưu hiển thị dưới bảng. Dòng chưa đủ người chi, nội dung, số tiền dương hoặc người tham gia sẽ báo rõ là chưa lưu.
+
 ## Deploy
 
 ```powershell

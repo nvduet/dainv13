@@ -109,6 +109,11 @@ document.querySelector("#action-form").addEventListener("submit", (event) => {
   }
   actionDialog.close("confirm");
 });
+document.querySelector("#expense-body").addEventListener("focusout", (event) => {
+  if (event.target.matches(".amount-input, .description-input")) {
+    scheduleAutoSave(event.target.closest("tr"), 0);
+  }
+});
 document.querySelector("#action-dialog-cancel").addEventListener("click", () => actionDialog.close("cancel"));
 document.querySelector("#action-dialog-close").addEventListener("click", () => actionDialog.close("cancel"));
 document.querySelector("#action-dialog-input").addEventListener("input", () => {
@@ -232,6 +237,14 @@ function renderHeader() {
 }
 
 const autoSaveTimers = new WeakMap();
+const savingRows = new WeakSet();
+const savingTransferInputs = new WeakSet();
+
+function setSaveStatus(message, status = "saved") {
+  const element = document.querySelector("#save-status");
+  element.textContent = message;
+  element.dataset.state = status;
+}
 
 function renderExpenses() {
   const head = document.querySelector("#expense-head");
@@ -283,58 +296,86 @@ function renderExpenses() {
   }).join("");
 }
 
+function readExpensePayload(row) {
+  const payerId = row.querySelector(".payer-input").value;
+  const description = row.querySelector(".description-input").value.trim();
+  const amountText = row.querySelector(".amount-input").value.trim();
+  let amountVnd;
+  try {
+    amountVnd = parseThousandInput(amountText);
+  } catch (caught) {
+    return { error: caught.message };
+  }
+  const participantIds = [...row.querySelectorAll("input[type=checkbox]:checked")]
+    .map((checkbox) => checkbox.dataset.memberId);
+  if (!payerId) return { error: "Chưa lưu: hãy chọn người chi." };
+  if (!description) return { error: "Chưa lưu: hãy nhập nội dung khoản chi." };
+  if (!amountVnd) return { error: "Chưa lưu: hãy nhập số tiền lớn hơn 0." };
+  if (participantIds.length === 0) return { error: "Chưa lưu: hãy tick ít nhất một người chia." };
+  return {
+    payload: { payerId, description, amountVnd, participantIds },
+  };
+}
+
+async function saveExpenseRow(row, { keepalive = false } = {}) {
+  if (savingRows.has(row)) {
+    row.dataset.pendingSave = "true";
+    return;
+  }
+  const result = readExpensePayload(row);
+  if (result.error) {
+    setSaveStatus(result.error, "error");
+    return;
+  }
+  const isDraft = row.dataset.draft === "true";
+  row.dataset.pendingSave = "false";
+  savingRows.add(row);
+  setSaveStatus("Đang lưu vào cơ sở dữ liệu…", "saving");
+  try {
+    const response = await api(isDraft ? "/api/expenses" : `/api/expenses/${encodeURIComponent(row.dataset.expenseId)}`, {
+      method: isDraft ? "POST" : "PUT",
+      body: JSON.stringify(result.payload),
+      keepalive: true,
+    });
+    if (isDraft) {
+      row.dataset.draft = "false";
+      row.dataset.expenseId = response.expense.id;
+      state.draftRows = Math.max(0, state.draftRows - 1);
+    }
+    const savedExpense = {
+      ...state.expenses.find((expense) => expense.id === response.expense.id),
+      ...response.expense,
+    };
+    const savedIndex = state.expenses.findIndex((expense) => expense.id === savedExpense.id);
+    if (savedIndex === -1) state.expenses.push(savedExpense);
+    else state.expenses[savedIndex] = savedExpense;
+    if (keepalive) {
+      setSaveStatus("Đã gửi lưu dữ liệu.", "saved");
+      return;
+    }
+    if (row.dataset.pendingSave === "true") return;
+    setSaveStatus("Đã lưu vào cơ sở dữ liệu.", "saved");
+    renderHeader();
+    renderSummary();
+    showNotice(isDraft ? "Đã thêm khoản chi." : "Đã lưu khoản chi.");
+  } catch (caught) {
+    setSaveStatus(`Chưa lưu: ${caught.message}`, "error");
+    if (!keepalive) showNotice(caught.message, "error");
+  } finally {
+    savingRows.delete(row);
+    if (!keepalive && row.dataset.pendingSave === "true" && row.isConnected) {
+      scheduleAutoSave(row, 0);
+    }
+  }
+}
+
 function scheduleAutoSave(row, delay = 800) {
   clearTimeout(autoSaveTimers.get(row));
-  autoSaveTimers.set(row, setTimeout(async () => {
+  row.dataset.pendingSave = "true";
+  setSaveStatus("Có thay đổi chưa lưu…", "saving");
+  autoSaveTimers.set(row, setTimeout(() => {
     autoSaveTimers.delete(row);
-    try {
-      const isDraft = row.dataset.draft === "true";
-      const payerInput = row.querySelector(".payer-input");
-      const descriptionInput = row.querySelector(".description-input");
-      const amountInput = row.querySelector(".amount-input");
-      const checkboxes = row.querySelectorAll("input[type=checkbox]:checked");
-
-      if (!payerInput.value.trim() && !isDraft) return;
-      if (!descriptionInput.value.trim()) return;
-
-      let amountVnd = 0;
-      if (amountInput.value.trim()) {
-        try {
-          amountVnd = parseThousandInput(amountInput.value);
-        } catch {
-          showNotice("Số tiền không hợp lệ.", "error");
-          return;
-        }
-      }
-      if (!amountVnd) return;
-
-      const participantIds = [...checkboxes].map((checkbox) => checkbox.dataset.memberId);
-      if (participantIds.length === 0) {
-        showNotice("Vui lòng chọn ít nhất một người tham gia.", "error");
-        return;
-      }
-
-      const payload = {
-        payerId: payerInput.value,
-        description: descriptionInput.value.trim(),
-        amountVnd,
-        participantIds,
-      };
-
-      await api(isDraft ? "/api/expenses" : `/api/expenses/${encodeURIComponent(row.dataset.expenseId)}`, {
-        method: isDraft ? "POST" : "PUT",
-        body: JSON.stringify(payload),
-      });
-      if (isDraft) {
-        row.dataset.draft = "false";
-        row.dataset.expenseId = "saved";
-        state.draftRows = Math.max(0, state.draftRows - 1);
-      }
-      await loadState();
-      showNotice(isDraft ? "Đã thêm khoản chi." : "Đã lưu khoản chi.");
-    } catch (caught) {
-      showNotice(caught.message, "error");
-    }
+    saveExpenseRow(row);
   }, delay));
 }
 
@@ -436,23 +477,46 @@ function updateExpensePreview(row) {
   renderSummary();
 }
 
-async function savePaidTransferTotal(input) {
-  const digits = input.value.replace(/\D/g, "");
+async function savePaidTransferTotal(input, { keepalive = false } = {}) {
+  if (savingTransferInputs.has(input)) {
+    input.dataset.pendingSave = "true";
+    return;
+  }
+  const submittedValue = input.value;
+  const digits = submittedValue.replace(/\D/g, "");
   const amountValue = digits ? BigInt(digits) : 0n;
   if (amountValue > 1_000_000_000_000n) {
     showNotice("Tổng tiền chuyển khoản không được vượt quá 1.000.000.000.000đ.", "error");
     return;
   }
   const amountVnd = Number(amountValue);
+  input.dataset.pendingSave = "false";
+  savingTransferInputs.add(input);
   try {
     await api("/api/admin/payments/total", {
       method: "PUT",
       body: JSON.stringify({ memberId: input.dataset.memberId, amountVnd }),
+      keepalive: true,
     });
-    await loadState();
-    showNotice("Đã cập nhật tổng tiền chuyển khoản.");
+    if (input.value !== submittedValue) {
+      input.dataset.pendingSave = "true";
+      return;
+    }
+    input.dataset.dirty = "false";
+    if (!keepalive) {
+      const data = await api("/api/state");
+      state.payments = data.payments;
+      renderSummary();
+      showNotice("Đã cập nhật tổng tiền chuyển khoản.");
+    }
   } catch (caught) {
-    showNotice(caught.message, "error");
+    if (!keepalive) showNotice(caught.message, "error");
+    else setSaveStatus(`Chưa lưu: ${caught.message}`, "error");
+  } finally {
+    savingTransferInputs.delete(input);
+    if (input.dataset.pendingSave === "true" && input.isConnected) {
+      void savePaidTransferTotal(input);
+    }
   }
 }
 
@@ -681,7 +745,10 @@ document.querySelector("#summary-body").addEventListener("change", (event) => {
   if (event.target.matches(".paid-transfer-input")) savePaidTransferTotal(event.target);
 });
 document.querySelector("#summary-body").addEventListener("input", (event) => {
-  if (event.target.matches(".paid-transfer-input")) formatVndInputAtCursor(event.target);
+  if (event.target.matches(".paid-transfer-input")) {
+    event.target.dataset.dirty = "true";
+    formatVndInputAtCursor(event.target);
+  }
 });
 document.querySelector("#add-expense").addEventListener("click", () => {
   if (state.members.length === 0) {
@@ -708,6 +775,17 @@ document.querySelector("#logout-button").addEventListener("click", async () => {
 });
 document.querySelector("#audit-details").addEventListener("toggle", (event) => {
   if (event.target.open) loadAudit();
+});
+window.addEventListener("pagehide", () => {
+  for (const row of document.querySelectorAll("#expense-body tr[data-expense-id]")) {
+    if (row.dataset.pendingSave !== "true" && !autoSaveTimers.has(row)) continue;
+    clearTimeout(autoSaveTimers.get(row));
+    autoSaveTimers.delete(row);
+    if (!savingRows.has(row)) void saveExpenseRow(row, { keepalive: true });
+  }
+  for (const input of document.querySelectorAll("#summary-body .paid-transfer-input[data-dirty='true']")) {
+    if (!savingTransferInputs.has(input)) void savePaidTransferTotal(input, { keepalive: true });
+  }
 });
 
 async function saveColumnWidths(updatedWidths, message) {
