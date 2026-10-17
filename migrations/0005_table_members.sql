@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS table_members (
+  member_id TEXT PRIMARY KEY REFERENCES members(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT OR IGNORE INTO table_members (member_id)
+SELECT id FROM members;

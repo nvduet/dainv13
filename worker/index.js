@@ -1,0 +1,774 @@
+import { calculateBalances } from "../public/accounting.mjs";
+
+const encoder = new TextEncoder();
+const MAX_AMOUNT_VND = 1_000_000_000_000;
+const MAX_MEMBERS = 50;
+const DEFAULT_FONT_SIZE = 100;
+const DEFAULT_COLUMN_WIDTHS = {
+  expense: {
+    payer: 110,
+    description: 145,
+    amount: 100,
+    member: 80,
+    count: 52,
+    avg: 94,
+    actions: 68,
+  },
+  summary: {
+    label: 120,
+    member: 130,
+  },
+};
+const COLUMN_WIDTH_LIMITS = {
+  expense: {
+    payer: [24, 2000],
+    description: [24, 2000],
+    amount: [24, 2000],
+    member: [24, 2000],
+    count: [24, 2000],
+    avg: [24, 2000],
+    actions: [24, 2000],
+  },
+  summary: {
+    label: [24, 2000],
+    member: [24, 2000],
+  },
+};
+
+class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
+}
+
+function json(data, status = 200, headers = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers },
+  });
+}
+
+function error(message, status = 400) {
+  return json({ error: message }, status);
+}
+
+async function readJson(request) {
+  const length = Number(request.headers.get("content-length") || 0);
+  if (length > 100_000) throw new ApiError("Dữ liệu gửi lên quá lớn.", 413);
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    throw new ApiError("Dữ liệu JSON không hợp lệ.", 400);
+  }
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    throw new ApiError("Dữ liệu gửi lên phải là một đối tượng JSON.", 400);
+  }
+  return body;
+}
+
+function validName(value) {
+  return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 80;
+}
+
+function validText(value) {
+  return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 200;
+}
+
+function validAmount(value) {
+  return Number.isSafeInteger(value) && value > 0 && value <= MAX_AMOUNT_VND;
+}
+
+function validNonNegativeAmount(value) {
+  return Number.isSafeInteger(value) && value >= 0 && value <= MAX_AMOUNT_VND;
+}
+
+function validId(value) {
+  return typeof value === "string" && value.length >= 1 && value.length <= 80;
+}
+
+function validIds(value) {
+  return Array.isArray(value) &&
+    value.length > 0 &&
+    value.length <= MAX_MEMBERS &&
+    value.every(validId) &&
+    new Set(value).size === value.length;
+}
+
+function validColumnWidths(value) {
+  return value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(COLUMN_WIDTH_LIMITS).every((group) => {
+      const widths = value[group];
+      const limits = COLUMN_WIDTH_LIMITS[group];
+      return widths !== null &&
+        typeof widths === "object" &&
+        !Array.isArray(widths) &&
+        Object.keys(widths).length === Object.keys(limits).length &&
+        Object.entries(limits).every(([key, [minimum, maximum]]) =>
+          Number.isSafeInteger(widths[key]) &&
+          widths[key] >= minimum &&
+          widths[key] <= maximum,
+        );
+    }) &&
+    Object.keys(value).length === Object.keys(COLUMN_WIDTH_LIMITS).length;
+}
+
+function decodeBase64Url(value) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="));
+  return Uint8Array.from(decoded, (char) => char.charCodeAt(0));
+}
+
+function encodeBase64Url(value) {
+  let binary = "";
+  for (const byte of new Uint8Array(value)) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function sign(payload, secret) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return encodeBase64Url(await crypto.subtle.sign("HMAC", key, encoder.encode(payload)));
+}
+
+async function secureEqual(left, right) {
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(left)),
+    crypto.subtle.digest("SHA-256", encoder.encode(right)),
+  ]);
+  const bytesA = new Uint8Array(a);
+  const bytesB = new Uint8Array(b);
+  let difference = 0;
+  for (let index = 0; index < bytesA.length; index += 1) difference |= bytesA[index] ^ bytesB[index];
+  return difference === 0;
+}
+
+async function sessionCookie(username, env, request) {
+  const payload = encodeBase64Url(encoder.encode(JSON.stringify({
+    username,
+    expires: Date.now() + 8 * 60 * 60 * 1000,
+  })));
+  const signature = await sign(payload, env.ADMIN_SESSION_SECRET);
+  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  return `admin_session=${payload}.${signature}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800${secure}`;
+}
+
+async function isAdmin(request, env) {
+  if (!env.ADMIN_SESSION_SECRET) return false;
+  const cookie = request.headers.get("cookie") || "";
+  const token = cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith("admin_session="));
+  if (!token) return false;
+  const value = token.slice("admin_session=".length);
+  const separator = value.lastIndexOf(".");
+  if (separator < 1) return false;
+  const payload = value.slice(0, separator);
+  const signature = value.slice(separator + 1);
+  if (!(await secureEqual(signature, await sign(payload, env.ADMIN_SESSION_SECRET)))) return false;
+  try {
+    const details = JSON.parse(new TextDecoder().decode(decodeBase64Url(payload)));
+    return details.username === env.ADMIN_USERNAME && Number(details.expires) > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+async function rateLimit(request, env, label, limit, windowMs) {
+  const address = request.headers.get("cf-connecting-ip") || "local";
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(address));
+  const key = `${label}:${encodeBase64Url(digest).slice(0, 24)}`;
+  const windowStart = Math.floor(Date.now() / windowMs) * Math.ceil(windowMs / 1000);
+  const row = await env.DB.prepare(`
+    INSERT INTO rate_limits (bucket_key, window_start, hit_count)
+    VALUES (?, ?, 1)
+    ON CONFLICT (bucket_key, window_start)
+    DO UPDATE SET hit_count = hit_count + 1
+    RETURNING hit_count
+  `).bind(key, windowStart).first();
+  return Number(row?.hit_count || 0) <= limit;
+}
+
+function audit(env, actor, action, entity, entityId, before, after) {
+  return env.DB.prepare(`
+    INSERT INTO audit_log (actor, action, entity, entity_id, before_json, after_json)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).bind(
+    actor,
+    action,
+    entity,
+    String(entityId),
+    before == null ? null : JSON.stringify(before),
+    after == null ? null : JSON.stringify(after),
+  );
+}
+
+async function getExpense(env, id) {
+  const expense = await env.DB.prepare(`
+    SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd,
+           created_at AS createdAt, updated_at AS updatedAt
+    FROM expenses WHERE id = ?
+  `).bind(id).first();
+  if (!expense) return null;
+  const participants = await env.DB.prepare(`
+    SELECT member_id AS memberId FROM expense_participants
+    WHERE expense_id = ? ORDER BY member_id
+  `).bind(id).all();
+  return { ...expense, participantIds: participants.results.map((row) => row.memberId) };
+}
+
+async function validateExpense(env, body) {
+  if (!validId(body.payerId)) return "Chọn người đã thanh toán khoản chi.";
+  if (!validText(body.description)) return "Nội dung cần có từ 1 đến 200 ký tự.";
+  if (!validAmount(body.amountVnd)) return "Số tiền phải là số đồng nguyên dương hợp lệ.";
+  if (!validIds(body.participantIds)) return "Chọn ít nhất một người chia khoản chi.";
+  const ids = [...new Set([body.payerId, ...body.participantIds])];
+  const placeholders = ids.map(() => "?").join(",");
+  const result = await env.DB.prepare(
+    `SELECT COUNT(*) AS count FROM members WHERE id IN (${placeholders})`,
+  ).bind(...ids).first();
+  if (Number(result.count) !== ids.length) return "Một hoặc nhiều thành viên không còn tồn tại.";
+  return null;
+}
+
+async function memberBalance(env, memberId) {
+  const [membersResult, expensesResult, participantResult, paymentsResult, adjustmentsResult] = await Promise.all([
+    env.DB.prepare("SELECT id, name, position FROM members ORDER BY position, name COLLATE NOCASE").all(),
+    env.DB.prepare(`
+      SELECT id, amount_vnd AS amountVnd, payer_id AS payerId
+      FROM expenses ORDER BY position, created_at, id
+    `).all(),
+    env.DB.prepare(`
+      SELECT ep.expense_id AS expenseId, ep.member_id AS memberId
+      FROM expense_participants ep
+      JOIN members m ON m.id = ep.member_id
+      ORDER BY m.position, m.name COLLATE NOCASE
+    `).all(),
+    env.DB.prepare(`
+      SELECT direction, amount_vnd AS amountVnd
+      FROM payments WHERE member_id = ? AND status = 'confirmed'
+    `).bind(memberId).all(),
+    env.DB.prepare(`
+      SELECT amount_delta_vnd AS amountVnd
+      FROM payment_adjustments WHERE member_id = ?
+    `).bind(memberId).all(),
+  ]);
+  const participantIds = new Map();
+  for (const row of participantResult.results) {
+    const ids = participantIds.get(row.expenseId) || [];
+    ids.push(row.memberId);
+    participantIds.set(row.expenseId, ids);
+  }
+  const expenses = expensesResult.results.map((expense) => ({
+    ...expense,
+    amountVnd: Number(expense.amountVnd),
+    participantIds: participantIds.get(expense.id) || [],
+  }));
+  const payments = paymentsResult.results.map((payment) => ({
+    ...payment,
+    amountVnd: Number(payment.amountVnd),
+  }));
+  payments.push(...adjustmentsResult.results.map((adjustment) => ({
+    direction: "member_to_admin",
+    amountVnd: Number(adjustment.amountVnd),
+    status: "confirmed",
+  })));
+  return calculateBalances(membersResult.results, expenses, payments)
+    .find((member) => member.id === memberId)?.balanceVnd ?? null;
+}
+
+async function state(request, env) {
+  const [membersResult, expensesResult, participantResult, paymentsResult, adjustmentsResult, settingsResult, fontSizeResult, admin] = await Promise.all([
+    env.DB.prepare("SELECT id, name, position FROM members ORDER BY position, name COLLATE NOCASE").all(),
+    env.DB.prepare(`
+      SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd,
+             created_at AS createdAt, updated_at AS updatedAt
+      FROM expenses ORDER BY position, created_at, id
+    `).all(),
+    env.DB.prepare("SELECT expense_id AS expenseId, member_id AS memberId FROM expense_participants").all(),
+    env.DB.prepare(`
+      SELECT id, member_id AS memberId, direction, amount_vnd AS amountVnd,
+             status, created_at AS createdAt, confirmed_at AS confirmedAt
+      FROM payments ORDER BY created_at DESC, id DESC
+    `).all(),
+    env.DB.prepare(`
+      SELECT id, member_id AS memberId, amount_delta_vnd AS amountVnd,
+             created_at AS createdAt
+      FROM payment_adjustments ORDER BY created_at DESC, id DESC
+    `).all(),
+    env.DB.prepare("SELECT value_json AS valueJson FROM app_settings WHERE key = 'column-widths'").first(),
+    env.DB.prepare("SELECT value_json AS valueJson FROM app_settings WHERE key = 'font-size'").first(),
+    isAdmin(request, env),
+  ]);
+  const participants = new Map();
+  for (const row of participantResult.results) {
+    const list = participants.get(row.expenseId) || [];
+    list.push(row.memberId);
+    participants.set(row.expenseId, list);
+  }
+  return json({
+    members: membersResult.results,
+    expenses: expensesResult.results.map((expense) => ({
+      ...expense,
+      participantIds: participants.get(expense.id) || [],
+    })),
+    payments: [
+      ...paymentsResult.results,
+      ...adjustmentsResult.results.map((adjustment) => ({
+        ...adjustment,
+        id: `adjustment-${adjustment.id}`,
+        direction: "member_to_admin",
+        status: "confirmed",
+        confirmedAt: adjustment.createdAt,
+        adjustment: true,
+      })),
+    ].sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt))),
+    isAdmin: admin,
+    columnWidths: settingsResult
+      ? JSON.parse(settingsResult.valueJson)
+      : DEFAULT_COLUMN_WIDTHS,
+    fontSize: fontSizeResult ? Number(fontSizeResult.valueJson) : DEFAULT_FONT_SIZE,
+  });
+}
+
+async function handleApi(request, env) {
+  if (!env.DB) return error("Database chưa được cấu hình. Hãy chạy migrations D1 trước.", 503);
+  const url = new URL(request.url);
+  const path = url.pathname;
+  const method = request.method.toUpperCase();
+
+  if (method === "GET" && path === "/api/state") return state(request, env);
+  if (method === "GET" && path === "/api/admin/session") return json({ isAdmin: await isAdmin(request, env) });
+
+  if (method !== "GET" && method !== "HEAD") {
+    const origin = request.headers.get("origin");
+    if (origin && origin !== url.origin) return error("Yêu cầu khác nguồn bị từ chối.", 403);
+  }
+
+  if (method === "POST" && path === "/api/admin/login") {
+    if (!(await rateLimit(request, env, "login", 10, 60 * 60 * 1000))) {
+      return error("Quá nhiều lần đăng nhập. Hãy thử lại sau.", 429);
+    }
+    if (!env.ADMIN_USERNAME || !env.ADMIN_PASSWORD || !env.ADMIN_SESSION_SECRET) {
+      return error("Thiếu cấu hình đăng nhập Admin phía server.", 503);
+    }
+    const body = await readJson(request);
+    const usernameMatches = await secureEqual(String(body.username || ""), env.ADMIN_USERNAME);
+    const passwordMatches = await secureEqual(String(body.password || ""), env.ADMIN_PASSWORD);
+    if (!usernameMatches || !passwordMatches) return error("Tên đăng nhập hoặc mật khẩu không đúng.", 401);
+    return json({ isAdmin: true }, 200, {
+      "set-cookie": await sessionCookie(env.ADMIN_USERNAME, env, request),
+    });
+  }
+
+  if (method === "POST" && path === "/api/admin/logout") {
+    return json({ isAdmin: false }, 200, {
+      "set-cookie": "admin_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0",
+    });
+  }
+
+  const admin = await isAdmin(request, env);
+  const adminOnly = new Set([
+    "POST /api/members",
+    "POST /api/admin/refunds",
+    "PUT /api/admin/payments/total",
+    "PUT /api/admin/font-size",
+  ]);
+  const routeKey = `${method} ${path}`;
+  if ((adminOnly.has(routeKey) || /^PATCH \/api\/members\/[^/]+$/.test(routeKey) ||
+       /^DELETE \/api\/members\/[^/]+$/.test(routeKey) ||
+       /^POST \/api\/payments\/[^/]+\/confirm$/.test(routeKey) ||
+       /^DELETE \/api\/payments\/[^/]+$/.test(routeKey) ||
+       (method === "PUT" && path === "/api/admin/column-widths") ||
+       path === "/api/admin/audit") && !admin) {
+    return error("Chỉ Admin đã đăng nhập mới được thực hiện thao tác này.", 401);
+  }
+
+  if (path === "/api/admin/audit" && method === "GET") {
+    const result = await env.DB.prepare(`
+      SELECT id, actor, action, entity, entity_id AS entityId,
+             before_json AS beforeJson, after_json AS afterJson, created_at AS createdAt
+      FROM audit_log ORDER BY id DESC LIMIT 200
+    `).all();
+    return json({ entries: result.results });
+  }
+
+  if (method !== "GET" && !(await rateLimit(
+    request,
+    env,
+    "write",
+    admin ? 500 : 120,
+    15 * 60 * 1000,
+  ))) {
+    return error("Đã vượt giới hạn thao tác. Hãy thử lại sau.", 429);
+  }
+
+  if (method === "PUT" && path === "/api/admin/column-widths") {
+    const body = await readJson(request);
+    if (!validColumnWidths(body)) {
+      return error("Độ rộng cột không hợp lệ hoặc nằm ngoài giới hạn cho phép.");
+    }
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO app_settings (key, value_json) VALUES ('column-widths', ?)
+        ON CONFLICT (key) DO UPDATE SET value_json = excluded.value_json
+      `).bind(JSON.stringify(body)),
+      audit(env, "admin", "configure", "settings", "column-widths", null, body),
+    ]);
+    return json({ columnWidths: body });
+  }
+
+  if (method === "PUT" && path === "/api/admin/font-size") {
+    const body = await readJson(request);
+    if (!Number.isSafeInteger(body.fontSize) || body.fontSize < 75 || body.fontSize > 200) {
+      return error("Cỡ chữ phải nằm trong khoảng 75% đến 200%.");
+    }
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO app_settings (key, value_json) VALUES ('font-size', ?)
+        ON CONFLICT (key) DO UPDATE SET value_json = excluded.value_json
+      `).bind(String(body.fontSize)),
+      audit(env, "admin", "configure", "settings", "font-size", null, { fontSize: body.fontSize }),
+    ]);
+    return json({ fontSize: body.fontSize });
+  }
+
+  if (method === "PUT" && path === "/api/admin/payments/total") {
+    const body = await readJson(request);
+    if (!validId(body.memberId) || !validNonNegativeAmount(body.amountVnd)) {
+      return error("Chọn thành viên và nhập tổng tiền chuyển khoản hợp lệ.");
+    }
+    const member = await env.DB.prepare("SELECT id, name FROM members WHERE id = ?")
+      .bind(body.memberId).first();
+    if (!member) return error("Thành viên không tồn tại.", 404);
+    const [paymentsResult, adjustmentsResult] = await Promise.all([
+      env.DB.prepare(`
+        SELECT COALESCE(SUM(amount_vnd), 0) AS total
+        FROM payments
+        WHERE member_id = ? AND direction = 'member_to_admin' AND status = 'confirmed'
+      `).bind(body.memberId).first(),
+      env.DB.prepare(`
+        SELECT COALESCE(SUM(amount_delta_vnd), 0) AS total
+        FROM payment_adjustments WHERE member_id = ?
+      `).bind(body.memberId).first(),
+    ]);
+    const currentTotal = Number(paymentsResult.total) + Number(adjustmentsResult.total);
+    const delta = body.amountVnd - currentTotal;
+    if (delta === 0) return json({ amountVnd: body.amountVnd, changed: false });
+
+    const adjustment = {
+      id: crypto.randomUUID(),
+      memberId: body.memberId,
+      amountVnd: delta,
+      status: "confirmed",
+    };
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO payment_adjustments (id, member_id, amount_delta_vnd, created_by)
+        VALUES (?, ?, ?, 'admin')
+      `).bind(adjustment.id, adjustment.memberId, adjustment.amountVnd),
+      audit(
+        env,
+        "admin",
+        "reconcile",
+        "payment_total",
+        body.memberId,
+        { memberId: body.memberId, paidToAdminVnd: currentTotal },
+        { memberId: body.memberId, paidToAdminVnd: body.amountVnd, adjustmentVnd: delta },
+      ),
+    ]);
+    return json({ amountVnd: body.amountVnd, adjustmentVnd: delta });
+  }
+
+  if (method === "POST" && path === "/api/expenses") {
+    const body = await readJson(request);
+    const problem = await validateExpense(env, body);
+    if (problem) return error(problem);
+    const id = crypto.randomUUID();
+    const position = await env.DB.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS next FROM expenses").first();
+    const expense = {
+      id,
+      payerId: body.payerId,
+      description: body.description.trim(),
+      amountVnd: body.amountVnd,
+      participantIds: body.participantIds,
+    };
+    const statements = [
+      env.DB.prepare(`
+        INSERT INTO expenses (id, payer_id, description, amount_vnd, position)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(id, expense.payerId, expense.description, expense.amountVnd, Number(position.next)),
+      ...expense.participantIds.map((memberId) => env.DB.prepare(`
+        INSERT INTO expense_participants (expense_id, member_id) VALUES (?, ?)
+      `).bind(id, memberId)),
+      audit(env, admin ? "admin" : "public", "create", "expense", id, null, expense),
+    ];
+    await env.DB.batch(statements);
+    return json({ expense }, 201);
+  }
+
+  const expenseMatch = path.match(/^\/api\/expenses\/([^/]+)$/);
+  if (expenseMatch && ["PUT", "DELETE"].includes(method)) {
+    const id = decodeURIComponent(expenseMatch[1]);
+    const before = await getExpense(env, id);
+    if (!before) return error("Không tìm thấy khoản chi.", 404);
+    if (method === "DELETE") {
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM expenses WHERE id = ?").bind(id),
+        audit(env, admin ? "admin" : "public", "delete", "expense", id, before, null),
+      ]);
+      return json({ deleted: true });
+    }
+    const body = await readJson(request);
+    const problem = await validateExpense(env, body);
+    if (problem) return error(problem);
+    const after = {
+      id,
+      payerId: body.payerId,
+      description: body.description.trim(),
+      amountVnd: body.amountVnd,
+      participantIds: body.participantIds,
+    };
+    const auditStatements = [];
+    for (const field of ["payerId", "description", "amountVnd"]) {
+      if (before[field] !== after[field]) {
+        auditStatements.push(audit(
+          env,
+          admin ? "admin" : "public",
+          "update",
+          "expense",
+          id,
+          { field, value: before[field] },
+          { field, value: after[field] },
+        ));
+      }
+    }
+    const previousParticipants = new Set(before.participantIds);
+    const currentParticipants = new Set(after.participantIds);
+    for (const memberId of currentParticipants) {
+      if (!previousParticipants.has(memberId)) {
+        auditStatements.push(audit(
+          env,
+          admin ? "admin" : "public",
+          "participant_add",
+          "expense_participant",
+          `${id}:${memberId}`,
+          null,
+          { expenseId: id, memberId },
+        ));
+      }
+    }
+    for (const memberId of previousParticipants) {
+      if (!currentParticipants.has(memberId)) {
+        auditStatements.push(audit(
+          env,
+          admin ? "admin" : "public",
+          "participant_remove",
+          "expense_participant",
+          `${id}:${memberId}`,
+          { expenseId: id, memberId },
+          null,
+        ));
+      }
+    }
+    await env.DB.batch([
+      env.DB.prepare(`
+        UPDATE expenses SET payer_id = ?, description = ?, amount_vnd = ?,
+          updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `).bind(after.payerId, after.description, after.amountVnd, id),
+      env.DB.prepare("DELETE FROM expense_participants WHERE expense_id = ?").bind(id),
+      ...after.participantIds.map((memberId) => env.DB.prepare(`
+        INSERT INTO expense_participants (expense_id, member_id) VALUES (?, ?)
+      `).bind(id, memberId)),
+      ...auditStatements,
+    ]);
+    return json({ expense: after });
+  }
+
+  if (method === "POST" && path === "/api/members") {
+    if (!await rateLimit(request, env, "member", 50, 60 * 60 * 1000)) return error("Đã vượt giới hạn.", 429);
+    const body = await readJson(request);
+    if (!validName(body.name)) return error("Tên thành viên cần có từ 1 đến 80 ký tự.");
+    const duplicate = await env.DB.prepare("SELECT id FROM members WHERE name = ?").bind(body.name.trim()).first();
+    if (duplicate) return error("Tên thành viên này đã có trong danh sách.", 409);
+    const count = await env.DB.prepare("SELECT COUNT(*) AS count FROM members").first();
+    if (Number(count.count) >= MAX_MEMBERS) return error("Danh sách đã đạt giới hạn 50 thành viên.");
+    const id = crypto.randomUUID();
+    const nextPosition = await env.DB.prepare(
+      "SELECT COALESCE(MAX(position), -1) + 1 AS next FROM members",
+    ).first();
+    const position = Number(nextPosition.next);
+    const member = { id, name: body.name.trim(), position };
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO members (id, name, position) VALUES (?, ?, ?)").bind(id, member.name, position),
+      audit(env, "admin", "create", "member", id, null, member),
+    ]);
+    return json({ member }, 201);
+  }
+
+  const memberMatch = path.match(/^\/api\/members\/([^/]+)$/);
+  if (memberMatch && ["PATCH", "DELETE"].includes(method)) {
+    const id = decodeURIComponent(memberMatch[1]);
+    const before = await env.DB.prepare(`
+      SELECT id, name, position FROM members WHERE id = ?
+    `).bind(id).first();
+    if (!before) return error("Không tìm thấy thành viên.", 404);
+    if (method === "PATCH") {
+      const body = await readJson(request);
+      if (!validName(body.name)) return error("Tên thành viên cần có từ 1 đến 80 ký tự.");
+      const duplicate = await env.DB.prepare(
+        "SELECT id FROM members WHERE name = ? AND id <> ?",
+      ).bind(body.name.trim(), id).first();
+      if (duplicate) return error("Tên thành viên này đã có trong danh sách.", 409);
+      const after = { ...before, name: body.name.trim() };
+      await env.DB.batch([
+        env.DB.prepare("UPDATE members SET name = ? WHERE id = ?").bind(after.name, id),
+        audit(env, "admin", "rename", "member", id, before, after),
+      ]);
+      return json({ member: after });
+    }
+    const impact = await env.DB.prepare(`
+      SELECT COUNT(*) AS count FROM expenses
+      WHERE payer_id = ? OR id IN (
+        SELECT expense_id FROM expense_participants WHERE member_id = ?
+      )
+    `).bind(id, id).first();
+    await env.DB.batch([
+      env.DB.prepare(`
+        DELETE FROM expenses
+        WHERE payer_id = ? OR id IN (
+          SELECT expense_id FROM expense_participants WHERE member_id = ?
+        )
+      `).bind(id, id),
+      env.DB.prepare("DELETE FROM members WHERE id = ?").bind(id),
+      audit(
+        env,
+        "admin",
+        "hard_delete",
+        "member",
+        id,
+        { ...before, impactedExpenses: Number(impact.count) },
+        null,
+      ),
+    ]);
+    return json({ deleted: true, impactedExpenses: Number(impact.count) });
+  }
+
+  if (method === "POST" && path === "/api/payments") {
+    const body = await readJson(request);
+    if (!validId(body.memberId) || !validAmount(body.amountVnd)) {
+      return error("Chọn thành viên và nhập số tiền dương hợp lệ.");
+    }
+    const member = await env.DB.prepare("SELECT id FROM members WHERE id = ?").bind(body.memberId).first();
+    if (!member) return error("Thành viên không tồn tại.");
+    const id = crypto.randomUUID();
+    const payment = {
+      id,
+      memberId: body.memberId,
+      direction: "member_to_admin",
+      amountVnd: body.amountVnd,
+      status: "pending",
+    };
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO payments (id, member_id, direction, amount_vnd, status)
+        VALUES (?, ?, 'member_to_admin', ?, 'pending')
+      `).bind(id, payment.memberId, payment.amountVnd),
+      audit(env, "public", "report", "payment", id, null, payment),
+    ]);
+    return json({ payment }, 201);
+  }
+
+  if (method === "POST" && path === "/api/admin/refunds") {
+    const body = await readJson(request);
+    if (!validId(body.memberId) || !validAmount(body.amountVnd)) {
+      return error("Chọn thành viên và nhập số tiền hoàn dương hợp lệ.");
+    }
+    const member = await env.DB.prepare("SELECT id FROM members WHERE id = ?").bind(body.memberId).first();
+    if (!member) return error("Thành viên không tồn tại.");
+    const balance = await memberBalance(env, body.memberId);
+    if (balance === null || balance >= 0 || body.amountVnd > Math.abs(balance)) {
+      return error("Tiền hoàn không được vượt số tiền Admin còn nợ thành viên.", 409);
+    }
+    const id = crypto.randomUUID();
+    const payment = {
+      id,
+      memberId: body.memberId,
+      direction: "admin_to_member",
+      amountVnd: body.amountVnd,
+      status: "confirmed",
+    };
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO payments (
+          id, member_id, direction, amount_vnd, status, confirmed_at, confirmed_by
+        ) VALUES (?, ?, 'admin_to_member', ?, 'confirmed', CURRENT_TIMESTAMP, 'admin')
+      `).bind(id, payment.memberId, payment.amountVnd),
+      audit(env, "admin", "refund", "payment", id, null, payment),
+    ]);
+    return json({ payment }, 201);
+  }
+
+  const confirmMatch = path.match(/^\/api\/payments\/([^/]+)\/confirm$/);
+  if (confirmMatch && method === "POST") {
+    const id = decodeURIComponent(confirmMatch[1]);
+    const before = await env.DB.prepare(`
+      SELECT id, member_id AS memberId, direction, amount_vnd AS amountVnd, status
+      FROM payments WHERE id = ?
+    `).bind(id).first();
+    if (!before || before.direction !== "member_to_admin" || before.status !== "pending") {
+      return error("Không tìm thấy khoản nộp đang chờ xác nhận.", 404);
+    }
+    const balance = await memberBalance(env, before.memberId);
+    if (balance === null || balance <= 0 || before.amountVnd > balance) {
+      return error("Số tiền đã báo vượt số còn phải nộp. Xóa yêu cầu này và báo lại đúng số tiền.", 409);
+    }
+    const after = { ...before, status: "confirmed" };
+    const result = await env.DB.batch([
+      env.DB.prepare(`
+        UPDATE payments SET status = 'confirmed', confirmed_at = CURRENT_TIMESTAMP,
+          confirmed_by = 'admin' WHERE id = ? AND status = 'pending'
+      `).bind(id),
+      audit(env, "admin", "confirm", "payment", id, before, after),
+    ]);
+    if (Number(result[0]?.meta?.changes || 0) !== 1) return error("Khoản nộp đã được xử lý ở nơi khác.", 409);
+    return json({ payment: after });
+  }
+
+  const paymentMatch = path.match(/^\/api\/payments\/([^/]+)$/);
+  if (paymentMatch && method === "DELETE") {
+    const id = decodeURIComponent(paymentMatch[1]);
+    const before = await env.DB.prepare(`
+      SELECT id, member_id AS memberId, direction, amount_vnd AS amountVnd, status
+      FROM payments WHERE id = ?
+    `).bind(id).first();
+    if (!before || before.status !== "pending") return error("Chỉ xóa được khoản nộp đang chờ.", 404);
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM payments WHERE id = ?").bind(id),
+      audit(env, "admin", "delete", "payment", id, before, null),
+    ]);
+    return json({ deleted: true });
+  }
+
+  return error("Không tìm thấy API.", 404);
+}
+
+export default {
+  async fetch(request, env) {
+    try {
+      const url = new URL(request.url);
+      if (url.pathname.startsWith("/api/")) return await handleApi(request, env);
+      return await env.ASSETS.fetch(request);
+    } catch (caught) {
+      if (!(caught instanceof ApiError)) console.error("Request failed", caught);
+      if (caught instanceof ApiError) return error(caught.message, caught.status);
+      return error("Đã xảy ra lỗi máy chủ. Hãy thử lại; nếu vẫn tiếp diễn, liên hệ Admin.", 500);
+    }
+  },
+};

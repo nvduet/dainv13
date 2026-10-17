@@ -1,0 +1,13 @@
+name = "dainv13-group-expenses"
+main = "worker/index.js"
+compatibility_date = "2026-10-17"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "dainv13-group-expenses"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"

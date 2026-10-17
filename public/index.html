@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f3f4f6">
+    <meta name="description" content="Expense tracker for a group.">
+    <title>Expense</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style id="dynamic-column-widths"></style>
+    <style id="dynamic-summary-widths"></style>
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Expense - Trang chủ">
+        <span>Expense</span>
+      </a>
+      <div class="header-actions">
+        <span id="admin-state" class="admin-state">Guest</span>
+        <button id="login-button" class="button button-dark" type="button">Đăng nhập Admin</button>
+        <button id="logout-button" class="button button-light" type="button" hidden>Đăng xuất</button>
+      </div>
+    </header>
+
+    <main class="page">
+      <details id="column-width-details" class="section-card column-width-card" hidden>
+        <summary>Cấu hình</summary>
+        <div class="column-width-config">
+          <div class="config-group">
+            <h4>Cỡ chữ toàn giao diện</h4>
+            <div class="width-inputs">
+              <label>Cỡ chữ: <input type="number" id="font-size-percent" min="75" max="200" step="5" value="100" required>%</label>
+              <button id="apply-font-size" class="button button-dark button-small" type="button">Áp dụng</button>
+            </div>
+          </div>
+          <div class="config-group">
+            <h4>Bảng "Detail"</h4>
+            <div class="width-inputs">
+              <label>Người chi: <input type="number" id="col-width-payer" min="24" max="2000" value="110" required>px</label>
+              <label>Nội dung: <input type="number" id="col-width-description" min="24" max="2000" value="145" required>px</label>
+              <label>Chi phí: <input type="number" id="col-width-amount" min="24" max="2000" value="100" required>px</label>
+              <label>Cột thành viên <span id="expense-member-column-count"></span>: <input type="number" id="col-width-member" min="24" max="2000" value="80" required>px</label>
+              <label>Số người: <input type="number" id="col-width-count" min="24" max="2000" value="52" required>px</label>
+              <label>Số tiền 1 người: <input type="number" id="col-width-avg" min="24" max="2000" value="94" required>px</label>
+              <label>Xóa: <input type="number" id="col-width-actions" min="24" max="2000" value="68" required>px</label>
+            </div>
+            <button id="apply-expense-widths" class="button button-dark button-small" type="button">Áp dụng</button>
+          </div>
+          <div class="config-group">
+            <h4>Bảng "Tổng hợp số dư"</h4>
+            <div class="width-inputs">
+              <label>Tên chỉ tiêu: <input type="number" id="col-width-summary-label" min="24" max="2000" value="120" required>px</label>
+              <label>Cột thành viên <span id="summary-member-column-count"></span>: <input type="number" id="col-width-summary-member" min="24" max="2000" value="130" required>px</label>
+            </div>
+            <button id="apply-summary-widths" class="button button-dark button-small" type="button">Áp dụng</button>
+          </div>
+          <button id="reset-column-widths" class="button button-light button-small" type="button">Đặt lại mặc định</button>
+        </div>
+      </details>
+
+      <section class="overview" aria-label="Tổng quan">
+        <h1>Expense</h1>
+        <div class="overview-stats">
+          <span>Tổng chi <strong id="total-spent">—</strong></span>
+          <span>Khoản chi <strong id="expense-count">—</strong></span>
+          <span>Thành viên <strong id="member-count">—</strong></span>
+        </div>
+      </section>
+
+      <div id="notice" class="notice" role="status" hidden></div>
+      <section class="section-card summary-card" aria-labelledby="summary-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="summary-title">Summary</h2>
+          </div>
+          <span id="payment-pending-count" class="pending-count"></span>
+        </div>
+        <div class="table-scroll summary-scroll">
+          <table class="summary-table">
+            <thead id="summary-head"></thead>
+            <tbody id="summary-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section-card ledger-card" aria-labelledby="ledger-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="ledger-title">Detail</h2>
+          </div>
+          <button id="add-expense" class="button button-coral" type="button">＋ Thêm khoản chi</button>
+        </div>
+
+        <div class="table-hint"><span aria-hidden="true">↔</span> Vuốt ngang để xem đủ các cột thành viên</div>
+        <div class="table-scroll">
+          <table class="expense-table">
+            <thead id="expense-head"></thead>
+            <tbody id="expense-body"></tbody>
+          </table>
+        </div>
+        <div class="ledger-footer">
+          <span>Chi phí tính theo nghìn đồng</span>
+        </div>
+      </section>
+
+      <section id="admin-panel" class="section-card admin-card" aria-labelledby="admin-title" hidden>
+        <div class="section-heading">
+          <div>
+            <h2 id="admin-title">Quản trị</h2>
+            <p class="section-description">Quản lý danh sách tên, xác nhận tiền nộp và ghi nhận tiền hoàn.</p>
+          </div>
+        </div>
+
+        <div class="admin-grid">
+          <div class="admin-subcard">
+            <h3>Danh sách thành viên</h3>
+            <form id="member-form" class="inline-form">
+              <label class="visually-hidden" for="new-member-name">Tên thành viên mới</label>
+              <input id="new-member-name" name="name" maxlength="80" placeholder="Thêm tên mới…" required>
+              <button class="button button-dark" type="submit">Thêm tên</button>
+            </form>
+            <ul id="member-list" class="member-list"></ul>
+          </div>
+          <div class="admin-subcard">
+            <h3>Đang chờ xác nhận</h3>
+            <div id="pending-payments" class="pending-list"></div>
+          </div>
+        </div>
+
+        <details id="audit-details" class="audit-details">
+          <summary>Nhật ký thay đổi gần đây</summary>
+          <div id="audit-list" class="audit-list"></div>
+        </details>
+      </section>
+
+      <footer class="site-footer">
+        <span>Expense · VND</span>
+      </footer>
+    </main>
+
+    <dialog id="login-dialog" class="login-dialog">
+      <form id="login-form" method="dialog">
+        <button id="close-login" class="dialog-close" type="button" aria-label="Đóng">×</button>
+        <h2>Chào Admin <span aria-hidden="true">✿</span></h2>
+        <p class="section-description">Đăng nhập để quản lý thành viên, thanh toán và giao diện.</p>
+        <label for="username">Tên đăng nhập</label>
+        <input id="username" name="username" autocomplete="username" required>
+        <label for="password">Mật khẩu</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <p id="login-error" class="form-error" role="alert"></p>
+        <button class="button button-dark login-submit" type="submit">Đăng nhập</button>
+      </form>
+    </dialog>
+
+    <dialog id="action-dialog" class="action-dialog">
+      <form id="action-form">
+        <button id="action-dialog-close" class="dialog-close" type="button" aria-label="Đóng">×</button>
+        <h2 id="action-dialog-title"></h2>
+        <p id="action-dialog-message" class="section-description" hidden></p>
+        <label id="action-dialog-label" for="action-dialog-input" hidden></label>
+        <input id="action-dialog-input" autocomplete="off" hidden>
+        <p id="action-dialog-error" class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button id="action-dialog-cancel" class="button button-light" type="button">Hủy</button>
+          <button id="action-dialog-confirm" class="button button-dark" type="submit">Xác nhận</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>
