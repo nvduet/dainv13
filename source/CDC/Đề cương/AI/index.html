@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8">
+  <script src="../Topics/assets/site-ui.js" data-site-ui></script><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trang chủ — AI Transformation SA/PTL</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/style.css">
+<style>
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 26px}
+.step{display:flex;align-items:center;gap:7px;font-family:var(--disp);font-size:14px;font-weight:600;color:var(--muted);background:light-dark(#f7f8fa, #151a27);border:1px solid var(--line);border-radius:20px;padding:6px 14px 6px 6px;transition:.15s}
+.step:hover{text-decoration:none;border-color:var(--teal);color:var(--ink)}
+.step.cur{background:light-dark(var(--ink), #2b3f78);color:#fff;border-color:var(--ink)}
+.step.sn{width:22px;height:22px;border-radius:50%;background:var(--line);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:12px;font-family:var(--mono)}
+.step.cur.sn{background:var(--orange);color:#fff}
+.gap-t td:nth-child(2){color:light-dark(#8a1f1f, #e79696)}.gap-t td:nth-child(3){color:var(--green)}
+.hero{background:var(--navy);color:#fff;border-radius:16px;padding:clamp(24px,4vw,44px);margin-bottom:26px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(243,112,33,.22),transparent 70%)}
+.hero.kick{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--orange);text-transform:uppercase;margin-bottom:14px}
+.hero h1{color:#fff;max-width:26ch}
+.hero p{margin-top:14px;color:#D7DEEA;max-width:74ch;font-size:15px}
+.hero p b{color:#fff}
+.flow{display:grid;grid-template-columns:repeat(6,1fr);gap:0;margin:26px 0 30px;position:relative}
+.fstep{background:light-dark(#f7f8fa, #151a27);border:1px solid var(--line);padding:16px 14px;position:relative;display:flex;flex-direction:column;transition:.15s;min-height:170px}
+.fstep:first-child{border-radius:12px 0 0 12px}
+.fstep:last-child{border-radius:0 12px 12px 0;background:light-dark(var(--ink), #2b3f78);border-color:var(--ink)}
+.fstep:last-child h3,.fstep:last-child p{color:#fff}
+.fstep:last-child.fn{background:var(--orange);color:#fff}
+.fstep:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(14,22,38,.12);z-index:2;text-decoration:none}
+.fstep.fn{width:26px;height:26px;border-radius:50%;background:var(--line);color:var(--ink);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:600;margin-bottom:10px}
+.fstep h3{margin:0 0 6px;font-size:16px;line-height:1.1}
+.fstep p{font-size:11.5px;color:light-dark(#5A6478, #a9b0be);flex:1}
+.fstep.arr{position:absolute;right:-9px;top:50%;transform:translateY(-50%);width:18px;height:18px;background:inherit;border-top:1px solid var(--line);border-right:1px solid var(--line);transform:translateY(-50%) rotate(45deg);z-index:1}
+.fstep:last-child.arr{display:none}
+@media(max-width:900px){.flow{grid-template-columns:1fr}.fstep{border-radius:0!important;min-height:auto}.fstep.arr{display:none}.fstep:first-child{border-radius:12px 12px 0 0!important}.fstep:last-child{border-radius:0 0 12px 12px!important}}
+.aux{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:10px}
+.acard{background:light-dark(#f7f8fa, #151a27);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.acard:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(14,22,38,.1);text-decoration:none}
+.acard h3{margin:0 0 5px;font-size:16px}
+.acard p{font-size:12.5px;color:light-dark(#41506B, #aeb9ce)}</style>  <link rel="stylesheet" href="assets/dark.css">
+</head><body>
+<nav class="topbar"><a class="home" href="index.html">◈ AI Transformation SA/PTL</a><span class="crumb">Trang chủ</span><span class="nav-actions"><a class="nav-link" href="cau-hoi-on-tap.html">Câu hỏi ôn tập</a><span class="nav-sep" aria-hidden="true"></span><a class="nav-btn" href="../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></span></nav>
+<div class="wrap"><div class="hero">
+<div class="kick">FPT Automotive</div>
+<h1>AI Transformation cho SA/PTL</h1>
+<p>Chương trình được xây từ mục đích của tổ chức. Đi từ khung năng lực CASAN đến nội dung cụ thể.</p></div>
+
+<div class="flow">
+<a class="fstep" href="01-casan.html"><span class="fn">1</span><h3>CASAN</h3><p>Mục đích của tổ chức: SA/PTL lên cấp 3 Standard.</p><span class="arr"></span></a>
+<a class="fstep" href="02-nhu-cau.html"><span class="fn">2</span><h3>Nhu cầu</h3><p>Công việc của SA/PTL và khoảng cách tới Cấp 3. Phạm vi chuyên biệt của vai trò kiến trúc sư dự án.</p><span class="arr"></span></a>
+<a class="fstep" href="03-tu-duy.html"><span class="fn">3</span><h3>Hệ thống tư duy</h3><p>Tam Phân. Thang ủy quyền L0–L5. Khung năm chức năng tầng vận hành agent.</p><span class="arr"></span></a>
+<a class="fstep" href="04-nang-luc.html"><span class="fn">4</span><h3>Năng lực</h3><p>6 khối năng lực từ K0–K5. Hệ quả từ Tam phân.</p><span class="arr"></span></a>
+<a class="fstep" href="05-foundation.html"><span class="fn">5</span><h3>Nền tảng</h3><p>Nguyên lý kỹ thuật</p><span class="arr"></span></a>
+<a class="fstep" href="06-program.html"><span class="fn">6</span><h3>Program</h3><p>12 tuần · 9 bài tập</p></a>
+</div>
+
+<h2>Tài liệu</h2>
+<div class="aux">
+<a class="acard" href="tap-doc/tap-0a.html"><h3>Bộ bài đọc cho học viên</h3><p>Từ nhập môn đến triển khai: 0A Khái niệm nền tảng, 0B Cộng tác AI, 0C Claude Code, Bài 1–6 Lõi tư duy về Agentic System, Bài 7–8 Agentic System nâng cao.</p></a>
+<a class="acard" href="van-hanh/glossary.html"><h3>Glossary</h3><p>118 thuật ngữ.</p></a>
+<a class="acard" href="cau-hoi-on-tap.html"><h3>Câu hỏi ôn tập</h3><p>60 câu hỏi trọng tâm và 37 câu tự kiểm tra có đáp án và giải thích, xếp theo AI-01 → AI-12 (Bài 0A–0C, D0–D8).</p></a>
+</div>
+
+<footer>FPT Automotive · AI Transformation cho SA/PTL</footer></div><script src="../Topics/assets/glossary-data.js"></script>
+<script src="../Topics/assets/term-glossary.js" data-unit="AI"></script>
+</body></html>

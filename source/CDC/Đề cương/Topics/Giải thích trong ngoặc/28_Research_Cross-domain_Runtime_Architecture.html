@@ -1,0 +1,1183 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="../assets/site-ui.js" data-site-ui></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đề cương · Cross-domain Runtime Architecture</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f3f0e8;
+  --surface: #f9f7f1;
+  --ink: #2a3431;
+  --muted: #62706b;
+  --line: #dbd7cb;
+  --forest: #174c43;
+  --forest-soft: #e3ece6;
+  --copper: #a64e32;
+  --gold: #e2bd69;
+  --code: #ebe7dd;
+  --focus: #b34d31;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--copper); }
+a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.reader-header {
+  min-height: 74px;
+  padding: 12px clamp(20px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--forest);
+  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.reader-header a { color: white; text-decoration: none; }
+.reader-header nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; font-size: 0.9rem; }
+
+/* Navigation buttons: same shape/order as the AI library (secondary links | ← Quay lại | ⌂ Trang chủ) */
+.nav-link { padding: 6px 4px; color: #d4e4de; font-weight: 500; white-space: nowrap; }
+.reader-header a.nav-link:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+.nav-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(255, 255, 255, 0.3); }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.nav-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.nav-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.nav-ico { flex: none; width: 16px; height: 16px; }
+.reader-header .nav-btn { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+.reader-header .nav-btn:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.reader-header .nav-btn--primary { color: var(--forest); border-color: var(--gold); background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); }
+.reader-header .nav-btn--primary:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.article-footer .nav-btn { color: var(--forest); border-color: var(--forest); background: transparent; }
+.article-footer .nav-btn:hover { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary:hover { border-color: var(--copper); background: var(--copper); }
+.reader-header nav a:hover { color: var(--gold); }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; line-height: 1.12; }
+.brand small { color: #d4e4de; font-size: 0.75rem; font-weight: 400; }
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  border-radius: 2px;
+}
+
+.reader-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+
+.contents-panel {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 32px 20px 28px clamp(20px, 4vw, 48px);
+  border-right: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--copper);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contents-panel ul { margin: 0; padding: 0; list-style: none; }
+.contents-panel li { margin: 0; padding: 0; }
+.contents-panel a {
+  display: block;
+  padding: 7px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.contents-panel a:hover { color: var(--forest); text-decoration: underline; }
+.contents-panel .toc-level-3 { padding-left: 14px; border-left: 1px solid var(--line); }
+
+.article {
+  min-width: 0;
+  padding: 26px clamp(22px, 5vw, 76px) 70px;
+}
+
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+article { max-width: 900px; }
+article h1, article h2, article h3, .library-intro h1 {
+  color: light-dark(#26403d, #c5e8e4);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  line-height: 1.18;
+}
+article h1 { margin: 0 0 28px; font-size: 2.35rem; }
+article h2 {
+  margin: 48px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+}
+article h3 { margin: 32px 0 12px; color: var(--forest); font-size: 1.24rem; }
+article p { margin: 0 0 18px; }
+article li { margin: 6px 0; padding-left: 4px; }
+article ul, article ol { margin: 0 0 22px; padding-left: 26px; }
+article strong { color: light-dark(#26403c, #c3e9e3); }
+
+blockquote {
+  margin: 22px 0;
+  padding: 15px 20px;
+  border-left: 4px solid var(--copper);
+  background: light-dark(#f8eee8, #31231a);
+  color: light-dark(#543e35, #d4c2bb);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+.table-scroll { width: 100%; margin: 22px 0 26px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.92rem; }
+th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--forest-soft); color: light-dark(#26403c, #c3e9e3); font-weight: 700; }
+tr:nth-child(even) td { background: light-dark(#f9f7f2, #2c2918); }
+
+code, pre { font-family: Consolas, "Courier New", monospace; }
+code { padding: 0.1em 0.28em; background: var(--code); color: light-dark(#24433e, #c3dfda); font-size: 0.9em; }
+pre {
+  max-width: 100%;
+  margin: 20px 0 26px;
+  padding: 18px 20px;
+  overflow: auto;
+  border-left: 3px solid var(--forest);
+  background: light-dark(#e9eeea, #222c25);
+  color: light-dark(#26403d, #d0e6e4);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; color: inherit; }
+hr { margin: 36px 0; border: 0; border-top: 1px solid var(--line); }
+
+.audit-item { margin: 14px 0; }
+
+.audit-item details {
+  margin-top: 9px;
+  border-left: 3px solid #86a99e;
+  background: var(--forest-soft);
+}
+.audit-item summary {
+  padding: 9px 13px;
+  color: var(--forest);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.answer-body { padding: 0 14px 10px; }
+.answer-body p { margin: 4px 0 10px; }
+.answer-body ul { margin: -4px 0 12px; padding-left: 22px; }
+.answer-body li { margin: 3px 0; line-height: 1.55; }
+/* Key questions: map 1-1 to the Learning Plan "Unit Detail" requirements of the topic */
+details.audit-reveal { margin: 8px 0 18px; border-left: 3px solid #86a99e; background: var(--forest-soft); }
+details.audit-reveal > summary { padding: 9px 13px; color: var(--forest); cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.audit-key-intro { margin: 18px 0 28px; padding: 16px 20px 14px; border: 1px solid light-dark(#e6cf95, #62542f); border-left: 6px solid var(--gold); background: light-dark(#fff7e0, #312b1a); }
+.audit-key-intro p { margin: 0 0 8px; }
+.audit-key-intro ol { margin: 0; padding-left: 22px; }
+.audit-key-intro li { margin: 4px 0; }
+.audit-key-intro .req-tag { color: var(--muted); font-size: 0.8rem; }
+.audit-question-heading.audit-key { padding: 10px 14px; border-left: 6px solid var(--copper); background: light-dark(#fbeee4, #31251a); }
+.audit-question-heading.audit-key::after {
+  content: "Tr\1ECDng t\00E2m";
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--copper);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+details.audit-key-reveal, .audit-item details.audit-key-reveal { border-left: 6px solid var(--copper); background: light-dark(#f9f7f2, #2c2317); }
+details.audit-key-reveal > summary, .audit-item details.audit-key-reveal summary { color: var(--copper); }
+
+.article-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 54px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.library-main { width: min(1120px, 100%); margin: 0 auto; padding: 50px clamp(20px, 5vw, 72px) 76px; }
+.library-intro { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+.library-intro h1 { margin: 0; font-size: 3rem; }
+.library-intro h1 span { color: var(--copper); }
+
+.search-label { display: block; margin: 0 0 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#topic-search {
+  width: min(520px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-intro { max-width: 740px; color: var(--muted); }
+.qa-filter { margin: 26px 0 34px; }
+.qa-filter label { display: block; margin-bottom: 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#qa-search {
+  width: min(640px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-filter p { margin: 7px 0 0; color: var(--muted); font-size: 0.82rem; }
+.qa-topic { margin-top: 40px; }
+.qa-topic-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.qa-topic-heading h2 { flex: 1; }
+.qa-topic-heading a { flex: none; font-size: 0.86rem; }
+.qa-question[hidden], .qa-topic[hidden] { display: none; }
+.search-status { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.topic-list { margin-top: 8px; border-top: 1px solid var(--line); }
+.topic-link {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 15px;
+  min-height: 72px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topic-link:hover { background: light-dark(#e8eee9, #222d23); color: var(--forest); }
+.topic-number { color: var(--copper); font-family: Georgia, serif; font-size: 1.1rem; }
+.topic-title { font-weight: 650; }
+.topic-arrow { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.source-note { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.87rem; }
+
+@media (max-width: 860px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .contents-panel {
+    position: static;
+    max-height: none;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contents-panel nav { max-height: 210px; overflow: auto; }
+  .article { padding-top: 22px; }
+}
+
+@media (max-width: 560px) {
+  .reader-header { align-items: flex-start; padding: 12px 17px; }
+  .reader-header { flex-wrap: wrap; }
+  .reader-header nav { gap: 6px 8px; }
+  .nav-sep { display: none; }
+  .nav-btn { min-height: 34px; padding: 6px 12px; }
+  .library-intro h1 { font-size: 2.25rem; }
+  article h1 { font-size: 1.9rem; }
+  article h2 { font-size: 1.4rem; }
+  .topic-link { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .topic-arrow { display: none; }
+  .qa-topic-heading { align-items: flex-start; flex-direction: column; gap: 0; }
+  th, td { min-width: 130px; padding: 9px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* Highlight non-AI (CDC/SDV) topics in the library index */
+.topic-link.topic-core { background: var(--forest-soft); box-shadow: inset 5px 0 0 var(--forest); }
+.topic-link.topic-core .topic-title { color: var(--forest); }
+.topic-link.topic-core .topic-number { color: var(--forest); font-weight: 700; }
+.topic-link.topic-core:hover { background: light-dark(#d4e5de, #233930); }
+.topic-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 18px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.legend-swatch { display: inline-block; width: 18px; height: 14px; margin-right: -10px; border: 1px solid var(--line); vertical-align: -2px; }
+.legend-swatch.legend-core { background: var(--forest-soft); box-shadow: inset 4px 0 0 var(--forest); }
+
+/* Non-learning items (assignment / review / OJT) among CDC/SDV topics: red text */
+.topic-link.topic-task .topic-title, .topic-link.topic-task .topic-number { color: light-dark(#b3261e, #e9847e); }
+.topic-link.topic-task:hover .topic-title { color: light-dark(#8c1d18, #ed9794); }
+.legend-task { color: light-dark(#b3261e, #e9847e); font-weight: 600; }
+/* Study-time note per topic (from Fast_Track_CDC_Weekly_Checklist.xlsx) */
+.topic-time { display: block; margin-top: 3px; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.topic-link.topic-task .topic-time { color: light-dark(#b3261e, #e9847e); opacity: 0.85; }
+.legend-time { flex-basis: 100%; color: var(--muted); }
+
+/* ---- Thuật ngữ: bấm để xem giải nghĩa ---- */
+.gl {
+  border-bottom: 1.5px dotted #6f9a8e;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color .12s;
+}
+.gl:hover { background: var(--forest-soft); }
+.gl:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.gl.is-open { background: var(--forest-soft); border-bottom-style: solid; border-bottom-color: var(--forest); }
+.gl-pop {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(28, 41, 40, .16);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gl-term { display: block; margin-bottom: 2px; color: var(--forest); font-weight: 700; font-size: .82rem; }
+.gl-hint { color: var(--muted); font-size: .85rem; }
+.gl-hint .gl-demo { border-bottom: 1.5px dotted #6f9a8e; }
+
+/* ---- Checklist đầu ra (tick được, lưu trên trình duyệt) ---- */
+.checklist { margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 16px 14px; }
+.checklist > h3 { margin-top: 18px; }
+.cl-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--muted); font-size: .9rem; }
+.cl-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 99px; background: var(--forest-soft); overflow: hidden; }
+.cl-bar > i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s; }
+.cl-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.cl-item { padding: 9px 0 10px; border-top: 1px dashed var(--line); }
+.cl-item:first-child { border-top: 0; }
+.cl-item > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.cl-item input[type="checkbox"] { margin-top: .35em; width: 17px; height: 17px; accent-color: var(--forest); flex: none; }
+.cl-item.is-done > label > span { color: var(--muted); text-decoration: line-through; text-decoration-color: light-dark(#9fb3ad, #495c56); }
+.cl-pass, .cl-src { margin: 4px 0 0 27px; font-size: .9rem; }
+.cl-pass { color: var(--ink); }
+.cl-src { color: var(--muted); font-size: .82rem; }
+.cl-reset { margin-left: auto; border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 2px 9px; color: var(--muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.cl-reset:hover { color: var(--copper); border-color: var(--copper); }
+
+/* Lesson style for CDC/SDV topics — mirrors the teaching layout of the AI library
+   (bài đọc: hook → giải thích → ví dụ → vì sao quan trọng → nghiền ngẫm → thực hành → tự kiểm)
+   while keeping the CDC palette of reader.css. Load AFTER reader.css. */
+:root {
+  --teal: #2A8C8C; --teal-soft: #EEF7F6;
+  --violet: #6A4FC0; --violet-soft: #F5F2FD;
+  --green: #2E7D4F; --green-soft: #EFF8F2;
+  --amber: #B7791F; --amber-soft: #FFF7E8;
+  --red: #A93226; --red-soft: #FCEFEC;
+}
+
+body.lesson-page article { max-width: 800px; }
+body.lesson-page article p, body.lesson-page article li { line-height: 1.75; }
+body.lesson-page article h2 { margin-top: 44px; }
+body.lesson-page article h2 .sec-no { color: var(--copper); font-weight: 700; margin-right: 6px; }
+
+/* Bài nav (pill row, like .tapnav in the AI library) */
+.bai-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+.bai-nav a { font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--surface); }
+.bai-nav a:hover { border-color: var(--forest); color: var(--forest); }
+.bai-nav a.cur { background: var(--forest); border-color: var(--forest); color: #fff; }
+.bai-nav .grp { font-size: 0.7rem; font-weight: 700; color: var(--copper); align-self: center; margin: 0 2px 0 6px; letter-spacing: .06em; }
+
+.lesson-kicker { margin: 0 0 6px; color: var(--copper); font-size: 0.78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+body.lesson-page article h1 { margin-bottom: 10px; }
+.lesson-meta { margin: 0 0 18px; font-weight: 600; color: light-dark(#2c4b46, #bfdad5); font-size: 0.95rem; }
+
+/* Bản đồ bài — chuỗi khái niệm */
+.roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 24px; font-size: 0.86rem; }
+.roadmap span { background: var(--forest-soft); color: var(--forest); border: 1px solid light-dark(#c9ddd5, #314e42); border-radius: 8px; padding: 5px 10px; font-weight: 600; }
+.roadmap i { color: var(--muted); font-style: normal; }
+
+/* Figure card for SVG diagrams */
+.fig { margin: 24px 0; background: light-dark(#f9f7f2, #202819); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 12px; box-shadow: 0 1px 3px rgba(23,76,67,.06); overflow-x: auto; }
+.fig svg { width: 100%; height: auto; display: block; min-width: 560px; }
+.fig figcaption, .fig .cap { margin-top: 8px; color: var(--muted); font-size: 0.84rem; text-align: center; font-style: italic; }
+
+/* Opening question of a section */
+.hook { font-size: 1.04rem; color: light-dark(#26403c, #c6e2de); border-left: 3px solid var(--copper); padding: 4px 0 4px 14px; margin: 6px 0 18px; }
+
+/* Plain-language explanation */
+.plain { background: var(--forest-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0 18px; }
+.plain .ttl { color: var(--forest); }
+
+/* Generic box header */
+.box { border-radius: 12px; padding: 14px 18px; margin: 20px 0; }
+.box > .ttl, .plain > .ttl { margin: 0 0 7px; font-weight: 700; font-size: 0.86rem; }
+.box p { margin: 6px 0; }
+.box ul, .box ol { margin: 6px 0; padding-left: 22px; }
+.box li { margin: 4px 0; }
+
+.ex { background: var(--teal-soft); border: 1px solid var(--teal); }
+.ex > .ttl { color: light-dark(#1d6b6b, #a8e7e7); }
+.case { background: light-dark(#f9f7f2, #2c2117); border: 1px solid light-dark(#EBB28F, #63432f); border-left: 4px solid var(--copper); }
+.case > .ttl { color: var(--copper); font-size: 0.74rem; text-transform: uppercase; letter-spacing: .05em; }
+.pitfall { background: var(--amber-soft); border: 1px solid light-dark(#EBC77A, #695833); }
+.pitfall > .ttl { color: light-dark(#8A5A00, #ffd88f); }
+.why { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--forest); }
+.why > .ttl { color: var(--forest); }
+
+.practice { background: var(--green-soft); border: 1px solid var(--green); }
+.practice > .ttl { color: light-dark(#1F6340, #ade5c9); }
+.remember { background: var(--forest); color: #E4EFEB; }
+.remember > .ttl { color: var(--gold); }
+.remember b, .remember strong { color: #fff; }
+
+/* Sai vs đúng */
+.contrast { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.contrast > div { border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; }
+.contrast .bad { background: var(--red-soft); border: 1px solid light-dark(#E3A79F, #60342e); }
+.contrast .good { background: var(--green-soft); border: 1px solid light-dark(#9CCFB0, #326747); }
+.contrast .ttl { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
+.contrast .bad .ttl { color: var(--red); }
+.contrast .good .ttl { color: var(--green); }
+.contrast p { margin: 4px 0; }
+
+/* Step-by-step anatomy */
+.steps { list-style: none; counter-reset: st; padding-left: 0 !important; }
+.steps > li { counter-increment: st; position: relative; padding: 2px 0 2px 42px !important; margin: 12px 0 !important; }
+.steps > li::before { content: counter(st); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+
+/* Small term chips inline */
+.term { font-weight: 650; color: light-dark(#26403c, #c3e9e3); }
+.term-gloss { color: var(--muted); font-size: 0.92em; }
+
+/* Lesson prev/next */
+.next-prev { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .contrast { grid-template-columns: 1fr; }
+  .fig svg { min-width: 520px; }
+}
+
+/* ---------- Learning reflection + Unit assessment (assets/assessment.js) ---------- */
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.refl-intro { color: light-dark(#2c4b46, #bfdad5); }
+.refl-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--violet); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.refl-label { margin: 0 0 4px !important; font-weight: 700; color: light-dark(#3f2c86, #a99ade); }
+.refl-hint { color: light-dark(#41506B, #aeb9ce); font-size: 0.93rem; margin-bottom: 8px; }
+.refl-hint ul { margin: 4px 0 0; padding-left: 20px; }
+.refl-hint li { margin: 2px 0; }
+#reflection-app textarea, #quiz-app textarea, #workshop-app textarea { width: 100%; font: inherit; font-size: 0.95rem; line-height: 1.55; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); color: var(--ink); resize: vertical; }
+#reflection-app textarea:focus, #quiz-app textarea:focus, #workshop-app textarea:focus { outline: 2px solid var(--gold); border-color: var(--forest); }
+.refl-sample { margin-top: 8px; }
+.refl-sample summary { cursor: pointer; color: var(--forest); font-size: 0.86rem; font-weight: 600; }
+.refl-sample-body { margin: 6px 0; padding: 8px 12px; background: var(--forest-soft); border-radius: 6px; font-size: 0.92rem; }
+.refl-sample-body ul { margin: 4px 0; padding-left: 20px; }
+.refl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 6px; }
+.refl-tools p { flex-basis: 100%; margin: 2px 0 0; }
+.tool-msg { color: var(--green); font-size: 0.86rem; }
+.act-btn, .mini-btn { font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1.5px solid var(--forest); }
+.act-btn { background: var(--forest); color: #fff; }
+.act-btn:hover { background: var(--copper); border-color: var(--copper); }
+.mini-btn { background: transparent; color: var(--forest); padding: 5px 12px; font-size: 0.82rem; }
+.mini-btn:hover { background: var(--forest-soft); }
+.mini-btn.danger { color: var(--red); border-color: light-dark(#E3A79F, #60342e); }
+.assess-note { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; }
+.assess-note.small { background: transparent; padding: 0; }
+
+table.rubric select { font: inherit; font-size: 0.86rem; padding: 4px 6px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ws-col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.ws-h { margin: 0 0 4px !important; font-weight: 700; color: var(--forest); font-size: 0.9rem; }
+.ws-col ol, .ws-col ul { margin: 0 !important; padding-left: 20px !important; font-size: 0.93rem; }
+table.rubric td.num { text-align: center; font-weight: 700; color: var(--copper); }
+table.rubric td { font-size: 0.9rem; }
+table.rubric textarea { min-width: 180px; }
+.rub-pts { font-size: 0.82rem; color: var(--forest); font-weight: 600; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.dash-card.pass { border-color: light-dark(#9CCFB0, #326747); background: var(--green-soft); }
+.dash-card.fail { border-color: light-dark(#E3A79F, #60342e); background: var(--red-soft); }
+.dash-h { margin: 0 !important; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-v { margin: 2px 0 !important; font-size: 1.6rem; font-weight: 700; color: var(--forest); }
+.dash-sub { margin: 0 !important; font-size: 0.84rem; color: var(--muted); }
+
+/* ---------- Knowledge questions (open questions, self-rated) ---------- */
+.kq-howto { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kq-toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.kq-filter { font-size: 0.88rem; color: var(--forest); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.kq-progress { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; }
+.kq-track { flex: 1; height: 8px; border-radius: 99px; background: light-dark(#E3E8E2, #272f25); overflow: hidden; display: flex; }
+.kq-track .seg { height: 100%; }
+.seg-yes { background: var(--green); } .seg-part { background: light-dark(#D9A441, #665027); } .seg-no { background: light-dark(#C0504D, #6a2a28); }
+.kq-count { font-size: 0.84rem; color: var(--muted); white-space: nowrap; }
+.kq-group { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; border-bottom: 1px dashed var(--line); }
+.kq-group-title { margin: 0 0 6px !important; font-size: 1.08rem !important; }
+.kq-back { font-size: 0.82rem; white-space: nowrap; }
+.kq-list { padding-left: 26px !important; margin-top: 8px !important; }
+.kq-item { margin: 12px 0 !important; padding: 10px 14px !important; border: 1px solid var(--line); border-left: 4px solid light-dark(#C9D3CF, #3b4843); border-radius: 10px; background: var(--surface); }
+.kq-item[data-rate="yes"] { border-left-color: var(--green); }
+.kq-item[data-rate="part"] { border-left-color: #D9A441; }
+.kq-item[data-rate="no"] { border-left-color: #C0504D; }
+.only-weak .kq-item[data-rate="yes"] { display: none; }
+.kq-q { margin: 0 0 6px !important; font-weight: 600; line-height: 1.6 !important; }
+.kq-type { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 4px; background: var(--forest-soft); color: var(--forest); font-size: 0.72rem; font-weight: 700; letter-spacing: .03em; vertical-align: 2px; text-transform: uppercase; }
+.kq-mine, .kq-answer { margin: 6px 0; }
+.kq-mine summary, .kq-answer summary { cursor: pointer; font-size: 0.86rem; font-weight: 600; color: var(--forest); }
+.kq-mine textarea { margin-top: 6px; width: 100%; font: inherit; font-size: 0.95rem; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; resize: vertical; }
+.kq-answer-body { margin-top: 6px; padding: 10px 14px; background: light-dark(#F4F8F6, #1b2a22); border: 1px solid light-dark(#D5E3DD, #2f473d); border-radius: 8px; font-size: 0.95rem; }
+.kq-answer-body p { margin: 4px 0 8px !important; }
+.kq-answer-body ul, .kq-answer-body ol { margin: 4px 0 8px !important; padding-left: 20px !important; }
+.kq-answer-body li { margin: 2px 0 !important; }
+.kq-refs { font-size: 0.84rem; color: var(--muted); border-top: 1px dashed light-dark(#D5E3DD, #2f473d); padding-top: 6px; margin-top: 8px !important; }
+.kq-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.kq-rate-l { font-size: 0.8rem; color: var(--muted); }
+.kq-rbtn { font: inherit; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid light-dark(#C9D3CF, #3b4843); background: light-dark(#f9f7f2, #192320); color: var(--muted); cursor: pointer; }
+.kq-rbtn[aria-pressed="true"].r-yes { background: var(--green); border-color: var(--green); color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-part { background: light-dark(#D9A441, #665027); border-color: #D9A441; color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-no { background: light-dark(#C0504D, #6a2a28); border-color: #C0504D; color: #fff; }
+
+
+  </style>
+  <style>
+    article h4 { margin: 22px 0 8px; color: var(--forest); font-size: 1.02rem; }
+    td.c, th.c { text-align: center; }
+    tr.total td { font-weight: 700; background: var(--forest-soft) !important; }
+    .fig svg .hit:hover { opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="../assets/dark.css">
+</head>
+<body class="topic-page lesson-page">
+<header class="reader-header">
+    <a class="brand" href="../../dainv13.html"><span class="brand-mark">Đ</span><span>Đề cương<br><small>Cross-domain Runtime Architecture</small></span></a>
+    <nav aria-label="Page actions"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></nav>
+</header>
+<div class="reader-layout">
+  <aside class="contents-panel">
+    <p class="eyebrow">Nội dung trang</p>
+    <nav aria-label="Topic contents"><ul>
+<li class="toc-level-2"><a href="#p1">Phần 1 · Giải thích chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-2">1.2 Tổng quan về chủ đề</a></li>
+<li class="toc-level-2"><a href="#p2">Phần 2 · Nội dung chi tiết</a></li>
+<li class="toc-level-3"><a href="#p2-1">2.1 Runtime architecture nối nhiều domain</a></li>
+<li class="toc-level-3"><a href="#p2-2">2.2 Communication, discovery, lifecycle</a></li>
+<li class="toc-level-3"><a href="#p2-3">2.3 Scheduling, arbitration, isolation, observability</a></li>
+<li class="toc-level-3"><a href="#p2-4">2.4 Consistency, timing, event flow, failure</a></li>
+<li class="toc-level-3"><a href="#p2-5">2.5 Runtime, middleware, platform, application</a></li>
+<li class="toc-level-3"><a href="#p2-6">2.6 Domain tiến hóa độc lập</a></li>
+</ul></nav>
+  </aside>
+  <main class="article">
+    <article>
+<p class="lesson-kicker">Đề cương chi tiết · Research Topic 3</p>
+<h1 id="top">Cross-domain Runtime Architecture</h1>
+<p class="lesson-meta">Kiến trúc runtime xuyên domain trong xe · đọc ~45 phút</p>
+
+<h2 id="p1"><span class="sec-no">1 ·</span> Giải thích chủ đề</h2>
+
+<h3 id="p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</h3>
+<ul>
+<li><b><span class="term">Cross-domain <span class="term-gloss">(xuyên nhiều miền)</span></span></b>: vượt qua ranh giới giữa các domain <span class="term-gloss">(miền chức năng của xe)</span> chức năng (cockpit <span class="term-gloss">(khoang lái)</span>/CDC <span class="term-gloss">(Cockpit Domain Controller – máy tính trung tâm khoang lái)</span>, ADAS <span class="term-gloss">(Advanced Driver Assistance Systems – hệ thống hỗ trợ lái nâng cao)</span>, body <span class="term-gloss">(thân xe: cửa, đèn, gương, khóa)</span>, chassis <span class="term-gloss">(khung gầm: phanh, lái, treo)</span>/powertrain <span class="term-gloss">(hệ truyền động)</span>, connectivity <span class="term-gloss">(khả năng kết nối)</span>), thường kèm ranh giới bus <span class="term-gloss">(đường truyền dùng chung)</span>, ECU <span class="term-gloss">(Electronic Control Unit – bộ điều khiển điện tử)</span>, OS <span class="term-gloss">(Operating System – hệ điều hành)</span>, VM <span class="term-gloss">(Virtual Machine – máy ảo)</span> và team <span class="term-gloss">(nhóm làm việc)</span>. Ví dụ: tốc độ từ chassis lên cluster <span class="term-gloss">(cụm đồng hồ táp-lô)</span>, lệnh mở khóa từ app <span class="term-gloss">(ứng dụng)</span> qua TCU <span class="term-gloss">(Telematics Control Unit – ECU kết nối mạng di động của xe)</span> tới body.</li>
+<li><b><span class="term">Runtime <span class="term-gloss">(lúc chạy, môi trường chạy)</span></span></b>: lúc phần mềm đang chạy trên phần cứng thật, khác design time <span class="term-gloss">(thời gian)</span> và build time. Thứ tự khởi động, độ trễ, tranh chấp tài nguyên, restart <span class="term-gloss">(khởi động lại app, service hay VM)</span> và lỗi lan chỉ lộ ra ở đây.</li>
+<li><b><span class="term">Runtime Architecture <span class="term-gloss">(kiến trúc lúc chạy)</span></span></b>: cơ chế và quy tắc quyết định hệ thống hành xử khi chạy. Nó chốt cái gì chạy ở đâu, khởi động/dừng, giao tiếp, chia tài nguyên, quan sát và phản ứng khi một phần chậm, mất, sai hoặc restart.</li>
+</ul>
+
+<h3 id="p1-2">1.2 Tổng quan về chủ đề</h3>
+<p>Xe chuyển từ hàng chục ECU riêng sang central compute <span class="term-gloss">(máy tính trung tâm thay nhiều ECU)</span> + zonal <span class="term-gloss">(theo vùng vị trí vật lý)</span>: nhiều domain chạy chung SoC <span class="term-gloss">(System-on-Chip – chip tích hợp CPU, GPU, NPU…)</span> dưới hypervisor <span class="term-gloss">(lớp ảo hóa chia SoC thành nhiều máy ảo)</span>, zone controller <span class="term-gloss">(bộ điều khiển vùng)</span> chuyển signal CAN <span class="term-gloss">(Controller Area Network – bus truyền thông nối tiếp giữa các ECU)</span>/LIN <span class="term-gloss">(Local Interconnect Network – bus chi phí thấp cho thiết bị đơn giản)</span> thành service <span class="term-gloss">(dịch vụ cung cấp qua giao diện)</span> trên Ethernet <span class="term-gloss">(mạng có dây băng thông cao)</span>. Tính năng người dùng thấy là chuỗi trao đổi qua nhiều domain, VM và team. Lỗi khó nằm ở chỗ nối: service chưa offer <span class="term-gloss">(bản tin công bố service đang có)</span>, đồng hồ hai VM lệch, bản tin cũ bị coi là mới, restart lan sang domain khác.</p>
+<p>Chủ đề xét lớp runtime nối các domain: giao tiếp, discovery <span class="term-gloss">(khám phá, tìm kiếm)</span>, lifecycle <span class="term-gloss">(vòng đời từ khởi tạo đến kết thúc)</span>; scheduling <span class="term-gloss">(lập lịch)</span>, isolation <span class="term-gloss">(sự cách ly)</span>, observability <span class="term-gloss">(khả năng quan sát hệ thống đang chạy)</span>; data consistency <span class="term-gloss">(tính nhất quán dữ liệu giữa các bên)</span>, timing <span class="term-gloss">(đặc tính thời gian: trễ, jitter, hạn chót)</span>, chặn lỗi lan; ranh giới runtime–middleware <span class="term-gloss">(phần mềm trung gian)</span>–platform <span class="term-gloss">(nền tảng dùng chung)</span>–application <span class="term-gloss">(ứng dụng; hoặc sự áp dụng)</span>; và contract <span class="term-gloss">(thỏa thuận ràng buộc giữa hai bên)</span>, ownership <span class="term-gloss">(quyền sở hữu và trách nhiệm)</span> để mỗi domain OTA <span class="term-gloss">(Over-The-Air – cập nhật phần mềm qua mạng không dây)</span> độc lập. Ví dụ xuyên suốt là CDC (cluster + IVI <span class="term-gloss">(In-Vehicle Infotainment – hệ thống thông tin giải trí trên xe)</span>) trao đổi với ADAS, body, chassis và connectivity.</p>
+
+<h2 id="p2"><span class="sec-no">2 ·</span> Nội dung chi tiết</h2>
+
+<!-- 2.1 -->
+<h3 id="p2-1">2.1 Runtime architecture kết nối nhiều domain chức năng trong xe</h3>
+
+<h4>a) Các domain chức năng có đặc tính runtime khác nhau</h4>
+<p>Runtime phải nối các domain mà không ép về chuẩn thấp nhất, không để domain yếu kéo domain mạnh xuống.</p>
+<div class="table-scroll"><table><thead><tr><th>Domain</th><th>Chạy ở đâu</th><th>Criticality (điển hình)</th><th>Timing</th><th>Trao đổi với CDC</th></tr></thead><tbody>
+<tr><td><b>Cockpit / CDC</b>: cluster, IVI, HUD <span class="term-gloss">(Head-Up Display – màn hình chiếu lên kính lái)</span></td><td>VM trên SoC CDC</td><td>Cluster tới ASIL B; IVI QM <span class="term-gloss">(Quality Management – chỉ cần quản lý chất lượng thông thường)</span></td><td>60 Hz <span class="term-gloss">(Hertz – số lần mỗi giây)</span>, boot <span class="term-gloss">(khởi động hệ thống)</span> nhanh</td><td>Consumer <span class="term-gloss">(bên dùng dữ liệu/dịch vụ)</span> chính</td></tr>
+<tr><td><b>ADAS</b></td><td>SoC riêng hoặc partition <span class="term-gloss">(phân vùng tài nguyên tách biệt)</span></td><td>ASIL B–D</td><td>10–50 ms <span class="term-gloss">(millisecond – mili giây)</span>, tải GPU <span class="term-gloss">(Graphics Processing Unit – bộ xử lý đồ họa)</span>/NPU <span class="term-gloss">(Neural Processing Unit – bộ xử lý AI)</span></td><td>Cảnh báo, camera <span class="term-gloss">(máy quay, cảm biến hình ảnh trên xe)</span> → HMI <span class="term-gloss">(Human-Machine Interface – giao diện người–máy)</span>; route <span class="term-gloss">(đường đi của nguồn âm tới loa/zone)</span> ← IVI</td></tr>
+<tr><td><b>Body</b>: cửa, khóa, đèn</td><td>MCU <span class="term-gloss">(Microcontroller Unit – vi điều khiển)</span> trong zone <span class="term-gloss">(vùng vật lý của xe)</span></td><td>QM – ASIL B</td><td>Theo sự kiện</td><td>Door <span class="term-gloss">(cửa xe)</span>/lock <span class="term-gloss">(khóa bảo vệ dữ liệu dùng chung giữa các luồng)</span> → HMI; khí hậu ← IVI</td></tr>
+<tr><td><b>Chassis / powertrain</b></td><td>ECU riêng qua zone/gateway <span class="term-gloss">(cổng nối giữa các mạng/miền)</span></td><td>ASIL C–D</td><td>Hard real-time <span class="term-gloss">(thời gian thực cứng, lỡ deadline là lỗi)</span>, ms</td><td>Speed <span class="term-gloss">(tốc độ xe)</span>, gear <span class="term-gloss">(số của hộp số: P, R, N, D)</span> → cluster; không nhận lệnh từ IVI</td></tr>
+<tr><td><b>Connectivity</b>: TCU, OTA</td><td>TCU + central compute</td><td>QM, security <span class="term-gloss">(bảo mật)</span> cao</td><td>Mạng ngoài, không xác định</td><td>Remote <span class="term-gloss">(từ xa)</span> → body; OTA → mọi domain</td></tr>
+</tbody></table></div>
+
+<h4>b) Runtime architecture của central compute + zonal gồm những gì</h4>
+<figure class="fig">
+<svg viewBox="0 0 720 330" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Các domain chạy trên central compute và zone controller, nối qua Ethernet backbone và một runtime chung">
+<defs>
+<filter id="c4-sh" x="-10%" y="-20%" width="120%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#174C43" flood-opacity="0.15"/></filter>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Central compute + zonal: các domain nối qua một runtime chung</text>
+<rect x="40" y="34" width="640" height="152" rx="10" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.4"/>
+<text x="56" y="53" font-size="11.5" font-weight="700" fill="#174C43">Central compute (SoC CDC/HPC) · hypervisor chia VM và partition</text>
+<g filter="url(#c4-sh)">
+<rect x="56" y="62" width="143" height="60" rx="8" fill="#174C43"/>
+<rect x="211" y="62" width="143" height="60" rx="8" fill="#2A6F66"/>
+<rect x="366" y="62" width="143" height="60" rx="8" fill="#A64E32"/>
+<rect x="521" y="62" width="143" height="60" rx="8" fill="#2A8C8C"/>
+</g>
+<g text-anchor="middle" fill="#fff">
+<text x="127.5" y="82" font-size="11.5" font-weight="700">VM Cluster</text>
+<text x="127.5" y="98" font-size="10">QNX / RTOS · ASIL B</text>
+<text x="127.5" y="112" font-size="10">tốc độ, telltale</text>
+<text x="282.5" y="82" font-size="11.5" font-weight="700">VM IVI</text>
+<text x="282.5" y="98" font-size="10">Android Automotive</text>
+<text x="282.5" y="112" font-size="10">map, media, app</text>
+<text x="437.5" y="82" font-size="11.5" font-weight="700">ADAS partition</text>
+<text x="437.5" y="98" font-size="10">perception · planning</text>
+<text x="437.5" y="112" font-size="10">cảnh báo, camera</text>
+<text x="592.5" y="82" font-size="11.5" font-weight="700">Vehicle services</text>
+<text x="592.5" y="98" font-size="10">signal ↔ service</text>
+<text x="592.5" y="112" font-size="10">VehicleSpeed, DoorState</text>
+</g>
+<rect x="56" y="132" width="608" height="42" rx="8" fill="#fff" stroke="#174C43" stroke-width="1.2"/>
+<text x="360" y="149" text-anchor="middle" font-size="11" font-weight="700" fill="#174C43">Runtime chung</text>
+<text x="360" y="165" text-anchor="middle" font-size="10" fill="#1c2928">Execution &amp; State Management · Health Monitoring · scheduler · time base gPTP · log/trace</text>
+<line x1="360" y1="186" x2="360" y2="208" stroke="#174C43" stroke-width="2"/>
+<line x1="40" y1="208" x2="680" y2="208" stroke="#174C43" stroke-width="3"/>
+<text x="48" y="202" font-size="10.5" font-weight="700" fill="#174C43">Ethernet backbone · SOME/IP(-SD) · DDS · gPTP · TSN</text>
+<g stroke="#174C43" stroke-width="1.6">
+<line x1="112.5" y1="208" x2="112.5" y2="244"/>
+<line x1="277.5" y1="208" x2="277.5" y2="244"/>
+<line x1="442.5" y1="208" x2="442.5" y2="244"/>
+<line x1="607.5" y1="208" x2="607.5" y2="244"/>
+</g>
+<g fill="#fff" stroke="#2A8C8C" stroke-width="1.4" filter="url(#c4-sh)">
+<rect x="40" y="244" width="145" height="52" rx="9"/>
+<rect x="205" y="244" width="145" height="52" rx="9"/>
+<rect x="370" y="244" width="145" height="52" rx="9"/>
+<rect x="535" y="244" width="145" height="52" rx="9"/>
+</g>
+<g text-anchor="middle">
+<text x="112.5" y="264" font-size="11.5" font-weight="700" fill="#174C43">Zone trước (ZCU)</text>
+<text x="112.5" y="281" font-size="10" fill="#596966">CAN/LIN: đèn, cửa trước</text>
+<text x="277.5" y="264" font-size="11.5" font-weight="700" fill="#174C43">Zone sau (ZCU)</text>
+<text x="277.5" y="281" font-size="10" fill="#596966">CAN/LIN: cửa sau, cốp, ghế</text>
+<text x="442.5" y="264" font-size="11.5" font-weight="700" fill="#174C43">Chassis · powertrain</text>
+<text x="442.5" y="281" font-size="10" fill="#596966">CAN FD: speed, gear, phanh</text>
+<text x="607.5" y="264" font-size="11.5" font-weight="700" fill="#174C43">TCU · connectivity</text>
+<text x="607.5" y="281" font-size="10" fill="#596966">LTE/5G: remote, OTA</text>
+</g>
+<text x="360" y="318" text-anchor="middle" font-size="10" font-style="italic" fill="#596966">Zone chuyển signal CAN/LIN thành service; service discovery (Offer/Find/Subscribe) chạy trên backbone</text>
+</svg>
+<figcaption>Domain không còn gắn với một hộp ECU: nhiều domain chia chung SoC, mạng và runtime, nên ranh giới phải được vẽ bằng cơ chế runtime chứ không bằng vỏ hộp.</figcaption>
+</figure>
+<div class="table-scroll"><table><thead><tr><th>Thành phần runtime</th><th>Câu hỏi nó trả lời</th><th>Công nghệ ví dụ</th></tr></thead><tbody>
+<tr><td><b>Execution environment <span class="term-gloss">(môi trường chạy/kiểm thử)</span></b></td><td>Chạy ở đâu, cô lập với ai?</td><td>Hypervisor (QNX <span class="term-gloss">(hệ điều hành thời gian thực microkernel)</span>, Xen <span class="term-gloss">(hypervisor type-1 mã nguồn mở)</span>, PikeOS <span class="term-gloss">(RTOS kiêm hypervisor phân vùng của SYSGO)</span>…), VM, zone MCU</td></tr>
+<tr><td><b>Communication fabric <span class="term-gloss">(hạ tầng giao tiếp chung giữa các thành phần runtime)</span></b></td><td>Đi qua kênh nào?</td><td>CAN/LIN, Ethernet, SOME/IP <span class="term-gloss">(Scalable service-Oriented MiddlewarE over IP – giao thức dịch vụ trên Ethernet)</span>, DDS <span class="term-gloss">(Data Distribution Service – middleware pub/sub có QoS)</span>, shared memory <span class="term-gloss">(vùng nhớ dùng chung)</span></td></tr>
+<tr><td><b>Discovery &amp; registry <span class="term-gloss">(kho đăng ký có quản lý phiên bản)</span></b></td><td>Tìm producer <span class="term-gloss">(bên tạo/phát dữ liệu)</span> thế nào?</td><td>SOME/IP-SD <span class="term-gloss">(Service Discovery – cơ chế tìm và quảng bá service trong SOME/IP)</span>, DDS discovery, manifest <span class="term-gloss">(bản kê khai thành phần)</span> tĩnh</td></tr>
+<tr><td><b>Lifecycle &amp; state <span class="term-gloss">(trạng thái hiện tại của hệ thống, tín hiệu)</span></b></td><td>Khởi động/dừng theo thứ tự nào?</td><td>Adaptive <span class="term-gloss">(nền tảng AUTOSAR Adaptive)</span> EM/SM <span class="term-gloss">(Execution Management / State Management của AUTOSAR Adaptive)</span>; EcuM <span class="term-gloss">(ECU State Manager – quản lý khởi động, tắt ECU trong AUTOSAR Classic)</span>/BswM <span class="term-gloss">(Basic Software Mode Manager – quản lý mode BSW trong AUTOSAR Classic)</span> ở Classic <span class="term-gloss">(cổ điển, thường chỉ AUTOSAR Classic)</span></td></tr>
+<tr><td><b>Scheduling &amp; resource <span class="term-gloss">(tài nguyên)</span></b></td><td>Ai được CPU <span class="term-gloss">(Central Processing Unit – bộ xử lý trung tâm)</span>, GPU, băng thông?</td><td>Scheduler hypervisor/OS, TSN shaper <span class="term-gloss">(cơ chế điều tiết lưu lượng mạng theo băng thông giữ trước)</span>, quota <span class="term-gloss">(hạn mức tài nguyên)</span></td></tr>
+<tr><td><b>Health <span class="term-gloss">(sức khỏe, tình trạng hoạt động)</span> &amp; isolation</b></td><td>Phát hiện hỏng, lỗi dừng ở đâu?</td><td>PHM <span class="term-gloss">(Platform Health Management – giám sát alive, deadline, logical flow)</span>, watchdog <span class="term-gloss">(bộ canh, tự reset khi phần mềm treo)</span>, MMU <span class="term-gloss">(Memory Management Unit – bộ quản lý bộ nhớ)</span>/IOMMU <span class="term-gloss">(Input-Output Memory Management Unit – MMU cho thiết bị)</span>, restart policy <span class="term-gloss">(chính sách, luật vận hành)</span></td></tr>
+<tr><td><b>Time &amp; observability</b></td><td>Đồng hồ nào, thấy gì?</td><td>gPTP <span class="term-gloss">(generalized Precision Time Protocol – đồng bộ đồng hồ trên Ethernet)</span>, DLT <span class="term-gloss">(Diagnostic Log and Trace – chuẩn log/trace của AUTOSAR)</span>, trace <span class="term-gloss">(dấu vết, truy vết)</span> có correlation ID <span class="term-gloss">(mã liên kết log của cùng request)</span></td></tr>
+</tbody></table></div>
+
+<h4>c) Các luồng cross-domain điển hình của CDC</h4>
+<div class="table-scroll"><table><thead><tr><th>Luồng</th><th>Pattern <span class="term-gloss">(mẫu thiết kế)</span></th><th>Yêu cầu runtime chính</th></tr></thead><tbody>
+<tr><td>Tốc độ: chassis → zone → VM Cluster</td><td>Signal CAN → event SOME/IP 20 ms</td><td>Freshness <span class="term-gloss">(độ tươi, độ mới của dữ liệu)</span>, max age <span class="term-gloss">(độ cũ tối đa cho phép của dữ liệu)</span>, Valid <span class="term-gloss">(hợp lệ, đủ tin để dùng)</span> sớm sau boot</td></tr>
+<tr><td>Cảnh báo va chạm: ADAS → cluster, HUD</td><td>Event <span class="term-gloss">(sự kiện)</span> + field <span class="term-gloss">(trường dữ liệu, hoặc thực địa - xe đã bán)</span></td><td>Latency end-to-end <span class="term-gloss">(đầu-cuối, trọn cả chuỗi)</span>, E2E <span class="term-gloss">(End-to-End – bảo vệ dữ liệu đầu–cuối)</span></td></tr>
+<tr><td>Trạng thái cửa: body → IVI, app</td><td>Field</td><td>Single source of truth <span class="term-gloss">(nguồn dữ liệu chính thức duy nhất)</span>, resync <span class="term-gloss">(đồng bộ lại)</span> sau restart</td></tr>
+<tr><td>Mở khóa từ xa: app → cloud <span class="term-gloss">(điện toán đám mây)</span> → TCU → body</td><td>Method <span class="term-gloss">(phương thức gọi trên service)</span></td><td>Authorization <span class="term-gloss">(phân quyền)</span>, idempotency <span class="term-gloss">(tính lũy đẳng)</span>, timeout <span class="term-gloss">(hết thời gian chờ)</span>, kết quả thật</td></tr>
+<tr><td>Camera 360 → VM IVI</td><td>Stream <span class="term-gloss">(luồng dữ liệu liên tục)</span> qua shared memory</td><td>Băng thông, GPU, drop policy <span class="term-gloss">(chính sách bỏ dữ liệu khi queue đầy)</span></td></tr>
+<tr><td>Route: IVI (QM) → ADAS (ASIL)</td><td>Service bản đồ</td><td>ADAS kiểm plausibility <span class="term-gloss">(tính hợp lý của giá trị)</span>, không tin mù dữ liệu QM</td></tr>
+</tbody></table></div>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Runtime architecture xuyên domain nối các domain khác criticality, timing, owner <span class="term-gloss">(người/nhóm chịu trách nhiệm chính)</span> khi chúng chia chung SoC, mạng và runtime. Bảy thành phần runtime vẽ ranh giới domain thay cho vỏ hộp ECU, và mỗi luồng được kiểm theo chúng để <b>domain yếu không kéo domain mạnh xuống</b>.</p>
+</div>
+
+<!-- 2.2 -->
+<h3 id="p2-2">2.2 Cross-domain communication, service discovery và lifecycle</h3>
+
+<h4>a) Kênh giao tiếp theo từng loại ranh giới</h4>
+<div class="table-scroll"><table><thead><tr><th>Ranh giới</th><th>Công nghệ</th><th>Phải chốt</th></tr></thead><tbody>
+<tr><td>Zone ↔ sensor/actuator <span class="term-gloss">(cảm biến/cơ cấu chấp hành)</span></td><td>CAN, CAN FD <span class="term-gloss">(CAN with Flexible Data-rate – CAN tốc độ cao, khung dài hơn)</span>, LIN</td><td>Cycle time <span class="term-gloss">(chu kỳ gửi của signal/frame)</span>, timeout, layout <span class="term-gloss">(bố cục)</span>, E2E/SecOC <span class="term-gloss">(Secure Onboard Communication – xác thực message trên mạng xe)</span></td></tr>
+<tr><td>Zone ↔ central <span class="term-gloss">(trung tâm, tập trung)</span></td><td><span class="term">SOME/IP</span>, DDS</td><td>Service ID <span class="term-gloss">(Identifier – mã định danh)</span>/version <span class="term-gloss">(phiên bản)</span>, serialization <span class="term-gloss">(tuần tự hóa dữ liệu thành chuỗi byte)</span>, QoS <span class="term-gloss">(Quality of Service – mức đảm bảo chất lượng dịch vụ)</span>, VLAN <span class="term-gloss">(Virtual LAN – mạng LAN ảo)</span></td></tr>
+<tr><td>VM ↔ VM cùng SoC</td><td>virtio <span class="term-gloss">(chuẩn thiết bị ảo cho guest OS)</span>, vsock <span class="term-gloss">(virtual socket – socket ảo giữa VM và host)</span>, shared memory</td><td>Ownership bộ nhớ, permission <span class="term-gloss">(quyền truy cập)</span>, recovery <span class="term-gloss">(phục hồi sau lỗi)</span> khi restart</td></tr>
+<tr><td>Trong một VM</td><td>ara::com <span class="term-gloss">(API giao tiếp service của AUTOSAR Adaptive)</span>, Binder <span class="term-gloss">(cơ chế IPC chính của Android)</span>/AIDL <span class="term-gloss">(Android Interface Definition Language – ngôn ngữ định nghĩa interface)</span>, VHAL <span class="term-gloss">(Vehicle Hardware Abstraction Layer – lớp property xe của Android)</span></td><td>Binding <span class="term-gloss">(lớp ánh xạ API service xuống giao thức truyền cụ thể)</span>, thread model <span class="term-gloss">(mô hình)</span>, version</td></tr>
+</tbody></table></div>
+<p><span class="term">Signal-to-service gateway <span class="term-gloss">(cổng chuyển signal trên bus thành service)</span></span> ở zone đọc frame CAN, kiểm E2E, phát lại thành event/field SOME/IP, giữ <b>sample time <span class="term-gloss">(thời điểm lấy mẫu giá trị ở nguồn)</span> gốc</b> và quality <span class="term-gloss">(chất lượng)</span>. Mapping <span class="term-gloss">(ánh xạ, gắn tương ứng giữa hai thứ)</span> do owner domain nguồn duyệt. Với <span class="term">ara::com</span>, binding chọn lúc deployment <span class="term-gloss">(triển khai, bố trí phần mềm chạy ở đâu)</span> nên cluster app không đổi dù dữ liệu đến qua mạng hay shared memory.</p>
+
+<h4>b) Service discovery: consumer tìm producer thế nào</h4>
+<div class="table-scroll"><table><thead><tr><th>Cách</th><th>Cơ chế</th><th>Ưu / rủi ro</th><th>Hợp với</th></tr></thead><tbody>
+<tr><td><b>Static <span class="term-gloss">(tĩnh, cố định trước khi chạy)</span></b></td><td>Instance <span class="term-gloss">(một thể hiện cụ thể của service hoặc component)</span> cố định trong manifest</td><td>Boot nhanh, dễ chứng minh; đổi deployment phải đổi cấu hình</td><td>Cluster, safety <span class="term-gloss">(an toàn, thường là an toàn chức năng)</span></td></tr>
+<tr><td><b>SOME/IP-SD</b></td><td>Offer/Find <span class="term-gloss">(bản tin hỏi service đang ở đâu)</span>, Subscribe <span class="term-gloss">(đăng ký nhận dữ liệu)</span>/Ack <span class="term-gloss">(acknowledgement – xác nhận đã nhận)</span>, TTL <span class="term-gloss">(Time To Live – thời gian sống của một bản tin hoặc offer)</span>, Reboot flag <span class="term-gloss">(cờ bật/tắt)</span></td><td>Phát hiện mất service; traffic <span class="term-gloss">(lưu lượng dữ liệu)</span> dồn lúc boot, cần chống offer giả</td><td>Zone ↔ central</td></tr>
+<tr><td><b>DDS discovery</b></td><td>SPDP <span class="term-gloss">(Simple Participant Discovery Protocol – phát hiện participant DDS)</span> + SEDP <span class="term-gloss">(Simple Endpoint Discovery Protocol – phát hiện reader/writer DDS)</span>, khớp topic <span class="term-gloss">(chủ đề; kênh dữ liệu trong pub/sub)</span> và QoS</td><td>Tự nối theo topic; QoS lệch thì im lặng không nối</td><td>ADAS, sensor <span class="term-gloss">(cảm biến)</span></td></tr>
+</tbody></table></div>
+<p>Consumer phải xử lý năm tình huống:</p>
+<ul>
+<li><b>Chưa có</b> lúc khởi động: hiển thị placeholder <span class="term-gloss">(nội dung giữ chỗ tạm khi chưa có dữ liệu)</span>, không chặn HMI.</li>
+<li><b>Mất</b>: hết TTL, StopOfferService <span class="term-gloss">(bản tin rút lại service khỏi mạng trong SOME/IP-SD)</span>, mất link <span class="term-gloss">(liên kết)</span>.</li>
+<li><b>Quay lại</b> với <span class="term">epoch <span class="term-gloss">(số đời, tăng mỗi lần bên ghi khởi động lại)</span></span> mới: bỏ dữ liệu cũ.</li>
+<li><b>Khác major version</b>: từ chối hoặc dùng compatibility path <span class="term-gloss">(nhánh xử lý tương thích với phiên bản cũ)</span> đã duyệt.</li>
+<li><b>Nhiều instance</b>: chọn theo instance ID trong manifest.</li>
+</ul>
+<p>Chỉ endpoint <span class="term-gloss">(điểm cuối API trên backend)</span> được cấp quyền mới được offer (ACL <span class="term-gloss">(Access Control List – danh sách quyền truy cập)</span>, DDS Security, TLS <span class="term-gloss">(Transport Layer Security – mã hóa và xác thực kênh TCP)</span>/DTLS <span class="term-gloss">(Datagram TLS – TLS cho UDP)</span>, IPsec <span class="term-gloss">(bảo mật ở tầng IP)</span> hoặc MACsec <span class="term-gloss">(IEEE 802.1AE – bảo mật Ethernet ở tầng 2)</span> theo TARA <span class="term-gloss">(Threat Analysis and Risk Assessment – phân tích mối đe dọa và rủi ro)</span>).</p>
+
+<h4>c) Lifecycle, startup ordering và graceful shutdown</h4>
+<figure class="fig">
+<svg viewBox="0 0 720 300" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Máy trạng thái vòng đời service và thứ tự khởi động một flow tốc độ">
+<defs>
+<marker id="c4-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+<marker id="c4-ar2r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Vòng đời service và thứ tự khởi động của một flow</text>
+<rect x="20" y="40" width="100" height="46" rx="8" fill="#596966"/>
+<rect x="136" y="40" width="100" height="46" rx="8" fill="#2A6F66"/>
+<rect x="252" y="40" width="100" height="46" rx="8" fill="#2A8C8C"/>
+<rect x="368" y="40" width="100" height="46" rx="8" fill="#174C43"/>
+<rect x="484" y="40" width="100" height="46" rx="8" fill="#B7791F"/>
+<rect x="600" y="40" width="100" height="46" rx="8" fill="#A64E32"/>
+<g text-anchor="middle" fill="#fff">
+<text x="70" y="59" font-size="11.5" font-weight="700">Not running</text><text x="70" y="75" font-size="9.5">chưa có process</text>
+<text x="186" y="59" font-size="11.5" font-weight="700">Starting</text><text x="186" y="75" font-size="9.5">chờ dependency</text>
+<text x="302" y="59" font-size="11.5" font-weight="700">Offered</text><text x="302" y="75" font-size="9.5">OfferService</text>
+<text x="418" y="59" font-size="11.5" font-weight="700">Active</text><text x="418" y="75" font-size="9.5">có subscriber</text>
+<text x="534" y="59" font-size="11.5" font-weight="700">Degraded</text><text x="534" y="75" font-size="9.5">thiếu dependency</text>
+<text x="650" y="59" font-size="11.5" font-weight="700">Stopping</text><text x="650" y="75" font-size="9.5">StopOffer, flush</text>
+</g>
+<g stroke="#596966" stroke-width="1.6" marker-end="url(#c4-ar2)">
+<line x1="121" y1="63" x2="135" y2="63"/>
+<line x1="237" y1="63" x2="251" y2="63"/>
+<line x1="353" y1="63" x2="367" y2="63"/>
+<line x1="469" y1="63" x2="483" y2="63"/>
+<line x1="585" y1="63" x2="599" y2="63"/>
+</g>
+<path d="M534,87 Q476,106 420,89" fill="none" stroke="#596966" stroke-width="1.4" marker-end="url(#c4-ar2)"/>
+<text x="476" y="114" text-anchor="middle" font-size="9.5" fill="#596966">hồi phục</text>
+<path d="M650,87 L650,126 L70,126 L70,89" fill="none" stroke="#A93226" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#c4-ar2r)"/>
+<text x="210" y="120" text-anchor="middle" font-size="9.5" fill="#A93226">dừng / crash / PHM báo lỗi → restart với epoch + 1</text>
+<line x1="20" y1="146" x2="700" y2="146" stroke="#C9D3CE" stroke-width="1.2" stroke-dasharray="4 4"/>
+<text x="25" y="170" font-size="12" font-weight="700" fill="#174C43">Startup ordering của flow tốc độ (giả định minh họa) · “ready” = frame Valid lên màn</text>
+<g fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.3">
+<rect x="25" y="184" width="100" height="62" rx="8"/>
+<rect x="139" y="184" width="100" height="62" rx="8"/>
+<rect x="253" y="184" width="100" height="62" rx="8"/>
+<rect x="367" y="184" width="100" height="62" rx="8"/>
+<rect x="481" y="184" width="100" height="62" rx="8"/>
+<rect x="595" y="184" width="100" height="62" rx="8"/>
+</g>
+<g stroke="#596966" stroke-width="1.5" marker-end="url(#c4-ar2)">
+<line x1="126" y1="215" x2="138" y2="215"/>
+<line x1="240" y1="215" x2="252" y2="215"/>
+<line x1="354" y1="215" x2="366" y2="215"/>
+<line x1="468" y1="215" x2="480" y2="215"/>
+<line x1="582" y1="215" x2="594" y2="215"/>
+</g>
+<g text-anchor="middle">
+<text x="75" y="202" font-size="11" font-weight="700" fill="#A64E32">t = 0</text><text x="75" y="219" font-size="10.5" font-weight="700" fill="#174C43">Power on</text><text x="75" y="235" font-size="9.5" fill="#1c2928">bootloader, ROM</text>
+<text x="189" y="202" font-size="11" font-weight="700" fill="#A64E32">≈ 0,4 s</text><text x="189" y="219" font-size="10.5" font-weight="700" fill="#174C43">Hypervisor</text><text x="189" y="235" font-size="9.5" fill="#1c2928">VM Cluster boot</text>
+<text x="303" y="202" font-size="11" font-weight="700" fill="#A64E32">≈ 0,9 s</text><text x="303" y="219" font-size="10.5" font-weight="700" fill="#174C43">EM khởi động</text><text x="303" y="235" font-size="9.5" fill="#1c2928">vehicle-data svc</text>
+<text x="417" y="202" font-size="11" font-weight="700" fill="#A64E32">≈ 1,1 s</text><text x="417" y="219" font-size="10.5" font-weight="700" fill="#174C43">OfferService</text><text x="417" y="235" font-size="9.5" fill="#1c2928">VehicleSpeed</text>
+<text x="531" y="202" font-size="11" font-weight="700" fill="#A64E32">≈ 1,3 s</text><text x="531" y="219" font-size="10.5" font-weight="700" fill="#174C43">HMI Subscribe</text><text x="531" y="235" font-size="9.5" fill="#1c2928">nhận Ack + field</text>
+<text x="645" y="202" font-size="11" font-weight="700" fill="#A64E32">≈ 1,5 s</text><text x="645" y="219" font-size="10.5" font-weight="700" fill="#174C43">Frame Valid</text><text x="645" y="235" font-size="9.5" fill="#1c2928">đầu tiên lên màn</text>
+</g>
+<g text-anchor="middle" font-size="9.5" font-style="italic" fill="#596966">
+<text x="75" y="262">platform</text><text x="189" y="262">platform</text><text x="303" y="262">runtime (EM)</text><text x="417" y="262">middleware (SD)</text><text x="531" y="262">middleware</text><text x="645" y="262">application</text>
+</g>
+<text x="360" y="288" text-anchor="middle" font-size="10" font-style="italic" fill="#596966">Mọi mốc ghi theo cùng time base; consumer phải chịu được service đến muộn, biến mất rồi xuất hiện lại</text>
+</svg>
+<figcaption>Restart luôn quay về đầu vòng với epoch mới; "ready <span class="term-gloss">(sẵn sàng)</span>" của flow <span class="term-gloss">(luồng)</span> được đo tới mốc người lái nhìn thấy, không tới lúc process start <span class="term-gloss">(bắt đầu, khởi động)</span>.</figcaption>
+</figure>
+<p>Lifecycle viết thành contract:</p>
+<pre><code>service VehicleSpeed · lifecycle contract
+NOT_RUNNING → STARTING  : EM khởi động theo manifest
+STARTING    → OFFERED   : init OK → OfferService, epoch + 1
+OFFERED     → ACTIVE    : có SubscribeEventgroupAck
+ACTIVE     ⇄ DEGRADED   : mất/có lại nguồn phụ; quality = Degraded
+ACTIVE|DEGRADED → STOPPING : shutdown → StopOfferService, flush, persist
+bất kỳ → NOT_RUNNING    : crash/PHM → restart tối đa 3 lần / 60 s (giả định minh họa)
+Consumer : chỉ tin quality = Valid và epoch hiện tại; còn lại hiển thị "--"</code></pre>
+<ol class="steps">
+<li><span class="term">Execution Management <span class="term-gloss">(quản lý khởi chạy, giám sát process trong AUTOSAR Adaptive)</span></span> khởi động process <span class="term-gloss">(quy trình, hoặc tiến trình trong OS)</span> theo dependency <span class="term-gloss">(sự phụ thuộc giữa các thành phần)</span> và startup timeout.</li>
+<li>Process gọi <code>ReportExecutionState(kRunning)</code> sau khi init <span class="term-gloss">(khởi tạo; tiến trình đầu tiên của Linux)</span> xong.</li>
+<li><span class="term">State Management <span class="term-gloss">(quản lý trạng thái máy/chức năng trong AUTOSAR Adaptive)</span></span> chuyển function group <span class="term-gloss">(nhóm)</span> theo trạng thái xe (Parking <span class="term-gloss">(đỗ xe)</span>, Driving <span class="term-gloss">(trạng thái xe đang chạy, một vehicle mode)</span>, OTA…).</li>
+<li>Consumer find/subscribe, không giả định thứ tự service khác domain.</li>
+<li><span class="term">Platform Health Management</span> báo lỗi cho SM <span class="term-gloss">(State Management – quản lý trạng thái máy trong AUTOSAR Adaptive)</span>; SM chọn restart cục bộ hay degraded <span class="term-gloss">(suy giảm có kiểm soát)</span>.</li>
+<li>Đo "ready" từ power on <span class="term-gloss">(bật nguồn, mốc 0 đo thời gian khởi động)</span> tới frame Valid trên màn: cold boot <span class="term-gloss">(khởi động nguội từ trạng thái tắt hẳn)</span>, warm restart <span class="term-gloss">(khởi động lại ấm, một phần vẫn chạy)</span>, OTA first boot <span class="term-gloss">(lần khởi động đầu tiên)</span>.</li>
+</ol>
+<p><b>Graceful shutdown <span class="term-gloss">(dừng có thứ tự, lưu dữ liệu trước khi tắt)</span></b>: StopOfferService để consumer chuyển Stale <span class="term-gloss">(cũ, quá hạn)</span> → flush log <span class="term-gloss">(xả bộ đệm xuống nơi lưu trữ thật)</span>, persistency <span class="term-gloss">(lưu dữ liệu bền vững qua reboot, mất điện)</span> → dừng ngược thứ tự dependency → quá timeout cứng thì EM <span class="term-gloss">(Execution Management – khởi động, dừng process trong AUTOSAR Adaptive)</span> kết thúc process.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Kênh giao tiếp chọn theo ranh giới; gateway giữ sample time gốc. Consumer phải chịu được service <b>chưa có, mất, quay lại với epoch mới, sai version, nhiều instance</b>. Lifecycle là contract do EM/SM điều khiển; restart hay degraded do <b>State Management</b> quyết định.</p>
+</div>
+
+<!-- 2.3 -->
+<h3 id="p2-3">2.3 Scheduling, resource arbitration, isolation và observability</h3>
+
+<h4>a) Scheduling qua nhiều VM và OS</h4>
+<p>Latency <span class="term-gloss">(độ trễ)</span> trong VM phụ thuộc <b>hai tầng scheduler <span class="term-gloss">(bộ lập lịch)</span></b>: guest OS <span class="term-gloss">(hệ điều hành khách chạy trong VM)</span> và hypervisor. Priority <span class="term-gloss">(mức ưu tiên)</span> cao trong guest <span class="term-gloss">(hệ điều hành/VM chạy trên hypervisor)</span> vô nghĩa nếu hypervisor không cho vCPU <span class="term-gloss">(virtual CPU – CPU ảo mà guest nhìn thấy)</span> chạy; zone MCU thêm tầng OS Classic.</p>
+<div class="table-scroll"><table><thead><tr><th>Workload <span class="term-gloss">(khối công việc chạy trên hệ thống)</span></th><th>Policy scheduling</th><th>Budget (giả định minh họa)</th></tr></thead><tbody>
+<tr><td>Cluster render (VM QNX)</td><td>vCPU pin 2 core <span class="term-gloss">(nhân CPU; hoặc phần lõi)</span> riêng, priority cao</td><td>≤ 8 ms CPU/frame <span class="term-gloss">(khung dữ liệu trên bus; khung hình)</span> 60 Hz</td></tr>
+<tr><td>Vehicle-data service <span class="term-gloss">(dịch vụ cung cấp dữ liệu xe dùng chung)</span></td><td>RT class <span class="term-gloss">(lớp lập lịch, hạng ưu tiên)</span>, chu kỳ 20 ms</td><td>≤ 1 ms/chu kỳ</td></tr>
+<tr><td>ADAS perception <span class="term-gloss">(nhận thức môi trường từ dữ liệu cảm biến)</span></td><td>Time partition <span class="term-gloss">(phân vùng thời gian CPU cố định cho từng VM)</span> + NPU riêng</td><td>Theo frame camera 33 ms</td></tr>
+<tr><td>IVI Android <span class="term-gloss">(hệ điều hành mở của Google)</span></td><td>4 core chia sẻ, best-effort <span class="term-gloss">(cố gắng hết mức nhưng không bảo đảm)</span></td><td>Phần còn lại</td></tr>
+<tr><td>OTA download, verify <span class="term-gloss">(kiểm tra, xác minh)</span></td><td>Priority thấp, chạy khi rảnh</td><td>Giới hạn I/O <span class="term-gloss">(Input/Output – vào/ra)</span>, băng thông</td></tr>
+</tbody></table></div>
+<ul>
+<li>VM safety không chia core với VM QM khi cần chứng minh <b>temporal freedom from interference <span class="term-gloss">(không bị can nhiễu giữa các phần)</span></b>.</li>
+<li>Mutex <span class="term-gloss">(mutual exclusion – khóa loại trừ lẫn nhau)</span> dùng chung cần priority inheritance/ceiling <span class="term-gloss">(kế thừa ưu tiên chống đảo ưu tiên)</span> chống <span class="term">priority inversion <span class="term-gloss">(đảo ưu tiên)</span></span>.</li>
+</ul>
+
+<h4>b) Resource arbitration: ai thắng khi tranh chấp</h4>
+<div class="table-scroll"><table><thead><tr><th>Tài nguyên</th><th>Cơ chế phân xử</th><th>Luật khi xung đột</th></tr></thead><tbody>
+<tr><td>CPU</td><td>vCPU pinning <span class="term-gloss">(gắn cố định vCPU vào một lõi CPU thật)</span>, quota, time partition</td><td>Safety &gt; lái &gt; comfort <span class="term-gloss">(tiện nghi)</span></td></tr>
+<tr><td>GPU, display <span class="term-gloss">(màn hình, hiển thị)</span></td><td>GPU preemption <span class="term-gloss">(chiếm quyền chạy)</span>, layer <span class="term-gloss">(lớp, tầng)</span> riêng cho cluster</td><td>Telltale <span class="term-gloss">(đèn báo trên cụm đồng hồ)</span> không phụ thuộc IVI</td></tr>
+<tr><td>Memory bandwidth <span class="term-gloss">(băng thông bộ nhớ)</span></td><td>QoS bộ nhớ, cache partitioning</td><td>Hạ budget IVI khi cluster chạm ngưỡng</td></tr>
+<tr><td>Ethernet</td><td>VLAN + PCP <span class="term-gloss">(Priority Code Point – trường ưu tiên 3 bit trong VLAN tag)</span>, <span class="term">TSN <span class="term-gloss">(Time-Sensitive Networking – Ethernet bảo đảm đúng giờ)</span></span> 802.1Qav/Qbv, rate limit <span class="term-gloss">(giới hạn tần suất request)</span></td><td>Control <span class="term-gloss">(điều khiển; biện pháp kiểm soát)</span> &gt; stream &gt; OTA/log <span class="term-gloss">(nhật ký sự kiện)</span></td></tr>
+<tr><td>CAN bus</td><td>Arbitration <span class="term-gloss">(phân xử khi nhiều bên tranh tài nguyên)</span> theo CAN ID</td><td>ID thấp cho safety</td></tr>
+<tr><td>Storage <span class="term-gloss">(bộ nhớ lưu trữ lâu dài như flash, eMMC)</span></td><td>I/O scheduler, quota</td><td>Log không chặn persistency</td></tr>
+</tbody></table></div>
+<p><span class="term">Admission control <span class="term-gloss">(kiểm soát chấp nhận tải mới theo budget)</span></span>: app mới trên IVI chỉ được cài nếu còn budget, không lấn phần của cluster.</p>
+
+<h4>c) Isolation: ba lớp chặn</h4>
+<div class="table-scroll"><table><thead><tr><th>Loại</th><th>Chặn</th><th>Cơ chế</th><th>Chứng minh</th></tr></thead><tbody>
+<tr><td><b>Spatial <span class="term-gloss">(thuộc về không gian, bộ nhớ)</span></b></td><td>Truy cập nhầm bộ nhớ, device <span class="term-gloss">(thiết bị phần cứng)</span></td><td>MMU, stage-2 <span class="term-gloss">(giai đoạn 2 dịch địa chỉ do hypervisor làm)</span>, IOMMU/SMMU <span class="term-gloss">(System Memory Management Unit – IOMMU trên kiến trúc Arm)</span></td><td>Test <span class="term-gloss">(kiểm thử)</span> truy cập trái phép</td></tr>
+<tr><td><b>Temporal <span class="term-gloss">(thuộc về thời gian)</span></b></td><td>Làm domain khác trễ hạn</td><td>vCPU pinning, budget, watchdog</td><td>Đo deadline cluster khi IVI stress <span class="term-gloss">(tải nặng, áp lực)</span></td></tr>
+<tr><td><b>Fault containment <span class="term-gloss">(ngăn lỗi lan từ thành phần này sang thành phần khác)</span></b></td><td>Crash <span class="term-gloss">(sập đột ngột)</span>, overload <span class="term-gloss">(quá tải)</span> lan</td><td>Restart cục bộ, bounded queue <span class="term-gloss">(hàng đợi có giới hạn và chính sách bỏ)</span>, circuit breaker <span class="term-gloss">(cầu dao ngắt gọi service lỗi)</span></td><td>Kill VM IVI, cluster vẫn đạt deadline <span class="term-gloss">(hạn chót)</span></td></tr>
+</tbody></table></div>
+
+<h4>d) Observability xuyên domain</h4>
+<ul>
+<li><b>Time base <span class="term-gloss">(gốc thời gian chung để đóng timestamp)</span> chung</b>: <span class="term">gPTP</span>, StbM <span class="term-gloss">(Synchronized Time-Base Manager – quản lý thời gian đồng bộ)</span>/ara::tsync <span class="term-gloss">(API đồng bộ thời gian của AUTOSAR Adaptive)</span>; timestamp <span class="term-gloss">(dấu thời gian)</span> ghi kèm <code>clock_domain</code> và uncertainty <span class="term-gloss">(sự không chắc chắn)</span>.</li>
+<li><b>Correlation ID</b>: <code>service/instance + epoch + sequence</code> cho dữ liệu chu kỳ, <code>request_id</code> cho request <span class="term-gloss">(yêu cầu, lời gọi)</span>.</li>
+<li><b>Metric <span class="term-gloss">(chỉ số đo lường)</span> theo hop <span class="term-gloss">(chặng truyền giữa hai thành phần)</span></b>: latency p99/max <span class="term-gloss">(phân vị 99 và giá trị lớn nhất)</span>, queue <span class="term-gloss">(hàng đợi chờ xử lý)</span>, drop <span class="term-gloss">(bỏ, làm rơi dữ liệu)</span>, timeout, restart, sự kiện SD.</li>
+<li><b>Log</b>: <span class="term">DLT</span>; log Android/Linux <span class="term-gloss">(hệ điều hành mã nguồn mở)</span> ít nhất cùng time base.</li>
+</ul>
+<pre><code>trace_record   (một hop của VehicleSpeed)
+  correlation_id : VehicleSpeed/inst1/epoch=7/seq=1042
+  hop            : zone_front.gateway → vm_cluster.vehicle_data
+  t_sample       : 1234.567890 s   clock = gPTP   ±50 µs
+  t_receive      : 1234.571900 s   clock = vm_cluster.monotonic, offset +0.4 ms ±0.5 ms
+  quality        : Valid   e2e_status : OK
+  (số liệu giả định minh họa)</code></pre>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Latency trong VM phụ thuộc <b>hai tầng scheduler</b>, nên workload safety cần vCPU pinning và budget riêng. Mỗi tài nguyên chung cần luật phân xử viết trước; isolation phải chứng minh bằng test. Observability cần <b>time base chung, correlation ID và metric theo hop</b>.</p>
+</div>
+
+<!-- 2.4 -->
+<h3 id="p2-4">2.4 Data consistency, timing, event flow và failure propagation</h3>
+
+<h4>a) Data consistency: mỗi dữ liệu có một nguồn gốc</h4>
+<div class="table-scroll"><table><thead><tr><th>Dữ liệu</th><th>Single source of truth</th><th>Cách resync</th></tr></thead><tbody>
+<tr><td>Vehicle mode <span class="term-gloss">(chế độ xe: đỗ, lái, sạc)</span></td><td>State Management</td><td>Field: subscribe là có giá trị hiện tại</td></tr>
+<tr><td>Door / lock state</td><td>Body zone</td><td>Field notifier <span class="term-gloss">(event báo khi giá trị field thay đổi)</span>; app không suy từ lệnh đã gửi</td></tr>
+<tr><td>Driver profile <span class="term-gloss">(hồ sơ cài đặt cá nhân)</span></td><td>IVI (đồng bộ cloud)</td><td>Version + timestamp; chỉ owner ghi</td></tr>
+<tr><td>Vehicle speed <span class="term-gloss">(tín hiệu tốc độ xe)</span></td><td>Chassis ECU</td><td>Event chu kỳ; không cache <span class="term-gloss">(bộ nhớ đệm)</span> qua restart</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>Freshness</b>: tuổi tính từ <b>sample time</b>; quá max age thì Stale, không thay bằng 0.</li>
+<li><b>Timestamp</b>: không trừ hai timestamp khác <code>clock_domain</code> khi chưa biết offset <span class="term-gloss">(độ lệch)</span>.</li>
+<li><b>Ordering <span class="term-gloss">(bảo đảm thứ tự)</span></b>: so cặp (epoch, sequence <span class="term-gloss">(trình tự, chuỗi theo thứ tự)</span>) vì sequence reset <span class="term-gloss">(đặt lại)</span> sau restart.</li>
+<li><b>Idempotent <span class="term-gloss">(lũy đẳng: xử lý lặp lại vẫn cho cùng kết quả)</span></b>: event at-least-once <span class="term-gloss">(giao ít nhất một lần, có thể trùng)</span> có thể trùng, xử lý theo <code>request_id</code>.</li>
+<li><b>Tổ hợp signal <span class="term-gloss">(tín hiệu dữ liệu xe trên bus)</span></b> (door + speed): snapshot <span class="term-gloss">(ảnh chụp trạng thái tại một thời điểm)</span> cùng thời điểm hoặc max age từng signal.</li>
+</ul>
+
+<h4>b) Timing: budget end-to-end cho một luồng</h4>
+<p>Cảnh báo va chạm ADAS → cluster, budget 100 ms (giả định minh họa):</p>
+<div class="table-scroll"><table><thead><tr><th>Hop</th><th class="c">Budget p99 <span class="term-gloss">(phân vị 99)</span></th><th>Đo bằng</th></tr></thead><tbody>
+<tr><td>Phát hiện → publish <span class="term-gloss">(phát, công bố dữ liệu)</span></td><td class="c">40 ms</td><td>Trace ADAS, gPTP</td></tr>
+<tr><td>ADAS → central (Ethernet)</td><td class="c">5 ms</td><td>Capture <span class="term-gloss">(thu nhận, ghi lại dữ liệu)</span> có hardware timestamp <span class="term-gloss">(dấu thời gian do phần cứng gán)</span></td></tr>
+<tr><td>Middleware → cluster app</td><td class="c">5 ms</td><td>Trace hai phía</td></tr>
+<tr><td>Render + compose <span class="term-gloss">(ghép, hợp thành)</span></td><td class="c">33 ms</td><td>Graphics trace, vblank <span class="term-gloss">(vertical blanking – khoảng nghỉ giữa hai lần quét)</span></td></tr>
+<tr><td>Scanout <span class="term-gloss">(đọc framebuffer đẩy ra màn hình)</span></td><td class="c">17 ms</td><td>Camera ngoài, photodiode <span class="term-gloss">(cảm biến quang đo thời điểm điểm ảnh đổi sáng)</span></td></tr>
+<tr class="total"><td>Tổng</td><td class="c">100 ms</td><td>Đo trực tiếp end-to-end</td></tr>
+</tbody></table></div>
+<p>Trung bình che lần chậm nhất. Budget để chia trách nhiệm; kết luận "đạt" chỉ dựa trên đo end-to-end ở tải xấu nhất, ghi kèm build <span class="term-gloss">(bản dựng phần mềm)</span>, variant <span class="term-gloss">(biến thể sản phẩm theo thị trường/trang bị)</span>, tải.</p>
+
+<h4>c) Event flow và backpressure</h4>
+<p>Mỗi event khai <span class="term">delivery semantics <span class="term-gloss">(cam kết giao nhận của kênh)</span></span>: at-most-once <span class="term-gloss">(giao nhiều nhất một lần, có thể mất)</span> có thể mất, at-least-once có thể trùng. <b>State</b> đọc lại được (trạng thái cửa là field), <b>event</b> mất là mất ("cửa vừa mở").</p>
+<div class="table-scroll"><table><thead><tr><th>Policy khi queue đầy</th><th>Dùng cho</th><th>DDS QoS</th></tr></thead><tbody>
+<tr><td>Latest value <span class="term-gloss">(giá trị)</span></td><td>State chu kỳ: speed</td><td>KEEP <span class="term-gloss">(giữ lại)</span>_LAST depth <span class="term-gloss">(độ sâu)</span> 1</td></tr>
+<tr><td>Drop-oldest <span class="term-gloss">(bỏ phần tử cũ nhất khi hàng đợi đầy)</span>, bounded <span class="term-gloss">(có giới hạn kích thước)</span></td><td>Stream: camera 360</td><td>KEEP_LAST depth N, LIFESPAN <span class="term-gloss">(QoS DDS giới hạn thời gian sống của mẫu dữ liệu)</span></td></tr>
+<tr><td>Reliable <span class="term-gloss">(đáng tin cậy)</span> + history <span class="term-gloss">(lịch sử)</span></td><td>Event không được mất: cảnh báo, DTC <span class="term-gloss">(Diagnostic Trouble Code – mã lỗi chẩn đoán)</span></td><td>RELIABLE, KEEP_ALL <span class="term-gloss">(tất cả)</span> có giới hạn</td></tr>
+<tr><td>Backpressure <span class="term-gloss">(áp lực ngược buộc producer chậm lại)</span></td><td>Lệnh remote, ghi persistency</td><td>Reliable writer <span class="term-gloss">(bên ghi dữ liệu)</span> bị chặn</td></tr>
+</tbody></table></div>
+<p>Producer safety không chờ consumer QM: ở ranh giới đó dùng latest value hoặc drop-oldest kèm drop counter <span class="term-gloss">(bộ đếm)</span>.</p>
+
+<h4>d) Failure propagation: lỗi lan theo đường nào, dừng ở đâu</h4>
+<figure class="fig">
+<svg viewBox="0 0 720 380" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Sequence diagram luồng tốc độ qua các domain, zone restart và lỗi bị chặn ở vehicle service">
+<defs>
+<marker id="c4-ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#174C43"/></marker>
+<marker id="c4-ar3r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Event flow xuyên domain: timestamp theo hop và nơi lỗi bị chặn</text>
+<g>
+<rect x="21" y="34" width="118" height="34" rx="7" fill="#2A6F66"/>
+<rect x="161" y="34" width="118" height="34" rx="7" fill="#2A6F66"/>
+<rect x="301" y="34" width="118" height="34" rx="7" fill="#174C43"/>
+<rect x="441" y="34" width="118" height="34" rx="7" fill="#2A8C8C"/>
+<rect x="581" y="34" width="118" height="34" rx="7" fill="#174C43"/>
+</g>
+<g text-anchor="middle" fill="#fff">
+<text x="80" y="49" font-size="11" font-weight="700">Chassis ECU</text><text x="80" y="62" font-size="9.5">CAN FD</text>
+<text x="220" y="49" font-size="11" font-weight="700">Zone ZCU</text><text x="220" y="62" font-size="9.5">gateway</text>
+<text x="360" y="49" font-size="11" font-weight="700">Vehicle service</text><text x="360" y="62" font-size="9.5">VM Cluster</text>
+<text x="500" y="49" font-size="11" font-weight="700">Audio</text><text x="500" y="62" font-size="9.5">VM IVI</text>
+<text x="640" y="49" font-size="11" font-weight="700">Cluster HMI</text><text x="640" y="62" font-size="9.5">VM Cluster</text>
+</g>
+<g stroke="#9FB0AC" stroke-width="1.2" stroke-dasharray="4 4">
+<line x1="80" y1="68" x2="80" y2="352"/><line x1="220" y1="68" x2="220" y2="352"/><line x1="360" y1="68" x2="360" y2="352"/><line x1="500" y1="68" x2="500" y2="352"/><line x1="640" y1="68" x2="640" y2="352"/>
+</g>
+<g stroke="#174C43" stroke-width="1.6" marker-end="url(#c4-ar3)">
+<line x1="80" y1="96" x2="218" y2="96"/>
+<line x1="220" y1="122" x2="358" y2="122"/>
+<line x1="360" y1="150" x2="638" y2="150"/>
+<line x1="360" y1="172" x2="498" y2="172"/>
+</g>
+<g text-anchor="middle" font-size="9.5" fill="#1c2928" stroke="#fff" stroke-width="3" paint-order="stroke">
+<text x="150" y="91">frame 0x123 · t_s = 0</text>
+<text x="290" y="117">SOME/IP event · +3 ms</text>
+<text x="570" y="145">seq 41 · age 9 ms</text>
+<text x="430" y="167">seq 41 · age 6 ms</text>
+</g>
+<line x1="20" y1="186" x2="700" y2="186" stroke="#C9D3CE" stroke-width="1.2" stroke-dasharray="4 4"/>
+<rect x="170" y="194" width="100" height="24" rx="7" fill="#A93226"/>
+<text x="220" y="210" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">ZCU restart</text>
+<line x1="220" y1="232" x2="356" y2="232" stroke="#A93226" stroke-width="1.4" stroke-dasharray="3 4"/>
+<text x="290" y="227" text-anchor="middle" font-size="9.5" fill="#A93226" stroke="#fff" stroke-width="3" paint-order="stroke">không có frame mới</text>
+<rect x="296" y="242" width="128" height="40" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.8"/>
+<text x="360" y="258" text-anchor="middle" font-size="10" font-weight="700" fill="#A93226">age &gt; max 100 ms</text>
+<text x="360" y="273" text-anchor="middle" font-size="9.5" fill="#1c2928">quality = Stale</text>
+<text x="220" y="266" text-anchor="middle" font-size="9.5" fill="#596966" stroke="#fff" stroke-width="3" paint-order="stroke">offer lại sau ≈1,2 s</text>
+<g stroke="#A93226" stroke-width="1.5" marker-end="url(#c4-ar3r)">
+<line x1="360" y1="294" x2="638" y2="294"/>
+<line x1="360" y1="308" x2="498" y2="308"/>
+</g>
+<text x="570" y="289" text-anchor="middle" font-size="9.5" fill="#A93226" stroke="#fff" stroke-width="3" paint-order="stroke">quality = Stale</text>
+<rect x="586" y="318" width="108" height="26" rx="7" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/>
+<text x="640" y="335" text-anchor="middle" font-size="10" font-weight="700" fill="#174C43">hiển thị “--”</text>
+<rect x="446" y="318" width="108" height="26" rx="7" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/>
+<text x="500" y="335" text-anchor="middle" font-size="10" font-weight="700" fill="#174C43">volume mặc định</text>
+<text x="360" y="372" text-anchor="middle" font-size="10" font-style="italic" fill="#596966">Lỗi dừng ở vehicle service: không giá trị cũ nào đi tiếp như Valid; HMI và audio vào degraded, không restart theo (giả định minh họa)</text>
+</svg>
+<figcaption>Điểm chặn nằm ở chỗ có đủ thông tin (sample time, max age) — vehicle service <span class="term-gloss">(dịch vụ cung cấp dữ liệu/chức năng xe)</span>; consumer chỉ cần phản ứng đúng với quality, không phải tự đoán.</figcaption>
+</figure>
+<div class="table-scroll"><table><thead><tr><th>Cơ chế lan</th><th>Ví dụ trong CDC</th><th>Containment <span class="term-gloss">(khoanh vùng, ngăn chặn)</span></th></tr></thead><tbody>
+<tr><td>Dữ liệu cũ đi như Valid</td><td>Gateway gửi lại frame cũ sau restart</td><td>Quality, sample time, epoch, plausibility</td></tr>
+<tr><td>Timeout chain <span class="term-gloss">(chuỗi chờ timeout lan truyền)</span></td><td>IVI chờ connectivity chờ cloud</td><td>Timeout trong ngắn hơn ngoài, fail-fast <span class="term-gloss">(thất bại nhanh, báo lỗi ngay)</span></td></tr>
+<tr><td>Retry storm <span class="term-gloss">(bão thử lại dồn dập)</span></td><td>Mọi consumer retry <span class="term-gloss">(thử lại)</span> khi zone offer lại</td><td>Backoff <span class="term-gloss">(chờ lâu dần trước khi thử lại)</span> có jitter <span class="term-gloss">(độ dao động thời gian)</span>, <span class="term">circuit breaker</span></td></tr>
+<tr><td>Resource exhaustion <span class="term-gloss">(cạn tài nguyên)</span></td><td>Queue không giới hạn chiếm DRAM <span class="term-gloss">(Dynamic Random-Access Memory – bộ nhớ RAM chính)</span> chung</td><td>Bounded queue, quota</td></tr>
+<tr><td>Cascading restart <span class="term-gloss">(restart dây chuyền)</span></td><td>Restart A làm B, C restart theo</td><td>Tự resubscribe, restart budget, SM quyết định</td></tr>
+</tbody></table></div>
+<pre><code>policy: VehicleSpeed · consumer = cluster HMI
+  expected_cycle : 20 ms;  max_age : 100 ms → Stale, hiển thị "--"
+  on_new_epoch   : bỏ giá trị cũ, chờ bản tin Valid đầu tiên
+  fallback_value : không có (không giữ giá trị cuối, không hiển thị 0)
+  restart        : resubscribe, không restart HMI
+policy: RemoteUnlock · connectivity → body
+  timeout 2 s; retry ≤ 2, backoff 500 ms × 2^n + jitter
+  idempotency_key : request_id
+  circuit_breaker : mở sau 5 lỗi / 60 s, half-open sau 30 s
+  fallback        : báo "chưa xác nhận được", KHÔNG giả định đã mở
+  (giá trị giả định minh họa)</code></pre>
+<p><b>Degraded mode <span class="term-gloss">(chế độ suy giảm có kiểm soát)</span></b> định nghĩa trước: IVI crash thì cluster vẫn hiện tốc độ, telltale; mất ADAS thì báo "hỗ trợ lái không khả dụng"; mất connectivity thì tắt remote service.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Mỗi dữ liệu có <b>một single source of truth</b>, kèm sample time, epoch, sequence, quality. Timing chỉ kết luận bằng đo end-to-end ở tải xấu nhất; backpressure không lan vào domain có deadline. Mỗi đường lỗi lan cần <b>điểm chặn</b>, policy timeout/fallback <span class="term-gloss">(phương án dự phòng)</span> và degraded mode định sẵn.</p>
+</div>
+
+<!-- 2.5 -->
+<h3 id="p2-5">2.5 Boundary giữa runtime, middleware, platform và application</h3>
+
+<h4>a) Mỗi tầng làm gì trong luồng cross-domain</h4>
+<div class="table-scroll"><table><thead><tr><th>Tầng</th><th>Trách nhiệm</th><th>Không nên làm</th><th>Ví dụ</th></tr></thead><tbody>
+<tr><td><b>Platform</b></td><td>SoC, hypervisor, OS, driver <span class="term-gloss">(trình điều khiển phần cứng; hoặc yếu tố thúc đẩy)</span>, partition, time sync <span class="term-gloss">(đồng bộ thời gian giữa các ECU/OS)</span></td><td>Chứa logic feature <span class="term-gloss">(tính năng)</span></td><td>Hypervisor, kernel <span class="term-gloss">(nhân hệ điều hành)</span>, driver</td></tr>
+<tr><td><b>Runtime</b></td><td>Lifecycle, scheduling, budget, health, restart policy</td><td>Hiểu semantics signal</td><td>EM, SM, PHM; Android init</td></tr>
+<tr><td><b>Middleware</b></td><td>Communication <span class="term-gloss">(giao tiếp, truyền thông)</span>, discovery, QoS, version, phát hiện timeout, báo quality</td><td>Tự sửa dữ liệu, nuốt lỗi, giữ giá trị cũ</td><td>ara::com, SOME/IP, DDS; Binder, VHAL</td></tr>
+<tr><td><b>Application</b></td><td>Logic <span class="term-gloss">(phần quy tắc xử lý)</span>, HMI, plausibility, degraded policy</td><td>Truy cập trực tiếp bus, phụ thuộc layout domain khác</td><td>Cluster, IVI app, ADAS function <span class="term-gloss">(chức năng; hàm)</span></td></tr>
+</tbody></table></div>
+
+<h4>b) Những quyết định hay bị đặt sai tầng</h4>
+<div class="table-scroll"><table><thead><tr><th>Quyết định</th><th>Tầng sở hữu</th></tr></thead><tbody>
+<tr><td>Phát hiện service mất</td><td>Middleware: báo trạng thái, không tự xử</td></tr>
+<tr><td>Hiển thị "--" hay giá trị cuối khi Stale</td><td>Application: biết safety requirement <span class="term-gloss">(yêu cầu an toàn)</span></td></tr>
+<tr><td>Restart, restart budget</td><td>Runtime (EM/SM/PHM): tránh cascading restart</td></tr>
+<tr><td>Chuyển degraded mode</td><td>SM thực thi, policy do system <span class="term-gloss">(hệ thống)</span>/application định nghĩa</td></tr>
+<tr><td>Chia core, memory <span class="term-gloss">(bộ nhớ)</span> giữa VM</td><td>Platform: cấu hình hypervisor, bằng chứng FFI <span class="term-gloss">(Freedom From Interference – không bị can nhiễu)</span></td></tr>
+<tr><td>Mapping CAN → service</td><td>Gateway chạy, owner domain nguồn duyệt</td></tr>
+<tr><td>Retry, backoff</td><td>Cơ chế ở middleware, tham số ở application</td></tr>
+</tbody></table></div>
+
+<h4>c) Ranh giới đi kèm owner</h4>
+<figure class="fig">
+<svg viewBox="0 0 720 320" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Bốn tầng platform, runtime, middleware, application với phản ứng khi tốc độ bị Stale và owner của từng tầng">
+<defs>
+<filter id="c4-sh4" x="-10%" y="-20%" width="120%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#174C43" flood-opacity="0.15"/></filter>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Bốn tầng, bốn owner: ai quyết định gì khi VehicleSpeed bị Stale</text>
+<g font-size="11" font-weight="700" fill="#596966" text-anchor="middle">
+<text x="220" y="45">Tầng và trách nhiệm</text>
+<text x="525" y="45">Khi speed bị Stale</text>
+<text x="665" y="45">Owner</text>
+</g>
+<g filter="url(#c4-sh4)">
+<rect x="20" y="54" width="400" height="52" rx="9" fill="#A64E32"/>
+<rect x="20" y="114" width="400" height="52" rx="9" fill="#2A8C8C"/>
+<rect x="20" y="174" width="400" height="52" rx="9" fill="#174C43"/>
+<rect x="20" y="234" width="400" height="52" rx="9" fill="#2A6F66"/>
+</g>
+<g fill="#fff">
+<text x="36" y="75" font-size="12" font-weight="700">Application (HMI, cảnh báo, logic domain)</text>
+<text x="36" y="93" font-size="10" opacity="0.92">logic chức năng, plausibility, quyết định hiển thị khi dữ liệu xấu</text>
+<text x="36" y="135" font-size="12" font-weight="700">Middleware (ara::com, SOME/IP, DDS, gateway)</text>
+<text x="36" y="153" font-size="10" opacity="0.92">giao tiếp, serialization, discovery, QoS, phát hiện timeout</text>
+<text x="36" y="195" font-size="12" font-weight="700">Runtime (EM, SM, PHM, scheduler)</text>
+<text x="36" y="213" font-size="10" opacity="0.92">lifecycle, startup order, restart policy, resource budget, health</text>
+<text x="36" y="255" font-size="12" font-weight="700">Platform (SoC, hypervisor, OS, BSP)</text>
+<text x="36" y="273" font-size="10" opacity="0.92">partition VM, driver, boot, time sync, isolation, security base</text>
+</g>
+<g fill="#fff" stroke="#8FA5A0" stroke-width="1.2">
+<rect x="432" y="54" width="186" height="52" rx="9"/>
+<rect x="432" y="114" width="186" height="52" rx="9"/>
+<rect x="432" y="174" width="186" height="52" rx="9"/>
+<rect x="432" y="234" width="186" height="52" rx="9"/>
+</g>
+<g text-anchor="middle" font-size="10" fill="#1c2928">
+<text x="525" y="76">hiển thị “--”, tắt cảnh báo</text><text x="525" y="92">phụ thuộc speed</text>
+<text x="525" y="136">đánh dấu Stale sau max age,</text><text x="525" y="152">không tự giữ giá trị cũ</text>
+<text x="525" y="196">không restart HMI; restart</text><text x="525" y="212">producer theo budget</text>
+<text x="525" y="256">giữ VM, time sync và đường</text><text x="525" y="272">hiển thị telltale riêng</text>
+</g>
+<g fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2">
+<rect x="628" y="54" width="74" height="52" rx="9"/>
+<rect x="628" y="114" width="74" height="52" rx="9"/>
+<rect x="628" y="174" width="74" height="52" rx="9"/>
+<rect x="628" y="234" width="74" height="52" rx="9"/>
+</g>
+<g text-anchor="middle" font-size="10" font-weight="700" fill="#174C43">
+<text x="665" y="76">Team</text><text x="665" y="92">HMI, ADAS</text>
+<text x="665" y="136">Team</text><text x="665" y="152">middleware</text>
+<text x="665" y="196">Team</text><text x="665" y="212">runtime</text>
+<text x="665" y="256">Team</text><text x="665" y="272">platform/BSP</text>
+</g>
+<text x="360" y="308" text-anchor="middle" font-size="10" font-style="italic" fill="#596966">Tầng dưới báo trạng thái lên trên; tầng trên quyết định theo semantics — không tầng nào làm hộ tầng khác</text>
+</svg>
+<figcaption>Cột giữa cho thấy cùng một sự cố, mỗi tầng có một phản ứng riêng; lỗi ranh giới thường đến từ một tầng làm hộ tầng khác.</figcaption>
+</figure>
+<p>Ranh giới cụ thể đổi theo stack (Classic, Adaptive, Android Automotive <span class="term-gloss">(hệ điều hành Android cho xe)</span>, Linux/QNX), nhưng mỗi boundary <span class="term-gloss">(ranh giới phân chia trách nhiệm/phạm vi)</span> phải ghi:</p>
+<ul>
+<li><b>Owner</b> của contract và từng phía.</li>
+<li><b>Contract</b>: schema <span class="term-gloss">(lược đồ, cấu trúc dữ liệu)</span>, version, timing, quality, clock <span class="term-gloss">(đồng hồ, nguồn thời gian)</span>.</li>
+<li><b>Ai phát hiện</b> timeout, <b>ai quyết định</b> phản ứng.</li>
+<li><b>Failure behavior <span class="term-gloss">(hành vi khi xảy ra lỗi)</span></b> khi phía kia chậm, mất, sai, restart.</li>
+<li><b>Permission</b> đọc, ghi, offer.</li>
+</ul>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Platform <b>cung cấp chỗ chạy</b>, runtime <b>điều khiển vòng đời và tài nguyên</b>, middleware <b>chuyển dữ liệu và báo trạng thái</b>, application quyết định theo semantics <span class="term-gloss">(ngữ nghĩa, ý nghĩa thật của dữ liệu)</span>. Tầng dưới báo lên, tầng trên quyết định; mỗi boundary ghi owner, contract, failure behavior và permission.</p>
+</div>
+
+<!-- 2.6 -->
+<h3 id="p2-6">2.6 Cách thiết kế để domain có thể tiến hóa độc lập</h3>
+
+<h4>a) Versioned service interface và luật tương thích</h4>
+<p>Để IVI OTA hằng quý mà không kéo domain khác theo, mọi phụ thuộc phải đi qua <b>service interface <span class="term-gloss">(giao diện, điểm tiếp giáp giữa hai thành phần)</span> có version</b>, không qua shared state hay layout nội bộ. SOME/IP mang major <span class="term-gloss">(lớn, chính)</span>/minor version; DDS dùng XTypes <span class="term-gloss">(đặc tả kiểu dữ liệu mở rộng được của DDS)</span>.</p>
+<div class="table-scroll"><table><thead><tr><th>Thay đổi</th><th class="c">Tương thích ngược?</th><th>Cách làm</th></tr></thead><tbody>
+<tr><td>Thêm member optional <span class="term-gloss">(tùy chọn, không bắt buộc)</span>, method, event</td><td class="c">Có → minor <span class="term-gloss">(số phiên bản phụ, thêm tính năng tương thích)</span></td><td>Consumer cũ bỏ qua</td></tr>
+<tr><td>Thêm giá trị enum <span class="term-gloss">(kiểu liệt kê tập giá trị cố định)</span></td><td class="c">Tùy consumer</td><td>An toàn nếu consumer có nhánh "unknown <span class="term-gloss">(chưa biết, chưa xác định)</span>"</td></tr>
+<tr><td>Đổi đơn vị, nghĩa (km/h <span class="term-gloss">(kilômét trên giờ)</span> → m/s <span class="term-gloss">(mét trên giây)</span>)</td><td class="c">Không → major</td><td>Chạy song song cũ và mới</td></tr>
+<tr><td>Đổi timing (20 → 50 ms, max age)</td><td class="c">Không</td><td>Là đổi contract dù schema giữ nguyên</td></tr>
+<tr><td>Xóa member <span class="term-gloss">(thành viên)</span>, method</td><td class="c">Không → major</td><td>Deprecate <span class="term-gloss">(đánh dấu sắp ngừng dùng)</span>, đo usage <span class="term-gloss">(mức sử dụng)</span>, gỡ sau hạn</td></tr>
+</tbody></table></div>
+<p>Template contract:</p>
+<pre><code>service_interface : VehicleDoorState
+  owner_domain  : Body (team body-zone)
+  version       : 2.1   (major đổi = breaking)
+  binding       : SOME/IP service 0x1234, instance 1
+  consumers     : IVI HMI, Cluster, Connectivity
+  elements      : field doors (getter + notifier); event lockChanged;
+                  method lock(request_id, doors) → {result, reason}, idempotent
+  metadata      : sample_time (gPTP), producer_epoch, sequence, quality
+  timing        : notifier khi đổi + chu kỳ 1 s; max_age 2 s
+  lifecycle     : offer ≤ 800 ms sau zone wake-up; SD TTL 3 s
+  failure       : mất service → hiển thị "không rõ", không giả định "đã khóa"
+  security      : chỉ Connectivity và IVI được gọi lock()
+  safety        : QM
+  compatibility : major 1 chạy song song tới hết release R+2
+  evidence      : consumer-driven contract test trong CI cả hai phía
+  (giá trị giả định minh họa)</code></pre>
+
+<h4>b) Kiểm chứng và tách rời mô hình</h4>
+<ul>
+<li><span class="term">Consumer-driven contract test <span class="term-gloss">(test phía consumer kiểm producer giữ contract)</span></span>: body zone làm gãy kỳ vọng của IVI thì build đỏ.</li>
+<li><b>Compatibility matrix <span class="term-gloss">(bảng tương thích giữa các phiên bản)</span></b>: tổ hợp version được phép; OTA campaign <span class="term-gloss">(đợt phát hành OTA tới một nhóm xe theo kế hoạch)</span> kiểm trước khi cài.</li>
+<li><b>Capability negotiation <span class="term-gloss">(thương lượng phiên bản giữa hai bên)</span></b>: tính năng mới chỉ bật khi domain kia báo capability <span class="term-gloss">(năng lực, khả năng)</span>, nên cài trước, bật sau.</li>
+<li><span class="term">Anti-corruption layer <span class="term-gloss">(lớp adapter dịch mô hình domain khác sang mô hình của mình)</span></span>: cluster nhận cảnh báo qua adapter <span class="term-gloss">(bộ chuyển đổi giữa hai giao diện)</span>, không dùng object list <span class="term-gloss">(danh sách)</span> nội bộ của ADAS.</li>
+<li><b>Vehicle abstraction <span class="term-gloss">(sự trừu tượng hóa)</span></b>: app đọc VehicleSpeed qua service/VHAL, không đọc CAN ID.</li>
+</ul>
+
+<h4>c) Ownership, release độc lập và Conway's law</h4>
+<p>Theo <span class="term">Conway's law <span class="term-gloss">(hệ thống phản chiếu cấu trúc giao tiếp của tổ chức)</span></span>, ranh giới team, service interface và OTA package <span class="term-gloss">(gói)</span> phải trùng nhau, nếu không ranh giới sẽ mờ dần.</p>
+<div class="table-scroll"><table><thead><tr><th>Đơn vị</th><th>Sở hữu</th><th>Release <span class="term-gloss">(phát hành phiên bản phần mềm)</span> độc lập bằng</th></tr></thead><tbody>
+<tr><td>Team domain</td><td>Service interface, OTA package</td><td>Contract có version, matrix <span class="term-gloss">(ma trận, bảng hai chiều)</span></td></tr>
+<tr><td>Team runtime / platform</td><td>Hypervisor, EM/SM/PHM, middleware</td><td>API <span class="term-gloss">(Application Programming Interface – giao diện lập trình ứng dụng)</span> ổn định, deprecation policy <span class="term-gloss">(chính sách loại bỏ dần)</span>, LTS <span class="term-gloss">(hỗ trợ dài hạn, viết tắt LTS)</span></td></tr>
+<tr><td>Architecture <span class="term-gloss">(kiến trúc)</span> / integration <span class="term-gloss">(tích hợp các thành phần chạy cùng nhau)</span></td><td>Quy tắc boundary, review contract</td><td>Review gate <span class="term-gloss">(cổng kiểm soát)</span>, test tích hợp trên target <span class="term-gloss">(mục tiêu hoặc phần cứng đích)</span></td></tr>
+</tbody></table></div>
+<p>Đổi contract breaking <span class="term-gloss">(phá vỡ tương thích)</span>:</p>
+<ol class="steps">
+<li><b>Expand</b>: producer offer song song major cũ và mới.</li>
+<li><b>Migrate <span class="term-gloss">(chuyển đổi sang hệ/tool mới)</span></b>: từng consumer chuyển trong release của mình; CI test cả hai version.</li>
+<li><b>Đo usage</b>: telemetry fleet <span class="term-gloss">(đội xe đang vận hành)</span> cho biết còn bao nhiêu xe dùng major cũ.</li>
+<li><b>Deprecate</b>: báo hạn gỡ, cập nhật matrix.</li>
+<li><b>Contract</b>: gỡ major cũ khi matrix không còn cần.</li>
+</ol>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Mọi phụ thuộc giữa domain chỉ đi qua <b>service interface có version</b>: thêm optional là minor; đổi nghĩa, timing hay xóa là breaking. Tương thích được giữ bằng contract test <span class="term-gloss">(kiểm thử tuân thủ hợp đồng giao diện)</span>, compatibility matrix, capability negotiation; thay đổi breaking đi theo <b>expand → migrate → contract <span class="term-gloss">(đổi contract theo ba bước: mở rộng, chuyển, thu gọn)</span></b>.</p>
+</div>
+
+<div class="next-prev"><a href="26_Research_Audio_System_Architecture.html">← 26 · Audio System Architecture</a><a href="../29_Assignment_3_Research_Synthesis_Architecture_Sharing.html">29 · Assignment 3: Research Synthesis &amp; Architecture Sharing →</a></div>
+</article>
+  <footer class="article-footer"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></footer>
+  </main>
+</div>
+</body>
+</html>

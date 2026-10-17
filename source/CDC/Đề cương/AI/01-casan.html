@@ -1,0 +1,45 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8">
+  <script src="../Topics/assets/site-ui.js" data-site-ui></script><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CASAN — AI Transformation SA/PTL</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/style.css">
+<style>
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 26px}
+.step{display:flex;align-items:center;gap:7px;font-family:var(--disp);font-size:14px;font-weight:600;color:var(--muted);background:light-dark(#f7f8fa, #151a27);border:1px solid var(--line);border-radius:20px;padding:6px 14px 6px 6px;transition:.15s}
+.step:hover{text-decoration:none;border-color:var(--teal);color:var(--ink)}
+.step.cur{background:light-dark(var(--ink), #2b3f78);color:#fff;border-color:var(--ink)}
+.step.sn{width:22px;height:22px;border-radius:50%;background:var(--line);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:12px;font-family:var(--mono)}
+.step.cur.sn{background:var(--orange);color:#fff}
+.gap-t td:nth-child(2){color:light-dark(#8a1f1f, #e79696)}.gap-t td:nth-child(3){color:var(--green)}
+</style>  <link rel="stylesheet" href="assets/dark.css">
+</head><body>
+<nav class="topbar"><a class="home" href="index.html">◈ AI Transformation SA/PTL</a><span class="crumb">01 / casan</span><span class="nav-actions"><a class="nav-link" href="cau-hoi-on-tap.html">Câu hỏi ôn tập</a><span class="nav-sep" aria-hidden="true"></span><a class="nav-btn" href="index.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></span></nav>
+<div class="wrap"><div class="steps"><a class="step cur" href="01-casan.html"><span class="sn">1</span>CASAN</a><a class="step" href="02-nhu-cau.html"><span class="sn">2</span>Nhu cầu SA</a><a class="step" href="03-tu-duy.html"><span class="sn">3</span>Hệ thống tư duy</a><a class="step" href="04-nang-luc.html"><span class="sn">4</span>Năng lực</a><a class="step" href="05-foundation.html"><span class="sn">5</span>Foundation</a><a class="step" href="06-program.html"><span class="sn">6</span>Program</a></div><h1>Khung CASAN của tổ chức</h1>
+<div class="doc-meta">Khung năng lực AI 5 cấp của FPT (hiệu lực 19/5/2026)</div>
+<div class="sec-intro">Khóa học này được dẫn xuất từ một mệnh lệnh của tổ chức: FPT chuẩn hóa năng lực AI theo khung CASAN. FPT Automotive cần lực lượng SA/PTL ở <b>Cấp 3 — Standard</b>.</div>
+
+<h2>Khung CASAN 5 cấp</h2>
+<table><tr><th style="width:110px">Cấp</th><th style="width:130px">Tên</th><th>Ý nghĩa</th><th style="width:230px">Hiện trạng</th></tr>
+<tr><td class="rn">Cấp 1</td><td><b>Curious</b></td><td>Tò mò, dùng AI lẻ tẻ cá nhân, không đo được hiệu suất, hiệu quả, không có quy trình rõ ràng</td><td>Hầu hết đã trải nghiệm sử dụng AI</td></tr>
+<tr><td class="rn">Cấp 2</td><td><b>Augmented</b></td><td>AI tăng cường việc cá nhân, gắn vào được một nhóm, một dự án sử dụng, có metric đo đạc cơ bản</td><td class="ok">Phần lớn mọi người đang ở đây</td></tr>
+<tr style="background:light-dark(#E6F4EC, #1b3325)"><td class="rn" style="color:var(--green)">Cấp 3</td><td><b style="color:var(--green)">Standard</b></td><td><b>AI-first Chuẩn hóa cho toàn đội: có Delegation Map + Governance + Human-in-the-loop</b></td><td class="ok"><b>Mục đích của khóa học</b></td></tr>
+<tr><td class="rn">Cấp 4</td><td><b>Automated</b></td><td>Agent vận hành workflow có kiểm soát — guardrail, audit, người chỉ duyệt ngoại lệ/rủi ro cao</td><td>Nhóm nòng cốt nâng cấp sau khóa học</td></tr>
+<tr><td class="rn">Cấp 5</td><td><b>Native</b></td><td>AI-native toàn vòng đời, trở thành lõi vận hành ở quy mô tổ chức, đa workflow</td><td>—</td></tr></table>
+<div class="tip">Định nghĩa 5 cấp và thang ủy quyền L0–L5.</div>
+
+<h2>Vì sao cấp 3 là đích đến của khóa học?</h2>
+<div class="card">SA/PTL là nhóm giữ phán đoán kỹ thuật của mọi dự án. Nếu tầng này không đạt Standard thì workflow AI của các tầng khác thiếu người kiểm chứng và thiếu người vạch ranh giới — <b>Cấp 3 của SA/PTL là điều kiện để chuyển đổi AI của các vai trò khác phát huy tác dụng.</b> Vì thế mục tiêu đặt cho toàn bộ lớp học, không chỉ một nhóm nòng cốt nhất định.</div>
+<div class="callout"><b>Hệ quả thiết kế:</b> mục tiêu cấp 3 quyết định ba đặc điểm của khóa — ① Chấm bằng phỏng vấn kiến thức trên sản phẩm chạy được (Standard = làm chuẩn được, không phải biết lý thuyết) · ② Tốt nghiệp bao gồm demo lab trực tiếp · ③ Ứng dụng thực tế trên dự án thật.</div>
+<h2>Rủi ro phổ biến trong chuyển đổi AI và phương pháp phòng ngừa của chương trình</h2>
+<table><tr><th style="width:36px">#</th><th>Rủi ro phổ biến</th><th style="width:250px">Phương pháp phòng ngừa</th></tr>
+<tr><td class="rn">1</td><td>Mua nhiều công cụ AI, nhưng dữ liệu, cách sử dụng chưa sẵn sàng</td><td class="mono">D0 — Phân loại dữ liệu là nền tảng</td></tr>
+<tr><td class="rn">2</td><td>Dùng chatbot cho các quy trình cũ, không thiết kế lại luồng công việc</td><td class="mono">D1 Tam phân · D7 chọn đúng bài toán theo value-stream</td></tr>
+<tr><td class="rn">3</td><td>Đưa agent vào môi trường thật nhưng không thiết kế kiến trúc ủy quyền</td><td class="mono">D1 — Delegation Map</td></tr>
+<tr><td class="rn">4</td><td>Không phân biệt quyền sử dụng công cụ cho agent. Phân biệt công cụ chỉ-đọc với có-quyền-ghi</td><td class="mono">D3.3 — permission allow/ask/deny</td></tr>
+<tr><td class="rn">5</td><td>Kiểm thử bằng cảm giác, không có tiêu chuẩn kiểm định</td><td class="mono">D6 — verifier 3 tầng, bộ eval, thống kê</td></tr>
+<tr><td class="rn">6</td><td>Không có AgentOps — gây ra điểm mù về chi phí/chất lượng/lỗi</td><td class="mono">D7 — đặt mốc pilot ban đầu, đo metric thật</td></tr>
+<tr><td class="rn">7</td><td>Không có hoàn tác / công tắc dừng khẩn cấp</td><td class="mono">D3.3 hook chặn · D8.1 quản trị tập trung</td></tr>
+<tr><td class="rn">8</td><td>Không có chủ sở hữu rõ cho dữ liệu/model/agent/rủi ro</td><td class="mono">D8.1 governance + audit · D8.3 bàn giao owner</td></tr>
+<tr><td class="rn">9</td><td>KPI chỉ là số token usage / số prompt, không phải outcome</td><td class="mono">D7 — đo outcome thật không qua token</td></tr></table>
+<div class="callout">Ở buổi cuối cùng D8, mỗi nhóm <b>tự đối chiếu</b> workflow của mình với 9 rủi ro trên — rủi ro nào chưa có biện pháp xử lý, đưa vào kế hoạch triển khai cho dự án</div>
+<div class="next-prev"><span></span><a href="02-nhu-cau.html">Nhu cầu của SA →</a></div><footer>FPT Automotive · AI Transformation cho SA/PTL</footer></div><script src="../Topics/assets/glossary-data.js"></script>
+<script src="../Topics/assets/term-glossary.js" data-unit="AI"></script>
+</body></html>

@@ -1,0 +1,878 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="../assets/site-ui.js" data-site-ui></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đề cương · Modern Vehicle Architecture &amp; SDV</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f3f0e8;
+  --surface: #f9f7f1;
+  --ink: #2a3431;
+  --muted: #62706b;
+  --line: #dbd7cb;
+  --forest: #174c43;
+  --forest-soft: #e3ece6;
+  --copper: #a64e32;
+  --gold: #e2bd69;
+  --code: #ebe7dd;
+  --focus: #b34d31;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--copper); }
+a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.reader-header {
+  min-height: 74px;
+  padding: 12px clamp(20px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--forest);
+  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.reader-header a { color: white; text-decoration: none; }
+.reader-header nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; font-size: 0.9rem; }
+
+/* Navigation buttons: same shape/order as the AI library (secondary links | ← Quay lại | ⌂ Trang chủ) */
+.nav-link { padding: 6px 4px; color: #d4e4de; font-weight: 500; white-space: nowrap; }
+.reader-header a.nav-link:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+.nav-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(255, 255, 255, 0.3); }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.nav-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.nav-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.nav-ico { flex: none; width: 16px; height: 16px; }
+.reader-header .nav-btn { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+.reader-header .nav-btn:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.reader-header .nav-btn--primary { color: var(--forest); border-color: var(--gold); background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); }
+.reader-header .nav-btn--primary:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.article-footer .nav-btn { color: var(--forest); border-color: var(--forest); background: transparent; }
+.article-footer .nav-btn:hover { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary:hover { border-color: var(--copper); background: var(--copper); }
+.reader-header nav a:hover { color: var(--gold); }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; line-height: 1.12; }
+.brand small { color: #d4e4de; font-size: 0.75rem; font-weight: 400; }
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  border-radius: 2px;
+}
+
+.reader-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+
+.contents-panel {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 32px 20px 28px clamp(20px, 4vw, 48px);
+  border-right: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--copper);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contents-panel ul { margin: 0; padding: 0; list-style: none; }
+.contents-panel li { margin: 0; padding: 0; }
+.contents-panel a {
+  display: block;
+  padding: 7px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.contents-panel a:hover { color: var(--forest); text-decoration: underline; }
+.contents-panel .toc-level-3 { padding-left: 14px; border-left: 1px solid var(--line); }
+
+.article {
+  min-width: 0;
+  padding: 26px clamp(22px, 5vw, 76px) 70px;
+}
+
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+article { max-width: 900px; }
+article h1, article h2, article h3, .library-intro h1 {
+  color: light-dark(#26403d, #c5e8e4);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  line-height: 1.18;
+}
+article h1 { margin: 0 0 28px; font-size: 2.35rem; }
+article h2 {
+  margin: 48px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+}
+article h3 { margin: 32px 0 12px; color: var(--forest); font-size: 1.24rem; }
+article p { margin: 0 0 18px; }
+article li { margin: 6px 0; padding-left: 4px; }
+article ul, article ol { margin: 0 0 22px; padding-left: 26px; }
+article strong { color: light-dark(#26403c, #c3e9e3); }
+
+blockquote {
+  margin: 22px 0;
+  padding: 15px 20px;
+  border-left: 4px solid var(--copper);
+  background: light-dark(#f8eee8, #31231a);
+  color: light-dark(#543e35, #d4c2bb);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+.table-scroll { width: 100%; margin: 22px 0 26px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.92rem; }
+th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--forest-soft); color: light-dark(#26403c, #c3e9e3); font-weight: 700; }
+tr:nth-child(even) td { background: light-dark(#f9f7f2, #2c2918); }
+
+code, pre { font-family: Consolas, "Courier New", monospace; }
+code { padding: 0.1em 0.28em; background: var(--code); color: light-dark(#24433e, #c3dfda); font-size: 0.9em; }
+pre {
+  max-width: 100%;
+  margin: 20px 0 26px;
+  padding: 18px 20px;
+  overflow: auto;
+  border-left: 3px solid var(--forest);
+  background: light-dark(#e9eeea, #222c25);
+  color: light-dark(#26403d, #d0e6e4);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; color: inherit; }
+hr { margin: 36px 0; border: 0; border-top: 1px solid var(--line); }
+
+.audit-item { margin: 14px 0; }
+
+.audit-item details {
+  margin-top: 9px;
+  border-left: 3px solid #86a99e;
+  background: var(--forest-soft);
+}
+.audit-item summary {
+  padding: 9px 13px;
+  color: var(--forest);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.answer-body { padding: 0 14px 10px; }
+.answer-body p { margin: 4px 0 10px; }
+.answer-body ul { margin: -4px 0 12px; padding-left: 22px; }
+.answer-body li { margin: 3px 0; line-height: 1.55; }
+/* Key questions: map 1-1 to the Learning Plan "Unit Detail" requirements of the topic */
+details.audit-reveal { margin: 8px 0 18px; border-left: 3px solid #86a99e; background: var(--forest-soft); }
+details.audit-reveal > summary { padding: 9px 13px; color: var(--forest); cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.audit-key-intro { margin: 18px 0 28px; padding: 16px 20px 14px; border: 1px solid light-dark(#e6cf95, #62542f); border-left: 6px solid var(--gold); background: light-dark(#fff7e0, #312b1a); }
+.audit-key-intro p { margin: 0 0 8px; }
+.audit-key-intro ol { margin: 0; padding-left: 22px; }
+.audit-key-intro li { margin: 4px 0; }
+.audit-key-intro .req-tag { color: var(--muted); font-size: 0.8rem; }
+.audit-question-heading.audit-key { padding: 10px 14px; border-left: 6px solid var(--copper); background: light-dark(#fbeee4, #31251a); }
+.audit-question-heading.audit-key::after {
+  content: "Tr\1ECDng t\00E2m";
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--copper);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+details.audit-key-reveal, .audit-item details.audit-key-reveal { border-left: 6px solid var(--copper); background: light-dark(#f9f7f2, #2c2317); }
+details.audit-key-reveal > summary, .audit-item details.audit-key-reveal summary { color: var(--copper); }
+
+.article-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 54px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.library-main { width: min(1120px, 100%); margin: 0 auto; padding: 50px clamp(20px, 5vw, 72px) 76px; }
+.library-intro { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+.library-intro h1 { margin: 0; font-size: 3rem; }
+.library-intro h1 span { color: var(--copper); }
+
+.search-label { display: block; margin: 0 0 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#topic-search {
+  width: min(520px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-intro { max-width: 740px; color: var(--muted); }
+.qa-filter { margin: 26px 0 34px; }
+.qa-filter label { display: block; margin-bottom: 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#qa-search {
+  width: min(640px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-filter p { margin: 7px 0 0; color: var(--muted); font-size: 0.82rem; }
+.qa-topic { margin-top: 40px; }
+.qa-topic-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.qa-topic-heading h2 { flex: 1; }
+.qa-topic-heading a { flex: none; font-size: 0.86rem; }
+.qa-question[hidden], .qa-topic[hidden] { display: none; }
+.search-status { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.topic-list { margin-top: 8px; border-top: 1px solid var(--line); }
+.topic-link {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 15px;
+  min-height: 72px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topic-link:hover { background: light-dark(#e8eee9, #222d23); color: var(--forest); }
+.topic-number { color: var(--copper); font-family: Georgia, serif; font-size: 1.1rem; }
+.topic-title { font-weight: 650; }
+.topic-arrow { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.source-note { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.87rem; }
+
+@media (max-width: 860px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .contents-panel {
+    position: static;
+    max-height: none;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contents-panel nav { max-height: 210px; overflow: auto; }
+  .article { padding-top: 22px; }
+}
+
+@media (max-width: 560px) {
+  .reader-header { align-items: flex-start; padding: 12px 17px; }
+  .reader-header { flex-wrap: wrap; }
+  .reader-header nav { gap: 6px 8px; }
+  .nav-sep { display: none; }
+  .nav-btn { min-height: 34px; padding: 6px 12px; }
+  .library-intro h1 { font-size: 2.25rem; }
+  article h1 { font-size: 1.9rem; }
+  article h2 { font-size: 1.4rem; }
+  .topic-link { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .topic-arrow { display: none; }
+  .qa-topic-heading { align-items: flex-start; flex-direction: column; gap: 0; }
+  th, td { min-width: 130px; padding: 9px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* Highlight non-AI (CDC/SDV) topics in the library index */
+.topic-link.topic-core { background: var(--forest-soft); box-shadow: inset 5px 0 0 var(--forest); }
+.topic-link.topic-core .topic-title { color: var(--forest); }
+.topic-link.topic-core .topic-number { color: var(--forest); font-weight: 700; }
+.topic-link.topic-core:hover { background: light-dark(#d4e5de, #233930); }
+.topic-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 18px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.legend-swatch { display: inline-block; width: 18px; height: 14px; margin-right: -10px; border: 1px solid var(--line); vertical-align: -2px; }
+.legend-swatch.legend-core { background: var(--forest-soft); box-shadow: inset 4px 0 0 var(--forest); }
+
+/* Non-learning items (assignment / review / OJT) among CDC/SDV topics: red text */
+.topic-link.topic-task .topic-title, .topic-link.topic-task .topic-number { color: light-dark(#b3261e, #e9847e); }
+.topic-link.topic-task:hover .topic-title { color: light-dark(#8c1d18, #ed9794); }
+.legend-task { color: light-dark(#b3261e, #e9847e); font-weight: 600; }
+/* Study-time note per topic (from Fast_Track_CDC_Weekly_Checklist.xlsx) */
+.topic-time { display: block; margin-top: 3px; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.topic-link.topic-task .topic-time { color: light-dark(#b3261e, #e9847e); opacity: 0.85; }
+.legend-time { flex-basis: 100%; color: var(--muted); }
+
+/* ---- Thuật ngữ: bấm để xem giải nghĩa ---- */
+.gl {
+  border-bottom: 1.5px dotted #6f9a8e;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color .12s;
+}
+.gl:hover { background: var(--forest-soft); }
+.gl:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.gl.is-open { background: var(--forest-soft); border-bottom-style: solid; border-bottom-color: var(--forest); }
+.gl-pop {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(28, 41, 40, .16);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gl-term { display: block; margin-bottom: 2px; color: var(--forest); font-weight: 700; font-size: .82rem; }
+.gl-hint { color: var(--muted); font-size: .85rem; }
+.gl-hint .gl-demo { border-bottom: 1.5px dotted #6f9a8e; }
+
+/* ---- Checklist đầu ra (tick được, lưu trên trình duyệt) ---- */
+.checklist { margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 16px 14px; }
+.checklist > h3 { margin-top: 18px; }
+.cl-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--muted); font-size: .9rem; }
+.cl-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 99px; background: var(--forest-soft); overflow: hidden; }
+.cl-bar > i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s; }
+.cl-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.cl-item { padding: 9px 0 10px; border-top: 1px dashed var(--line); }
+.cl-item:first-child { border-top: 0; }
+.cl-item > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.cl-item input[type="checkbox"] { margin-top: .35em; width: 17px; height: 17px; accent-color: var(--forest); flex: none; }
+.cl-item.is-done > label > span { color: var(--muted); text-decoration: line-through; text-decoration-color: light-dark(#9fb3ad, #495c56); }
+.cl-pass, .cl-src { margin: 4px 0 0 27px; font-size: .9rem; }
+.cl-pass { color: var(--ink); }
+.cl-src { color: var(--muted); font-size: .82rem; }
+.cl-reset { margin-left: auto; border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 2px 9px; color: var(--muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.cl-reset:hover { color: var(--copper); border-color: var(--copper); }
+
+/* Lesson style for CDC/SDV topics — mirrors the teaching layout of the AI library
+   (bài đọc: hook → giải thích → ví dụ → vì sao quan trọng → nghiền ngẫm → thực hành → tự kiểm)
+   while keeping the CDC palette of reader.css. Load AFTER reader.css. */
+:root {
+  --teal: #2A8C8C; --teal-soft: #EEF7F6;
+  --violet: #6A4FC0; --violet-soft: #F5F2FD;
+  --green: #2E7D4F; --green-soft: #EFF8F2;
+  --amber: #B7791F; --amber-soft: #FFF7E8;
+  --red: #A93226; --red-soft: #FCEFEC;
+}
+
+body.lesson-page article { max-width: 800px; }
+body.lesson-page article p, body.lesson-page article li { line-height: 1.75; }
+body.lesson-page article h2 { margin-top: 44px; }
+body.lesson-page article h2 .sec-no { color: var(--copper); font-weight: 700; margin-right: 6px; }
+
+/* Bài nav (pill row, like .tapnav in the AI library) */
+.bai-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+.bai-nav a { font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--surface); }
+.bai-nav a:hover { border-color: var(--forest); color: var(--forest); }
+.bai-nav a.cur { background: var(--forest); border-color: var(--forest); color: #fff; }
+.bai-nav .grp { font-size: 0.7rem; font-weight: 700; color: var(--copper); align-self: center; margin: 0 2px 0 6px; letter-spacing: .06em; }
+
+.lesson-kicker { margin: 0 0 6px; color: var(--copper); font-size: 0.78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+body.lesson-page article h1 { margin-bottom: 10px; }
+.lesson-meta { margin: 0 0 18px; font-weight: 600; color: light-dark(#2c4b46, #bfdad5); font-size: 0.95rem; }
+
+/* Bản đồ bài — chuỗi khái niệm */
+.roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 24px; font-size: 0.86rem; }
+.roadmap span { background: var(--forest-soft); color: var(--forest); border: 1px solid light-dark(#c9ddd5, #314e42); border-radius: 8px; padding: 5px 10px; font-weight: 600; }
+.roadmap i { color: var(--muted); font-style: normal; }
+
+/* Figure card for SVG diagrams */
+.fig { margin: 24px 0; background: light-dark(#f9f7f2, #202819); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 12px; box-shadow: 0 1px 3px rgba(23,76,67,.06); overflow-x: auto; }
+.fig svg { width: 100%; height: auto; display: block; min-width: 560px; }
+.fig figcaption, .fig .cap { margin-top: 8px; color: var(--muted); font-size: 0.84rem; text-align: center; font-style: italic; }
+
+/* Opening question of a section */
+.hook { font-size: 1.04rem; color: light-dark(#26403c, #c6e2de); border-left: 3px solid var(--copper); padding: 4px 0 4px 14px; margin: 6px 0 18px; }
+
+/* Plain-language explanation */
+.plain { background: var(--forest-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0 18px; }
+.plain .ttl { color: var(--forest); }
+
+/* Generic box header */
+.box { border-radius: 12px; padding: 14px 18px; margin: 20px 0; }
+.box > .ttl, .plain > .ttl { margin: 0 0 7px; font-weight: 700; font-size: 0.86rem; }
+.box p { margin: 6px 0; }
+.box ul, .box ol { margin: 6px 0; padding-left: 22px; }
+.box li { margin: 4px 0; }
+
+.ex { background: var(--teal-soft); border: 1px solid var(--teal); }
+.ex > .ttl { color: light-dark(#1d6b6b, #a8e7e7); }
+.case { background: light-dark(#f9f7f2, #2c2117); border: 1px solid light-dark(#EBB28F, #63432f); border-left: 4px solid var(--copper); }
+.case > .ttl { color: var(--copper); font-size: 0.74rem; text-transform: uppercase; letter-spacing: .05em; }
+.pitfall { background: var(--amber-soft); border: 1px solid light-dark(#EBC77A, #695833); }
+.pitfall > .ttl { color: light-dark(#8A5A00, #ffd88f); }
+.why { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--forest); }
+.why > .ttl { color: var(--forest); }
+
+.practice { background: var(--green-soft); border: 1px solid var(--green); }
+.practice > .ttl { color: light-dark(#1F6340, #ade5c9); }
+.remember { background: var(--forest); color: #E4EFEB; }
+.remember > .ttl { color: var(--gold); }
+.remember b, .remember strong { color: #fff; }
+
+/* Sai vs đúng */
+.contrast { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.contrast > div { border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; }
+.contrast .bad { background: var(--red-soft); border: 1px solid light-dark(#E3A79F, #60342e); }
+.contrast .good { background: var(--green-soft); border: 1px solid light-dark(#9CCFB0, #326747); }
+.contrast .ttl { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
+.contrast .bad .ttl { color: var(--red); }
+.contrast .good .ttl { color: var(--green); }
+.contrast p { margin: 4px 0; }
+
+/* Step-by-step anatomy */
+.steps { list-style: none; counter-reset: st; padding-left: 0 !important; }
+.steps > li { counter-increment: st; position: relative; padding: 2px 0 2px 42px !important; margin: 12px 0 !important; }
+.steps > li::before { content: counter(st); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+
+/* Small term chips inline */
+.term { font-weight: 650; color: light-dark(#26403c, #c3e9e3); }
+.term-gloss { color: var(--muted); font-size: 0.92em; }
+
+/* Lesson prev/next */
+.next-prev { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .contrast { grid-template-columns: 1fr; }
+  .fig svg { min-width: 520px; }
+}
+
+/* ---------- Learning reflection + Unit assessment (assets/assessment.js) ---------- */
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.refl-intro { color: light-dark(#2c4b46, #bfdad5); }
+.refl-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--violet); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.refl-label { margin: 0 0 4px !important; font-weight: 700; color: light-dark(#3f2c86, #a99ade); }
+.refl-hint { color: light-dark(#41506B, #aeb9ce); font-size: 0.93rem; margin-bottom: 8px; }
+.refl-hint ul { margin: 4px 0 0; padding-left: 20px; }
+.refl-hint li { margin: 2px 0; }
+#reflection-app textarea, #quiz-app textarea, #workshop-app textarea { width: 100%; font: inherit; font-size: 0.95rem; line-height: 1.55; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); color: var(--ink); resize: vertical; }
+#reflection-app textarea:focus, #quiz-app textarea:focus, #workshop-app textarea:focus { outline: 2px solid var(--gold); border-color: var(--forest); }
+.refl-sample { margin-top: 8px; }
+.refl-sample summary { cursor: pointer; color: var(--forest); font-size: 0.86rem; font-weight: 600; }
+.refl-sample-body { margin: 6px 0; padding: 8px 12px; background: var(--forest-soft); border-radius: 6px; font-size: 0.92rem; }
+.refl-sample-body ul { margin: 4px 0; padding-left: 20px; }
+.refl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 6px; }
+.refl-tools p { flex-basis: 100%; margin: 2px 0 0; }
+.tool-msg { color: var(--green); font-size: 0.86rem; }
+.act-btn, .mini-btn { font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1.5px solid var(--forest); }
+.act-btn { background: var(--forest); color: #fff; }
+.act-btn:hover { background: var(--copper); border-color: var(--copper); }
+.mini-btn { background: transparent; color: var(--forest); padding: 5px 12px; font-size: 0.82rem; }
+.mini-btn:hover { background: var(--forest-soft); }
+.mini-btn.danger { color: var(--red); border-color: light-dark(#E3A79F, #60342e); }
+.assess-note { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; }
+.assess-note.small { background: transparent; padding: 0; }
+
+table.rubric select { font: inherit; font-size: 0.86rem; padding: 4px 6px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ws-col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.ws-h { margin: 0 0 4px !important; font-weight: 700; color: var(--forest); font-size: 0.9rem; }
+.ws-col ol, .ws-col ul { margin: 0 !important; padding-left: 20px !important; font-size: 0.93rem; }
+table.rubric td.num { text-align: center; font-weight: 700; color: var(--copper); }
+table.rubric td { font-size: 0.9rem; }
+table.rubric textarea { min-width: 180px; }
+.rub-pts { font-size: 0.82rem; color: var(--forest); font-weight: 600; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.dash-card.pass { border-color: light-dark(#9CCFB0, #326747); background: var(--green-soft); }
+.dash-card.fail { border-color: light-dark(#E3A79F, #60342e); background: var(--red-soft); }
+.dash-h { margin: 0 !important; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-v { margin: 2px 0 !important; font-size: 1.6rem; font-weight: 700; color: var(--forest); }
+.dash-sub { margin: 0 !important; font-size: 0.84rem; color: var(--muted); }
+
+/* ---------- Knowledge questions (open questions, self-rated) ---------- */
+.kq-howto { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kq-toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.kq-filter { font-size: 0.88rem; color: var(--forest); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.kq-progress { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; }
+.kq-track { flex: 1; height: 8px; border-radius: 99px; background: light-dark(#E3E8E2, #272f25); overflow: hidden; display: flex; }
+.kq-track .seg { height: 100%; }
+.seg-yes { background: var(--green); } .seg-part { background: light-dark(#D9A441, #665027); } .seg-no { background: light-dark(#C0504D, #6a2a28); }
+.kq-count { font-size: 0.84rem; color: var(--muted); white-space: nowrap; }
+.kq-group { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; border-bottom: 1px dashed var(--line); }
+.kq-group-title { margin: 0 0 6px !important; font-size: 1.08rem !important; }
+.kq-back { font-size: 0.82rem; white-space: nowrap; }
+.kq-list { padding-left: 26px !important; margin-top: 8px !important; }
+.kq-item { margin: 12px 0 !important; padding: 10px 14px !important; border: 1px solid var(--line); border-left: 4px solid light-dark(#C9D3CF, #3b4843); border-radius: 10px; background: var(--surface); }
+.kq-item[data-rate="yes"] { border-left-color: var(--green); }
+.kq-item[data-rate="part"] { border-left-color: #D9A441; }
+.kq-item[data-rate="no"] { border-left-color: #C0504D; }
+.only-weak .kq-item[data-rate="yes"] { display: none; }
+.kq-q { margin: 0 0 6px !important; font-weight: 600; line-height: 1.6 !important; }
+.kq-type { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 4px; background: var(--forest-soft); color: var(--forest); font-size: 0.72rem; font-weight: 700; letter-spacing: .03em; vertical-align: 2px; text-transform: uppercase; }
+.kq-mine, .kq-answer { margin: 6px 0; }
+.kq-mine summary, .kq-answer summary { cursor: pointer; font-size: 0.86rem; font-weight: 600; color: var(--forest); }
+.kq-mine textarea { margin-top: 6px; width: 100%; font: inherit; font-size: 0.95rem; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; resize: vertical; }
+.kq-answer-body { margin-top: 6px; padding: 10px 14px; background: light-dark(#F4F8F6, #1b2a22); border: 1px solid light-dark(#D5E3DD, #2f473d); border-radius: 8px; font-size: 0.95rem; }
+.kq-answer-body p { margin: 4px 0 8px !important; }
+.kq-answer-body ul, .kq-answer-body ol { margin: 4px 0 8px !important; padding-left: 20px !important; }
+.kq-answer-body li { margin: 2px 0 !important; }
+.kq-refs { font-size: 0.84rem; color: var(--muted); border-top: 1px dashed light-dark(#D5E3DD, #2f473d); padding-top: 6px; margin-top: 8px !important; }
+.kq-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.kq-rate-l { font-size: 0.8rem; color: var(--muted); }
+.kq-rbtn { font: inherit; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid light-dark(#C9D3CF, #3b4843); background: light-dark(#f9f7f2, #192320); color: var(--muted); cursor: pointer; }
+.kq-rbtn[aria-pressed="true"].r-yes { background: var(--green); border-color: var(--green); color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-part { background: light-dark(#D9A441, #665027); border-color: #D9A441; color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-no { background: light-dark(#C0504D, #6a2a28); border-color: #C0504D; color: #fff; }
+
+
+  </style>
+  <style>
+    article h4 { margin: 22px 0 8px; color: var(--forest); font-size: 1.02rem; }
+    td.c, th.c { text-align: center; }
+    tr.total td { font-weight: 700; background: var(--forest-soft) !important; }
+    .fig svg .hit:hover { opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="../assets/dark.css">
+</head>
+<body class="topic-page lesson-page">
+<header class="reader-header">
+    <a class="brand" href="../../dainv13.html"><span class="brand-mark">Đ</span><span>Đề cương<br><small>Modern Vehicle Architecture &amp; SDV</small></span></a>
+    <nav aria-label="Page actions"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></nav>
+</header>
+<div class="reader-layout">
+  <aside class="contents-panel">
+    <p class="eyebrow">Nội dung trang</p>
+    <nav aria-label="Topic contents"><ul>
+<li class="toc-level-2"><a href="#p1">Phần 1 · Giải thích chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-2">1.2 Tổng quan về chủ đề</a></li>
+<li class="toc-level-2"><a href="#p2">Phần 2 · Nội dung chi tiết</a></li>
+<li class="toc-level-3"><a href="#p2-1">2.1 Kiến trúc xe hiện đại và tư duy SDV</a></li>
+<li class="toc-level-3"><a href="#p2-2">2.2 Domain, zonal, centralized, hybrid</a></li>
+<li class="toc-level-3"><a href="#p2-3">2.3 Tách hardware capability khỏi feature</a></li>
+<li class="toc-level-3"><a href="#p2-4">2.4 Vehicle computer, SOA, middleware</a></li>
+<li class="toc-level-3"><a href="#p2-5">2.5 OTA, deployment, data feedback</a></li>
+<li class="toc-level-3"><a href="#p2-6">2.6 Tác động đến tổ chức, testing, business</a></li>
+<li class="toc-level-3"><a href="#p2-7">2.7 Boundary ECU, domain, cloud</a></li>
+<li class="toc-level-3"><a href="#p2-8">2.8 Kiến trúc nào mở rộng tốt hơn?</a></li>
+<li class="toc-level-3"><a href="#p2-9">2.9 Dependency làm update rủi ro</a></li>
+</ul></nav>
+  </aside>
+  <main class="article">
+    <article>
+<p class="lesson-kicker">Đề cương tự biên soạn</p>
+<h1 id="top">Modern Vehicle Architecture &amp; SDV</h1>
+<p class="lesson-meta">Kiến trúc xe hiện đại &amp; xe định nghĩa bằng phần mềm · đọc ~30 phút</p>
+
+<h2 id="p1"><span class="sec-no">1 ·</span> Giải thích chủ đề</h2>
+<h3 id="p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</h3>
+<ul>
+<li><b>Modern Vehicle</b>: chiếc xe ngày nay có hàng chục đến hàng trăm ECU, nhiều màn hình, camera, radar, kết nối cellular và cloud. Phần lớn khác biệt giữa các mẫu xe giờ nằm ở điện tử và phần mềm, không chỉ ở động cơ hay khung gầm.</li>
+<li><b>Architecture</b>: cách chia hệ thống thành các khối phần cứng, phần mềm và mạng, cùng quy tắc để chúng nối với nhau. Trong ngành ô tô thường gọi là E/E architecture. Nó gồm bốn mặt: máy tính và ECU, mạng truyền thông, phân phối nguồn điện cùng bó dây, và kiến trúc phần mềm chạy trên tất cả những thứ đó.</li>
+<li><b>SDV</b>: Software-Defined Vehicle, xe mà tính năng chủ yếu do phần mềm tạo ra và có thể thay đổi sau khi xe đã bán, thông qua OTA. Chữ "defined" nhấn mạnh rằng hành vi của xe do phần mềm chạy trên phần cứng dùng chung quyết định, thay vì do từng hộp ECU có chức năng cố định.</li>
+</ul>
+<h3 id="p1-2">1.2 Tổng quan về chủ đề</h3>
+<p>Trước kia, mỗi tính năng mới thường kéo theo một ECU mới từ một supplier. Cách này ổn khi xe chỉ có vài chục chức năng. Khi số chức năng lên hàng trăm, nó sinh ra ba vấn đề: bó dây nặng và đắt, phần mềm nằm rải rác trong nhiều hộp đen khó cập nhật, và mỗi thay đổi phải chờ đến mẫu xe kế tiếp.</p>
+<p>SDV gom chức năng về ít máy tính mạnh hơn, dùng giao tiếp theo service và cập nhật qua mạng. Với CDC, điều này có nghĩa là cluster, IVI, HUD và camera có thể chạy chung một SoC, và nhận bản cập nhật như một chiếc điện thoại.</p>
+<p>Chủ đề đi qua các mảnh ghép chính: tư duy SDV, bốn kiểu kiến trúc domain, zonal, centralized và hybrid, cách tách phần cứng khỏi tính năng, vehicle computer cùng SOA và middleware, vòng lặp OTA và dữ liệu phản hồi. Tiếp theo là những tác động ngoài kỹ thuật lên tổ chức, quy trình, kiểm thử và mô hình kinh doanh. Phần cuối trả lời ba câu hỏi thiết kế: ranh giới giữa ECU, domain và cloud dịch chuyển ra sao, kiến trúc nào mở rộng tốt hơn, và dependency nào làm việc cập nhật trở nên rủi ro.</p>
+<p>Với kỹ sư làm CDC, bức tranh này giúp trả lời những câu hỏi rất cụ thể: CDC lấy dữ liệu xe từ đâu, phần mềm nào được phép cập nhật độc lập, và tính năng nào phải chạy trong xe thay vì trên cloud.</p>
+<h2 id="p2"><span class="sec-no">2 ·</span> Nội dung chi tiết</h2>
+<h3 id="p2-1">2.1 Kiến trúc xe hiện đại và tư duy Software-Defined Vehicle</h3>
+<h4>a) Kiến trúc xe hiện đại gồm những gì</h4>
+<p>Có thể nhìn một chiếc xe hiện đại thành năm tầng. Ở rìa là sensor và actuator. Tiếp theo là các ECU, zone controller hoặc domain controller xử lý tín hiệu. Tầng thứ ba là mạng trong xe: CAN, LIN, automotive Ethernet. Tầng thứ tư là một hoặc vài máy tính hiệu năng cao chạy phần lớn phần mềm. Tầng cuối là backend trên cloud quản lý tài khoản, dữ liệu và OTA.</p>
+<p>Phần mềm trải qua tất cả các tầng này. Một tính năng như bật sưởi ghế từ xa đi từ app điện thoại, qua cloud, xuống TCU của xe, qua gateway, rồi mới đến ECU điều khiển ghế.</p>
+<h4>b) Tư duy SDV</h4>
+<p>Tư duy SDV coi chiếc xe là một nền tảng tính toán. Tính năng được phát triển, kiểm thử và phát hành theo chu kỳ phần mềm, độc lập hơn với chu kỳ ra mắt mẫu xe.</p>
+<p>Ba thay đổi chính:</p>
+<ul>
+<li>Ít ECU hơn nhưng mỗi ECU mạnh hơn, chạy nhiều chức năng.</li>
+<li>Chức năng nói chuyện với nhau qua service trên Ethernet thay vì tín hiệu cố định trên CAN.</li>
+<li>Xe được cập nhật suốt vòng đời, có dữ liệu gửi về để cải tiến.</li>
+</ul>
+<p>Khác biệt cốt lõi nằm ở thời điểm chức năng bị "đóng băng". Xe truyền thống chốt phần mềm trước SOP rồi gần như giữ nguyên đến hết đời xe. Xe SDV coi SOP chỉ là bản phát hành đầu tiên của một sản phẩm còn tiếp tục thay đổi.</p>
+<figure class="fig"><svg viewBox="0 0 720 264" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="So sánh xe truyền thống mỗi feature một ECU, phần mềm chốt tại SOP, với SDV nhiều feature trên nền tảng chung và cập nhật OTA sau SOP"><defs><marker id="s6-sdv-f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#174C43"/></marker><marker id="s6-sdv-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Từ hộp ECU cố định đến nền tảng phần mềm</text><rect x="20" y="40" width="320" height="214" rx="10" fill="#E5EFEB"/><text x="180" y="60" font-size="12" fill="#174C43" text-anchor="middle" font-weight="700">Xe truyền thống</text><rect x="36" y="72" width="110" height="34" rx="8" fill="#A64E32"/><text x="91" y="92.8" font-size="11" fill="#fff" text-anchor="middle">Feature A</text><line x1="146" y1="89" x2="176" y2="89" stroke="#596966" stroke-width="1.5" marker-end="url(#s6-sdv-m)"/><rect x="178" y="72" width="146" height="34" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2"/><text x="251" y="92.7" font-size="10.5" fill="#1c2928" text-anchor="middle">ECU A · supplier A</text><rect x="36" y="116" width="110" height="34" rx="8" fill="#A64E32"/><text x="91" y="136.8" font-size="11" fill="#fff" text-anchor="middle">Feature B</text><line x1="146" y1="133" x2="176" y2="133" stroke="#596966" stroke-width="1.5" marker-end="url(#s6-sdv-m)"/><rect x="178" y="116" width="146" height="34" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2"/><text x="251" y="136.7" font-size="10.5" fill="#1c2928" text-anchor="middle">ECU B · supplier B</text><rect x="36" y="160" width="110" height="34" rx="8" fill="#A64E32"/><text x="91" y="180.8" font-size="11" fill="#fff" text-anchor="middle">Feature C</text><line x1="146" y1="177" x2="176" y2="177" stroke="#596966" stroke-width="1.5" marker-end="url(#s6-sdv-m)"/><rect x="178" y="160" width="146" height="34" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2"/><text x="251" y="180.7" font-size="10.5" fill="#1c2928" text-anchor="middle">ECU C · supplier C</text><rect x="36" y="212" width="288" height="30" rx="8" fill="#A93226"/><text x="180" y="230.8" font-size="11" fill="#fff" text-anchor="middle">Phần mềm chốt tại SOP, ít thay đổi sau đó</text><line x1="342" y1="147" x2="376" y2="147" stroke="#174C43" stroke-width="2" marker-end="url(#s6-sdv-f)"/><rect x="380" y="40" width="320" height="214" rx="10" fill="#E5EFEB"/><text x="540" y="60" font-size="12" fill="#174C43" text-anchor="middle" font-weight="700">SDV</text><rect x="392" y="70" width="96" height="30" rx="8" fill="#A64E32"/><text x="440" y="88.7" font-size="10.5" fill="#fff" text-anchor="middle">Feature A</text><rect x="494" y="70" width="96" height="30" rx="8" fill="#A64E32"/><text x="542" y="88.7" font-size="10.5" fill="#fff" text-anchor="middle">Feature B</text><rect x="596" y="70" width="92" height="30" rx="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2" stroke-dasharray="5 4"/><text x="642" y="88.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Feature mới</text><rect x="392" y="106" width="296" height="26" rx="8" fill="#2A8C8C"/><text x="540" y="122.7" font-size="10.5" fill="#fff" text-anchor="middle">Platform service và middleware</text><rect x="392" y="136" width="296" height="26" rx="8" fill="#2A6F66"/><text x="540" y="152.7" font-size="10.5" fill="#fff" text-anchor="middle">OS và hypervisor</text><rect x="392" y="166" width="296" height="26" rx="8" fill="#174C43"/><text x="540" y="182.7" font-size="10.5" fill="#fff" text-anchor="middle">Vehicle computer và zone controller</text><rect x="392" y="214" width="80" height="28" rx="8" fill="#174C43"/><text x="432" y="231.7" font-size="10.5" fill="#fff" text-anchor="middle">SOP: v1</text><rect x="500" y="214" width="80" height="28" rx="8" fill="#2A8C8C"/><text x="540" y="231.7" font-size="10.5" fill="#fff" text-anchor="middle">v2</text><rect x="608" y="214" width="80" height="28" rx="8" fill="#2A8C8C"/><text x="648" y="231.7" font-size="10.5" fill="#fff" text-anchor="middle">v3</text><line x1="472" y1="228" x2="498" y2="228" stroke="#596966" stroke-width="1.5" marker-end="url(#s6-sdv-m)"/><text x="485" y="209" font-size="9.5" fill="#596966" text-anchor="middle">OTA</text><line x1="580" y1="228" x2="606" y2="228" stroke="#596966" stroke-width="1.5" marker-end="url(#s6-sdv-m)"/><text x="593" y="209" font-size="9.5" fill="#596966" text-anchor="middle">OTA</text></svg><figcaption>SOP không còn là điểm cuối: feature nằm trên nền tảng chung và tiếp tục thay đổi qua OTA.</figcaption></figure>
+<h4>c) Vì sao OEM theo đuổi SDV và cái giá phải trả</h4>
+<ul>
+<li><b>Lợi ích</b>: giảm số ECU và chiều dài bó dây, đưa tính năng ra nhanh hơn, sửa lỗi phần mềm mà không cần đưa xe về xưởng, có doanh thu sau bán hàng, và có dữ liệu thực tế để cải tiến.</li>
+<li><b>Cái giá</b>: phần cứng tính toán đắt hơn và phải dư công suất, phần mềm phức tạp hơn nhiều, xe luôn kết nối nên yêu cầu cybersecurity cao hơn, và tổ chức phải đổi cách làm việc.</li>
+<li><b>Quy định</b>: UNECE R155 và R156 yêu cầu OEM có hệ thống quản lý cybersecurity và software update cho xe bán tại các thị trường áp dụng. SDV vì thế không chỉ là lựa chọn kỹ thuật mà còn là nghĩa vụ quản lý.</li>
+</ul>
+<p>Ví dụ CDC: một SoC chạy cả cluster trên RTOS và IVI trên Android Automotive. Giao diện cluster mới có thể được phát hành qua OTA mà không cần thay phần cứng. Đổi lại, SoC đó phải được chọn đủ mạnh cho nhiều năm tính năng sau này, và mỗi bản phát hành phải chứng minh không làm hỏng đèn cảnh báo trên cluster.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>SDV biến xe thành một nền tảng phần mềm có thể nâng cấp, với SOP chỉ là bản phát hành đầu tiên. Lợi ích về tốc độ và doanh thu đi kèm chi phí phần cứng dư, độ phức tạp và nghĩa vụ cybersecurity, nên kiến trúc phải được thiết kế để phục vụ việc thay đổi lâu dài.</p></div>
+<h3 id="p2-2">2.2 Domain, zonal, centralized và hybrid vehicle architecture</h3>
+<p>Các kiểu kiến trúc khác nhau ở tiêu chí gom ECU: theo chức năng hay theo vị trí trên xe, và ở chỗ logic phần mềm nằm rải rác hay tập trung. Điểm xuất phát của cả bốn kiểu là kiến trúc phân tán: mỗi chức năng một ECU riêng, nối chung vào vài đường CAN.</p>
+<figure class="fig"><svg viewBox="0 0 720 604" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="So sánh bốn kiến trúc domain, zonal, centralized và hybrid: cách gom ECU, đường dây, Ethernet và CAN qua gateway; kèm lộ trình chuyển đổi"><defs><marker id="s6-arch-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Bốn cách tổ chức ECU trên xe</text><rect x="10" y="36" width="340" height="226" rx="10" fill="#E5EFEB"/><text x="180" y="56" font-size="12.5" fill="#174C43" text-anchor="middle" font-weight="700">Domain</text><rect x="30" y="66" width="300" height="150" rx="30" fill="#fff" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><text x="180" y="236" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Gom theo chức năng</text><text x="180" y="252" font-size="10.5" fill="#596966" text-anchor="middle">dây chạy dài về controller của từng domain</text><line x1="44" y1="80" x2="138" y2="163" stroke="#A64E32" stroke-width="1.2"/><line x1="316" y1="80" x2="138" y2="119" stroke="#A64E32" stroke-width="1.2"/><line x1="180" y1="76" x2="222" y2="163" stroke="#A64E32" stroke-width="1.2"/><line x1="44" y1="141" x2="222" y2="119" stroke="#A64E32" stroke-width="1.2"/><line x1="316" y1="141" x2="138" y2="163" stroke="#A64E32" stroke-width="1.2"/><line x1="44" y1="202" x2="222" y2="119" stroke="#A64E32" stroke-width="1.2"/><line x1="316" y1="202" x2="138" y2="119" stroke="#A64E32" stroke-width="1.2"/><line x1="180" y1="206" x2="138" y2="163" stroke="#A64E32" stroke-width="1.2"/><rect x="100" y="106" width="76" height="26" rx="8" fill="#174C43"/><text x="138" y="122.5" font-size="10" fill="#fff" text-anchor="middle">Cockpit</text><rect x="184" y="106" width="76" height="26" rx="8" fill="#174C43"/><text x="222" y="122.5" font-size="10" fill="#fff" text-anchor="middle">ADAS</text><rect x="100" y="150" width="76" height="26" rx="8" fill="#174C43"/><text x="138" y="166.5" font-size="10" fill="#fff" text-anchor="middle">Body</text><rect x="184" y="150" width="76" height="26" rx="8" fill="#174C43"/><text x="222" y="166.5" font-size="10" fill="#fff" text-anchor="middle">Powertrain</text><circle cx="44" cy="80" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="316" cy="80" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="180" cy="76" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="44" cy="141" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="316" cy="141" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="44" cy="202" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="316" cy="202" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="180" cy="206" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><rect x="370" y="36" width="340" height="226" rx="10" fill="#E5EFEB"/><text x="540" y="56" font-size="12.5" fill="#174C43" text-anchor="middle" font-weight="700">Zonal</text><rect x="390" y="66" width="300" height="150" rx="30" fill="#fff" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><text x="540" y="236" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Gom theo vị trí</text><text x="540" y="252" font-size="10.5" fill="#596966" text-anchor="middle">dây ngắn tới zone gần nhất, Ethernet về trung tâm</text><line x1="404" y1="80" x2="440" y2="141" stroke="#A64E32" stroke-width="1.2"/><line x1="676" y1="80" x2="640" y2="141" stroke="#A64E32" stroke-width="1.2"/><line x1="540" y1="76" x2="540" y2="99" stroke="#A64E32" stroke-width="1.2"/><line x1="404" y1="141" x2="440" y2="141" stroke="#A64E32" stroke-width="1.2"/><line x1="676" y1="141" x2="640" y2="141" stroke="#A64E32" stroke-width="1.2"/><line x1="404" y1="202" x2="440" y2="141" stroke="#A64E32" stroke-width="1.2"/><line x1="676" y1="202" x2="640" y2="141" stroke="#A64E32" stroke-width="1.2"/><line x1="540" y1="206" x2="540" y2="183" stroke="#A64E32" stroke-width="1.2"/><line x1="540" y1="99" x2="540" y2="141" stroke="#2A8C8C" stroke-width="3"/><line x1="540" y1="183" x2="540" y2="141" stroke="#2A8C8C" stroke-width="3"/><line x1="440" y1="141" x2="540" y2="141" stroke="#2A8C8C" stroke-width="3"/><line x1="640" y1="141" x2="540" y2="141" stroke="#2A8C8C" stroke-width="3"/><rect x="510" y="88" width="60" height="22" rx="8" fill="#2A6F66"/><text x="540" y="102.5" font-size="10" fill="#fff" text-anchor="middle">Trước</text><rect x="510" y="172" width="60" height="22" rx="8" fill="#2A6F66"/><text x="540" y="186.5" font-size="10" fill="#fff" text-anchor="middle">Sau</text><rect x="414" y="130" width="52" height="22" rx="8" fill="#2A6F66"/><text x="440" y="144.5" font-size="10" fill="#fff" text-anchor="middle">Trái</text><rect x="614" y="130" width="52" height="22" rx="8" fill="#2A6F66"/><text x="640" y="144.5" font-size="10" fill="#fff" text-anchor="middle">Phải</text><rect x="502" y="118" width="76" height="20" rx="8" fill="#174C43"/><text x="540" y="131.5" font-size="10" fill="#fff" text-anchor="middle">CDC</text><rect x="502" y="144" width="76" height="20" rx="8" fill="#174C43"/><text x="540" y="157.5" font-size="10" fill="#fff" text-anchor="middle">ADAS</text><circle cx="404" cy="80" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="676" cy="80" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="540" cy="76" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="404" cy="141" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="676" cy="141" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="404" cy="202" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="676" cy="202" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="540" cy="206" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><rect x="10" y="274" width="340" height="226" rx="10" fill="#E5EFEB"/><text x="180" y="294" font-size="12.5" fill="#174C43" text-anchor="middle" font-weight="700">Centralized</text><rect x="30" y="304" width="300" height="150" rx="30" fill="#fff" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><text x="180" y="474" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Logic dồn về máy tính trung tâm</text><text x="180" y="490" font-size="10.5" fill="#596966" text-anchor="middle">zone chỉ còn làm I/O và cấp nguồn</text><line x1="44" y1="318" x2="76" y2="379" stroke="#A64E32" stroke-width="1.2"/><line x1="316" y1="318" x2="284" y2="379" stroke="#A64E32" stroke-width="1.2"/><line x1="180" y1="314" x2="180" y2="332" stroke="#A64E32" stroke-width="1.2"/><line x1="44" y1="379" x2="76" y2="379" stroke="#A64E32" stroke-width="1.2"/><line x1="316" y1="379" x2="284" y2="379" stroke="#A64E32" stroke-width="1.2"/><line x1="44" y1="440" x2="76" y2="379" stroke="#A64E32" stroke-width="1.2"/><line x1="316" y1="440" x2="284" y2="379" stroke="#A64E32" stroke-width="1.2"/><line x1="180" y1="444" x2="180" y2="426" stroke="#A64E32" stroke-width="1.2"/><line x1="180" y1="332" x2="180" y2="379" stroke="#2A8C8C" stroke-width="3"/><line x1="180" y1="426" x2="180" y2="379" stroke="#2A8C8C" stroke-width="3"/><line x1="76" y1="379" x2="180" y2="379" stroke="#2A8C8C" stroke-width="3"/><line x1="284" y1="379" x2="180" y2="379" stroke="#2A8C8C" stroke-width="3"/><rect x="158" y="322" width="44" height="20" rx="8" fill="#2A6F66"/><text x="180" y="335.5" font-size="10" fill="#fff" text-anchor="middle">I/O</text><rect x="158" y="416" width="44" height="20" rx="8" fill="#2A6F66"/><text x="180" y="429.5" font-size="10" fill="#fff" text-anchor="middle">I/O</text><rect x="54" y="369" width="44" height="20" rx="8" fill="#2A6F66"/><text x="76" y="382.5" font-size="10" fill="#fff" text-anchor="middle">I/O</text><rect x="262" y="369" width="44" height="20" rx="8" fill="#2A6F66"/><text x="284" y="382.5" font-size="10" fill="#fff" text-anchor="middle">I/O</text><rect x="126" y="354" width="108" height="50" rx="8" fill="#174C43"/><text x="180" y="375.9" font-size="10.5" fill="#fff" text-anchor="middle">Vehicle</text><text x="180" y="389.5" font-size="10.5" fill="#fff" text-anchor="middle">computer</text><circle cx="44" cy="318" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="316" cy="318" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="180" cy="314" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="44" cy="379" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="316" cy="379" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="44" cy="440" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="316" cy="440" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="180" cy="444" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><rect x="370" y="274" width="340" height="226" rx="10" fill="#E5EFEB"/><text x="540" y="294" font-size="12.5" fill="#174C43" text-anchor="middle" font-weight="700">Hybrid</text><rect x="390" y="304" width="300" height="150" rx="30" fill="#fff" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><text x="540" y="474" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Domain controller + zone + ECU cũ trên CAN</text><text x="540" y="490" font-size="10.5" fill="#596966" text-anchor="middle">gateway đổi CAN signal thành service cho CDC</text><line x1="404" y1="318" x2="430" y2="344" stroke="#A64E32" stroke-width="1.2"/><line x1="404" y1="379" x2="420" y2="355" stroke="#A64E32" stroke-width="1.2"/><line x1="404" y1="440" x2="430" y2="416" stroke="#A64E32" stroke-width="1.2"/><line x1="540" y1="314" x2="540" y2="326" stroke="#A64E32" stroke-width="1.2"/><line x1="540" y1="444" x2="540" y2="432" stroke="#A64E32" stroke-width="1.2"/><line x1="676" y1="318" x2="576" y2="337" stroke="#A64E32" stroke-width="1.2"/><line x1="676" y1="379" x2="650" y2="368" stroke="#A64E32" stroke-width="1.2"/><line x1="676" y1="440" x2="576" y2="421" stroke="#A64E32" stroke-width="1.2"/><line x1="482" y1="355" x2="500" y2="374" stroke="#A64E32" stroke-width="2.2" stroke-dasharray="5 4"/><line x1="482" y1="405" x2="500" y2="384" stroke="#A64E32" stroke-width="2.2" stroke-dasharray="5 4"/><line x1="540" y1="348" x2="590" y2="358" stroke="#2A8C8C" stroke-width="3"/><line x1="540" y1="410" x2="590" y2="404" stroke="#2A8C8C" stroke-width="3"/><line x1="562" y1="380" x2="580" y2="380" stroke="#2A8C8C" stroke-width="3"/><rect x="416" y="344" width="66" height="22" rx="8" fill="#fff" stroke="#A64E32" stroke-width="1.2"/><text x="449" y="358.3" font-size="9.5" fill="#1c2928" text-anchor="middle">ECU phanh</text><rect x="416" y="394" width="66" height="22" rx="8" fill="#fff" stroke="#A64E32" stroke-width="1.2"/><text x="449" y="408.3" font-size="9.5" fill="#1c2928" text-anchor="middle">Powertrain</text><rect x="500" y="368" width="62" height="24" rx="8" fill="#E2BD69"/><text x="531" y="383.5" font-size="10" fill="#1c2928" text-anchor="middle">Gateway</text><rect x="504" y="326" width="72" height="22" rx="8" fill="#2A6F66"/><text x="540" y="340.5" font-size="10" fill="#fff" text-anchor="middle">Zone trước</text><rect x="504" y="410" width="72" height="22" rx="8" fill="#2A6F66"/><text x="540" y="424.5" font-size="10" fill="#fff" text-anchor="middle">Zone sau</text><rect x="580" y="358" width="70" height="20" rx="8" fill="#174C43"/><text x="615" y="371.5" font-size="10" fill="#fff" text-anchor="middle">CDC</text><rect x="580" y="384" width="70" height="20" rx="8" fill="#174C43"/><text x="615" y="397.5" font-size="10" fill="#fff" text-anchor="middle">ADAS</text><circle cx="404" cy="318" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="676" cy="318" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="540" cy="314" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="404" cy="379" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="676" cy="379" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="404" cy="440" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="676" cy="440" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="540" cy="444" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><circle cx="24" cy="520" r="4" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="34" y="524" font-size="10.5" fill="#596966">sensor / actuator</text><line x1="150" y1="520" x2="180" y2="520" stroke="#A64E32" stroke-width="1.5"/><text x="186" y="524" font-size="10.5" fill="#596966">dây tín hiệu riêng</text><line x1="306" y1="520" x2="336" y2="520" stroke="#2A8C8C" stroke-width="3"/><text x="342" y="524" font-size="10.5" fill="#596966">Ethernet backbone</text><line x1="468" y1="520" x2="498" y2="520" stroke="#A64E32" stroke-width="2.2" stroke-dasharray="5 4"/><text x="504" y="524" font-size="10.5" fill="#596966">CAN tới ECU cũ, qua gateway</text><text x="20" y="558" font-size="11" fill="#174C43" font-weight="700">Lộ trình thường gặp</text><rect x="160" y="540" width="120" height="28" rx="8" fill="#E5EFEB" stroke="#596966" stroke-width="1.2"/><text x="220" y="557.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Phân tán</text><rect x="300" y="540" width="120" height="28" rx="8" fill="#174C43"/><text x="360" y="557.7" font-size="10.5" fill="#fff" text-anchor="middle">Domain</text><line x1="280" y1="554" x2="298" y2="554" stroke="#596966" stroke-width="1.5" marker-end="url(#s6-arch-m)"/><rect x="440" y="540" width="120" height="28" rx="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="500" y="557.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Hybrid</text><line x1="420" y1="554" x2="438" y2="554" stroke="#596966" stroke-width="1.5" marker-end="url(#s6-arch-m)"/><rect x="580" y="540" width="120" height="28" rx="8" fill="#2A8C8C"/><text x="640" y="557.7" font-size="10.5" fill="#fff" text-anchor="middle">Zonal + centralized</text><line x1="560" y1="554" x2="578" y2="554" stroke="#596966" stroke-width="1.5" marker-end="url(#s6-arch-m)"/><text x="440" y="590" font-size="10.5" fill="#596966" text-anchor="middle">hầu hết xe hiện nay đang ở bước hybrid</text></svg><figcaption>Bốn kiến trúc khác nhau ở cách gom ECU và đường dây; hybrid giữ domain controller và ECU cũ trên CAN trong khi phần còn lại đã chuyển sang zone.</figcaption></figure>
+<h4>a) Domain architecture</h4>
+<p>ECU được nhóm theo lĩnh vực chức năng: cockpit, ADAS, body, powertrain, chassis. Mỗi domain có một domain controller mạnh hơn, gánh logic của nhiều ECU nhỏ trước đây. Các domain trao đổi với nhau qua central gateway.</p>
+<p>Ưu điểm: dễ chia việc theo nhóm kỹ sư và supplier, mỗi domain được phát triển và chứng nhận safety riêng. Nhược điểm: sensor và actuator vẫn phải đi dây về domain controller của chức năng mình, dù nằm ở góc nào của xe, nên bó dây vẫn dài. Tính năng cần dữ liệu của nhiều domain phải đi qua gateway.</p>
+<p>CDC là sản phẩm điển hình của kiến trúc domain: nó là controller của domain cockpit.</p>
+<h4>b) Zonal architecture</h4>
+<p>ECU được gom theo vị trí vật lý. Mỗi zone controller phục vụ mọi sensor và actuator ở khu vực của nó, bất kể chức năng. Zone controller thường kiêm phân phối nguồn bằng eFuse thay cho cầu chì và relay. Các zone nối với máy tính trung tâm qua Ethernet backbone.</p>
+<p>Ưu điểm: bó dây ngắn và nhẹ hơn, dễ lắp ráp tự động, thêm sensor chỉ cần nối vào zone gần nhất. Nhược điểm: zone controller trở thành ECU đa chức năng, phải tích hợp phần mềm của nhiều domain và nhiều supplier. Dữ liệu đi thêm một chặng chuyển tiếp nên độ trễ phải được tính kỹ.</p>
+<p>Trong kiến trúc zonal, CDC vẫn tồn tại nhưng nhận dữ liệu từ các zone controller qua Ethernet thay vì nối dây trực tiếp với từng nút bấm.</p>
+<h4>c) Centralized architecture</h4>
+<p>Logic của gần như mọi domain dồn về một hoặc vài vehicle computer trung tâm. Zone controller chỉ còn làm I/O, chuyển đổi tín hiệu và cấp nguồn. Đây là kiến trúc đích mà nhiều lộ trình SDV hướng tới.</p>
+<p>Ưu điểm: tính năng liên domain dễ làm vì dữ liệu ở cùng một chỗ, phần mềm được cập nhật tập trung, phần cứng được chia sẻ nên đỡ lãng phí. Nhược điểm: máy tính trung tâm phải đáp ứng mức ASIL cao nhất trong số chức năng nó chạy. Nó là điểm tập trung rủi ro nên cần dự phòng nguồn và tính toán. Tản nhiệt khó hơn, và nâng cấp phần cứng giữa vòng đời xe rất tốn kém.</p>
+<p>Với CDC, centralized nghĩa là cockpit có thể chỉ còn là một partition hoặc VM trên máy tính trung tâm, chạy chung với phần ADAS hoặc body.</p>
+<h4>d) Hybrid architecture</h4>
+<p>Hybrid là cách kết hợp có chủ đích nhiều kiểu kiến trúc trong cùng một chiếc xe. Dạng phổ biến: một số domain controller mạnh vẫn được giữ, như CDC cho cockpit và một controller cho ADAS, trong khi body và phân phối nguồn đã chuyển sang zone controller. Powertrain và chassis thường vẫn là các ECU riêng trên CAN, nối với phần còn lại qua gateway.</p>
+<p>Lý do OEM chọn hybrid trong giai đoạn chuyển đổi:</p>
+<ul>
+<li><b>Tái sử dụng</b>: ECU phanh, túi khí, powertrain đã được chứng nhận safety và kiểm chứng qua nhiều năm. Viết lại chúng cho máy tính trung tâm vừa tốn kém vừa rủi ro.</li>
+<li><b>Chuyển từng bước</b>: mỗi thế hệ platform chuyển thêm một vài domain, thay vì đặt cược cả chiếc xe vào một kiến trúc chưa được kiểm chứng.</li>
+<li><b>Hệ sinh thái supplier</b>: nhiều supplier vẫn giao domain controller hoàn chỉnh, còn năng lực phần mềm nội bộ của OEM cần thời gian để xây.</li>
+<li><b>Biến thể xe</b>: bản tiêu chuẩn và bản cao cấp có thể dùng chung zone controller nhưng lắp domain controller cockpit khác nhau.</li>
+</ul>
+<p>Cái giá của hybrid: hai cách giao tiếp tồn tại song song, tín hiệu cố định trên CAN và service trên Ethernet. Gateway phải chuyển đổi qua lại giữa signal và service. Có nhiều kiểu node và nhiều chặng hơn, nên phân tích độ trễ và kiểm thử tích hợp phức tạp hơn. Trong lúc chuyển giao, một số chức năng có thể tạm thời bị lặp ở hai nơi.</p>
+<p>Ví dụ CDC trong một xe hybrid: CDC là domain controller cockpit, nối Ethernet với zone trước và zone sau. Nút bấm trên vô lăng đi qua zone trước và đến CDC dưới dạng event SOME/IP. Tốc độ xe lại do ECU phanh trên CAN cung cấp: gateway đọc tín hiệu CAN, đóng gói thành service "VehicleSpeed" rồi mới gửi cho CDC. Hai đường dữ liệu có độ trễ và cách báo lỗi khác nhau, và phần mềm CDC phải xử lý được cả hai.</p>
+<figure class="fig"><svg viewBox="0 0 720 258" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Nút vô lăng đi qua zone trước tới CDC bằng SOME/IP event; tốc độ xe đi từ ECU phanh qua CAN tới gateway, được đổi thành service VehicleSpeed rồi mới tới CDC"><defs><marker id="s6-hyb-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A64E32"/></marker><marker id="s6-hyb-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">CDC trong một xe hybrid: hai đường dữ liệu</text><rect x="20" y="50" width="120" height="44" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="80" y="68.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Nút vô lăng</text><text x="80" y="83" font-size="10.5" fill="#1c2928" text-anchor="middle">sensor mới</text><line x1="140" y1="72" x2="186" y2="72" stroke="#A64E32" stroke-width="1.6" marker-end="url(#s6-hyb-c)"/><text x="163" y="64" font-size="9.5" fill="#596966" text-anchor="middle">dây ngắn</text><rect x="188" y="50" width="132" height="44" rx="8" fill="#2A6F66"/><text x="254" y="68.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Zone trước</text><text x="254" y="83" font-size="10.5" fill="#fff" text-anchor="middle">zone controller</text><line x1="320" y1="72" x2="556" y2="72" stroke="#2A8C8C" stroke-width="3" marker-end="url(#s6-hyb-t)"/><text x="438" y="64" font-size="10" fill="#2A8C8C" text-anchor="middle" font-weight="700">Ethernet · SOME/IP event</text><text x="438" y="88" font-size="10" fill="#596966" text-anchor="middle">1 chặng chuyển tiếp</text><rect x="20" y="146" width="120" height="44" rx="8" fill="#E5EFEB" stroke="#A64E32" stroke-width="1.2"/><text x="80" y="164.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">ECU phanh</text><text x="80" y="179" font-size="10.5" fill="#1c2928" text-anchor="middle">ECU cũ</text><line x1="140" y1="168" x2="186" y2="168" stroke="#A64E32" stroke-width="2.2" stroke-dasharray="5 4" marker-end="url(#s6-hyb-c)"/><text x="163" y="160" font-size="9.5" fill="#596966" text-anchor="middle">CAN</text><rect x="188" y="146" width="132" height="44" rx="8" fill="#E2BD69"/><text x="254" y="164.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Gateway</text><text x="254" y="179" font-size="10.5" fill="#1c2928" text-anchor="middle">signal → service</text><line x1="320" y1="168" x2="556" y2="168" stroke="#2A8C8C" stroke-width="3" marker-end="url(#s6-hyb-t)"/><text x="438" y="160" font-size="10" fill="#2A8C8C" text-anchor="middle" font-weight="700">Ethernet · service VehicleSpeed</text><text x="438" y="184" font-size="10" fill="#596966" text-anchor="middle">độ trễ = CAN + gateway + Ethernet</text><rect x="558" y="50" width="142" height="140" rx="8" fill="#174C43"/><text x="629" y="109.1" font-size="11.5" fill="#fff" text-anchor="middle" font-weight="700">CDC</text><text x="629" y="124" font-size="11" fill="#fff" text-anchor="middle">domain controller</text><text x="629" y="139" font-size="11" fill="#fff" text-anchor="middle">cockpit</text><rect x="20" y="208" width="680" height="36" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.4" stroke-dasharray="5 4"/><text x="360" y="229.7" font-size="10.5" fill="#A93226" text-anchor="middle">Hai đường có độ trễ và cách báo lỗi khác nhau: CDC cần timeout và trạng thái invalid riêng cho từng đường</text></svg><figcaption>Trong xe hybrid, cùng một CDC nhận dữ liệu từ hai thế giới: event từ zone và tín hiệu CAN đã được gateway đổi thành service.</figcaption></figure>
+<h4>e) So sánh bốn kiểu</h4>
+<div class="table-scroll"><table>
+<thead><tr><th>Kiểu</th><th>Cách gom</th><th>Mạnh ở</th><th>Yếu ở</th><th>Vị trí của CDC</th></tr></thead>
+<tbody>
+<tr><td>Domain</td><td>Theo chức năng: cockpit, ADAS, body, powertrain</td><td>Chia việc rõ theo domain và supplier</td><td>Dây vẫn chạy dài khắp xe, tính năng liên domain phải qua gateway</td><td>Là domain controller cockpit</td></tr>
+<tr><td>Zonal</td><td>Theo vị trí: zone trước, sau, trái, phải</td><td>Dây ngắn, thêm sensor dễ, phân phối nguồn thông minh</td><td>Zone controller phải tích hợp phần mềm nhiều domain</td><td>Nhận dữ liệu từ zone qua Ethernet</td></tr>
+<tr><td>Centralized</td><td>Một hoặc vài vehicle computer trung tâm</td><td>Tính năng liên domain, cập nhật tập trung</td><td>Rủi ro tập trung, ASIL cao, tản nhiệt và dự phòng khó</td><td>Thành một partition trên máy tính trung tâm</td></tr>
+<tr><td>Hybrid</td><td>Trộn domain controller, zone controller và ECU cũ</td><td>Chuyển đổi từng bước, tái sử dụng ECU đã chứng nhận</td><td>Hai thế giới CAN signal và service cùng tồn tại, gateway phức tạp</td><td>Domain controller cockpit nối cả zone lẫn gateway</td></tr>
+</tbody></table></div>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Domain gom theo chức năng, zonal gom theo vị trí, centralized dồn logic về máy tính trung tâm. Hybrid trộn các kiểu đó để chuyển đổi từng bước và tái sử dụng ECU đã chứng nhận, đổi lại phải sống chung với cả CAN signal lẫn service. Hầu hết xe hiện nay đang ở trạng thái hybrid.</p></div>
+<h3 id="p2-3">2.3 Tách hardware capability khỏi software feature</h3>
+<p>Hardware capability là những gì phần cứng có thể làm: số nhân CPU, GPU, RAM, camera, cổng mạng. Software feature là thứ người dùng thấy: navigation, chế độ hiển thị cluster, nhận diện mặt tài xế.</p>
+<p>Khi hai thứ này gắn chặt, mỗi feature mới đòi hỏi phần cứng mới, hoặc ít nhất một bản firmware viết riêng cho đúng con chip đó. Tách chúng ra nghĩa là phần cứng được thiết kế như một tập năng lực dùng chung, còn feature là phần mềm dùng các năng lực ấy qua một lớp trung gian.</p>
+<h4>a) Các kỹ thuật tách</h4>
+<ul>
+<li>Phần mềm gọi API ổn định thay vì truy cập trực tiếp thanh ghi. Phần bên dưới API thay đổi thì feature không phải viết lại.</li>
+<li><b>HAL</b>: lớp hardware abstraction che đi khác biệt giữa các chip và thiết bị. Trên Android Automotive, Vehicle HAL và camera HAL là hai ví dụ quen thuộc.</li>
+<li><b>Hardware headroom</b>: chọn SoC, RAM và flash dư so với nhu cầu lúc SOP, để còn chỗ cho feature của nhiều năm sau.</li>
+<li><b>Capability discovery và cấu hình biến thể</b>: phần mềm hỏi hệ thống có những năng lực nào, ví dụ có camera cabin hay không, rồi bật hoặc ẩn feature tương ứng, thay vì build riêng cho từng biến thể xe.</li>
+<li><b>Feature activation</b>: feature được cài sẵn nhưng chỉ bật khi có cấu hình hoặc giấy phép từ backend. Cơ chế này phục vụ cả rollout từng đợt lẫn bán tính năng sau khi bán xe.</li>
+</ul>
+<h4>b) Khi nào đáng tách và cái giá</h4>
+<p>Tách đáng làm khi phần cứng sống lâu hơn nhiều so với chu kỳ của feature, điều gần như luôn đúng với xe chạy 10 đến 15 năm. Nó ít đáng hơn với chức năng cố định, như một ECU chỉ điều khiển kính cửa lên xuống.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Lợi ích</th><th>Cái giá</th></tr></thead>
+<tbody>
+<tr><td>Feature mới không cần phần cứng mới</td><td>Trả tiền cho phần cứng dư ngay từ đầu, trên mọi chiếc xe</td></tr>
+<tr><td>Một bản phần mềm chạy trên nhiều biến thể</td><td>Ma trận kiểm thử biến thể lớn hơn</td></tr>
+<tr><td>Thế hệ sau đổi chip mà vẫn giữ feature</td><td>Lớp abstraction thêm độ trễ và tốn công bảo trì</td></tr>
+<tr><td>Có thể bán tính năng mở khóa</td><td>API thiết kế sai thì khó sửa vì nhiều feature đã phụ thuộc vào nó</td></tr>
+</tbody></table></div>
+<p>Ví dụ: CDC có sẵn camera trong cabin. Sau một năm, OEM phát hành tính năng cảnh báo buồn ngủ dùng cùng camera đó qua OTA. Điều này chỉ làm được vì camera, ISP và NPU đã được dự phòng từ đầu, và camera được truy cập qua API chung chứ không qua driver riêng của ứng dụng nhận diện mặt.</p>
+<figure class="fig"><svg viewBox="0 0 720 256" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Ba lớp: hardware capability, API ổn định và software feature; feature mới dùng lại camera có sẵn"><defs><marker id="s6-cap-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A64E32"/></marker><marker id="s6-cap-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Feature mới nằm trên capability có sẵn</text><text x="20" y="70" font-size="11.5" fill="#174C43" font-weight="700">Software feature</text><text x="20" y="85" font-size="10.5" fill="#596966">người dùng thấy</text><text x="20" y="140" font-size="11.5" fill="#174C43" font-weight="700">Abstraction</text><text x="20" y="210" font-size="11.5" fill="#174C43" font-weight="700">Hardware capability</text><text x="20" y="225" font-size="10.5" fill="#596966">phần cứng làm được</text><rect x="165" y="50" width="120" height="52" rx="8" fill="#A64E32"/><text x="225" y="79.8" font-size="11" fill="#fff" text-anchor="middle">Navigation</text><rect x="297" y="50" width="120" height="52" rx="8" fill="#A64E32"/><text x="357" y="72.7" font-size="11" fill="#fff" text-anchor="middle">Chế độ hiển thị</text><text x="357" y="87" font-size="11" fill="#fff" text-anchor="middle">cluster</text><rect x="429" y="50" width="120" height="52" rx="8" fill="#A64E32"/><text x="489" y="72.7" font-size="11" fill="#fff" text-anchor="middle">Nhận diện</text><text x="489" y="87" font-size="11" fill="#fff" text-anchor="middle">mặt tài xế</text><rect x="561" y="50" width="120" height="52" rx="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="5 4"/><text x="621" y="72.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Cảnh báo buồn ngủ</text><text x="621" y="87" font-size="10.5" fill="#1c2928" text-anchor="middle">thêm qua OTA</text><line x1="225" y1="102" x2="225" y2="122" stroke="#596966" stroke-width="1.2" marker-end="url(#s6-cap-m)"/><line x1="357" y1="102" x2="357" y2="122" stroke="#596966" stroke-width="1.2" marker-end="url(#s6-cap-m)"/><line x1="489" y1="102" x2="489" y2="122" stroke="#596966" stroke-width="1.2" marker-end="url(#s6-cap-m)"/><rect x="165" y="124" width="516" height="34" rx="8" fill="#2A8C8C"/><text x="423" y="144.8" font-size="11" fill="#fff" text-anchor="middle">API ổn định: feature gọi API, không truy cập trực tiếp thanh ghi</text><rect x="165" y="186" width="96" height="46" rx="8" fill="#174C43"/><text x="213" y="212.7" font-size="10.5" fill="#fff" text-anchor="middle">CPU nhiều nhân</text><rect x="270" y="186" width="96" height="46" rx="8" fill="#174C43"/><text x="318" y="212.7" font-size="10.5" fill="#fff" text-anchor="middle">GPU</text><rect x="375" y="186" width="96" height="46" rx="8" fill="#174C43"/><text x="423" y="212.7" font-size="10.5" fill="#fff" text-anchor="middle">RAM</text><rect x="480" y="186" width="96" height="46" rx="8" fill="#2A6F66" stroke="#B7791F" stroke-width="2.5"/><text x="528" y="212.7" font-size="10.5" fill="#fff" text-anchor="middle">Camera cabin</text><rect x="585" y="186" width="96" height="46" rx="8" fill="#174C43"/><text x="633" y="212.7" font-size="10.5" fill="#fff" text-anchor="middle">Cổng mạng</text><path d="M621,102 C621,170 540,150 533,184" fill="none" stroke="#A64E32" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#s6-cap-c)"/></svg><figcaption>Khi feature chỉ đi qua API, một feature mới có thể dùng lại phần cứng đã có, như camera cabin.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Tách capability khỏi feature bằng API ổn định, HAL, headroom, capability discovery và feature activation giúp thêm tính năng mà không đổi phần cứng. Cái giá là phần cứng dư, ma trận kiểm thử lớn hơn và một abstraction phải thiết kế đúng ngay từ đầu.</p></div>
+<h3 id="p2-4">2.4 Vehicle computer, service-oriented architecture, middleware và communication</h3>
+<h4>a) Vehicle computer</h4>
+<p>Vehicle computer là máy tính hiệu năng cao chạy nhiều chức năng cùng lúc. Nó thường dùng SoC nhiều nhân ARM có GPU, NPU, DSP, kèm một MCU hoặc lõi safety lo phần thời gian thực và quản lý nguồn. Hypervisor chia phần cứng thành nhiều partition để chạy song song các OS khác nhau như QNX, Linux, Android Automotive.</p>
+<p>Một xe có thể có một vehicle computer trung tâm, hoặc vài máy tính cho các vùng chức năng lớn như cockpit và ADAS. CDC chính là một vehicle computer chuyên cho cockpit.</p>
+<h4>b) Service-oriented architecture</h4>
+<p>Để các chức năng phối hợp, SDV dùng service-oriented architecture: mỗi khối cung cấp service có interface rõ ràng, khối khác đăng ký và sử dụng. Một service thường có ba loại phần tử: method để gọi và nhận kết quả, event để được báo khi có thay đổi, và field là giá trị có thể đọc, ghi và theo dõi.</p>
+<p>Khác biệt so với kiểu signal-based truyền thống nằm ở chỗ dữ liệu được gửi khi nào và cho ai:</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Tiêu chí</th><th>Signal-based trên CAN</th><th>Service-oriented trên Ethernet</th></tr></thead>
+<tbody>
+<tr><td>Cách gửi</td><td>Gửi định kỳ dạng broadcast, cấu hình cố định lúc thiết kế</td><td>Bên dùng đăng ký và chỉ nhận cái mình cần</td></tr>
+<tr><td>Khi thay đổi</td><td>Đổi một signal phải cập nhật database mạng cho mọi ECU liên quan</td><td>Thêm service mới không ảnh hưởng bên cũ nếu interface có version</td></tr>
+<tr><td>Timing</td><td>Dễ dự đoán, hợp với điều khiển thời gian thực</td><td>Linh hoạt hơn nhưng phải thiết kế riêng để bảo đảm độ trễ</td></tr>
+<tr><td>Băng thông</td><td>CAN FD ở mức vài Mbit/s</td><td>Từ 100 Mbit/s đến nhiều Gbit/s</td></tr>
+</tbody></table></div>
+<h4>c) Middleware</h4>
+<p>Middleware là lớp thực hiện việc tìm service, đóng gói dữ liệu và truyền đi. Các lựa chọn phổ biến:</p>
+<ul>
+<li><b>SOME/IP</b>: chuẩn được AUTOSAR hỗ trợ, phổ biến trên Ethernet trong xe.</li>
+<li><b>DDS</b>: mô hình publish-subscribe với QoS chi tiết, dùng nhiều ở ADAS và ROS 2.</li>
+<li><b>ara::com</b>: API communication của AUTOSAR Adaptive, cho ứng dụng dùng service mà không cần biết bên dưới là SOME/IP hay DDS.</li>
+<li><b>Binder và AIDL</b>: IPC bên trong Android Automotive, nối app với car service và các HAL.</li>
+<li><b>MQTT và HTTPS</b>: giao tiếp giữa xe và cloud thông qua TCU.</li>
+</ul>
+<p>Ngoài truyền dữ liệu, middleware còn lo service discovery, serialization, bảo mật kênh truyền và QoS. Lựa chọn middleware ảnh hưởng tới độ trễ, mức tiêu thụ CPU và khả năng tích hợp phần mềm của supplier.</p>
+<h4>d) Communication</h4>
+<p>Communication là phần vật lý và giao thức bên dưới middleware. Trong xe hiện đại cùng tồn tại: CAN và CAN FD cho điều khiển, LIN cho thiết bị đơn giản như đèn trần, automotive Ethernet như 100BASE-T1 và 1000BASE-T1 cho backbone, TSN khi Ethernet cần thời gian xác định, và SerDes như GMSL hoặc FPD-Link cho luồng video tới màn hình và từ camera. Bên trong một SoC, các VM nói chuyện với nhau qua shared memory hoặc virtio.</p>
+<figure class="fig"><svg viewBox="0 0 720 290" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="CDC nối Ethernet với zone controller, CAN FD qua MCU tới ECU cũ, SerDes tới màn hình và camera, TCU lên cloud; bên trong hai VM trao đổi qua shared memory và virtio"><defs><marker id="s6-net-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Các đường communication quanh CDC</text><rect x="250" y="52" width="230" height="170" rx="10" fill="#E5EFEB" stroke="#174C43" stroke-width="1.4"/><text x="365" y="72" font-size="12" fill="#174C43" text-anchor="middle" font-weight="700">CDC</text><rect x="262" y="84" width="98" height="40" rx="8" fill="#174C43"/><text x="311" y="100.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">VM cluster</text><text x="311" y="114.5" font-size="10" fill="#fff" text-anchor="middle">QNX</text><rect x="370" y="84" width="98" height="40" rx="8" fill="#2A8C8C"/><text x="419" y="100.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">VM IVI</text><text x="419" y="114.5" font-size="10" fill="#fff" text-anchor="middle">Android</text><text x="365" y="142" font-size="10" fill="#596966" text-anchor="middle">shared memory, virtio</text><rect x="262" y="154" width="206" height="54" rx="8" fill="#2A6F66"/><text x="365" y="177.9" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">MCU</text><text x="365" y="191.5" font-size="10" fill="#fff" text-anchor="middle">CAN FD, nguồn, wake-up</text><rect x="20" y="70" width="140" height="44" rx="8" fill="#2A6F66"/><text x="90" y="88.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Zone controller</text><text x="90" y="102.5" font-size="10" fill="#fff" text-anchor="middle">và gateway</text><line x1="160" y1="98" x2="248" y2="104" stroke="#2A8C8C" stroke-width="3"/><text x="204" y="86" font-size="10" fill="#2A8C8C" text-anchor="middle" font-weight="700">Ethernet</text><text x="204" y="120" font-size="10" fill="#596966" text-anchor="middle">SOME/IP</text><rect x="20" y="170" width="140" height="44" rx="8" fill="#fff" stroke="#A64E32" stroke-width="1.2"/><text x="90" y="188.9" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">ECU body</text><text x="90" y="202.5" font-size="10" fill="#1c2928" text-anchor="middle">ECU đời cũ</text><line x1="160" y1="192" x2="248" y2="186" stroke="#A64E32" stroke-width="2.2" stroke-dasharray="5 4"/><text x="204" y="178" font-size="10" fill="#A64E32" text-anchor="middle" font-weight="700">CAN FD</text><rect x="560" y="44" width="140" height="40" rx="8" fill="#fff" stroke="#B7791F" stroke-width="1.2"/><text x="630" y="60.8" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Màn hình</text><text x="630" y="74.5" font-size="10" fill="#1c2928" text-anchor="middle">cluster, IVI, HUD</text><rect x="560" y="96" width="140" height="40" rx="8" fill="#fff" stroke="#B7791F" stroke-width="1.2"/><text x="630" y="112.8" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Camera</text><text x="630" y="126.5" font-size="10" fill="#1c2928" text-anchor="middle">lùi, cabin</text><line x1="480" y1="92" x2="558" y2="66" stroke="#B7791F" stroke-width="2.4"/><line x1="480" y1="110" x2="558" y2="116" stroke="#B7791F" stroke-width="2.4"/><text x="520" y="146" font-size="10" fill="#B7791F" text-anchor="middle" font-weight="700">SerDes</text><text x="520" y="160" font-size="9.5" fill="#596966" text-anchor="middle">GMSL, FPD-Link</text><rect x="560" y="178" width="140" height="36" rx="8" fill="#2A8C8C"/><text x="630" y="199.7" font-size="10.5" fill="#fff" text-anchor="middle">TCU · cellular</text><line x1="480" y1="196" x2="558" y2="196" stroke="#2A8C8C" stroke-width="2"/><rect x="560" y="236" width="140" height="36" rx="8" fill="#fff" stroke="#2A8C8C" stroke-width="1.2" stroke-dasharray="5 4"/><text x="630" y="257.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Cloud: MQTT, HTTPS</text><line x1="630" y1="214" x2="630" y2="234" stroke="#2A8C8C" stroke-width="1.5" marker-end="url(#s6-net-t)"/><line x1="20" y1="252" x2="46" y2="252" stroke="#2A8C8C" stroke-width="3"/><text x="52" y="256" font-size="10.5" fill="#596966">Ethernet</text><line x1="120" y1="252" x2="146" y2="252" stroke="#A64E32" stroke-width="2.2" stroke-dasharray="5 4"/><text x="152" y="256" font-size="10.5" fill="#596966">CAN</text><line x1="200" y1="252" x2="226" y2="252" stroke="#B7791F" stroke-width="2.4"/><text x="232" y="256" font-size="10.5" fill="#596966">video SerDes</text></svg><figcaption>CDC đứng giữa nhiều loại đường truyền, mỗi loại có băng thông, độ trễ và cách báo lỗi riêng.</figcaption></figure>
+<p>Ví dụ CDC: IVI đăng ký service "VehicleSpeed" do một zone controller cung cấp qua SOME/IP. Nếu zone controller được thay bằng phiên bản mới, IVI không cần sửa miễn là interface giữ nguyên.</p>
+<figure class="fig"><svg viewBox="0 0 720 262" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Zone controller cung cấp service VehicleSpeed, IVI đăng ký qua middleware SOME/IP; thay zone controller mà IVI không đổi"><defs><marker id="s6-soa-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A64E32"/></marker><marker id="s6-soa-f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#174C43"/></marker><marker id="s6-soa-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Service VehicleSpeed qua middleware</text><rect x="260" y="40" width="200" height="44" rx="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="360" y="58.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Service “VehicleSpeed”</text><text x="360" y="73" font-size="10.5" fill="#1c2928" text-anchor="middle">interface rõ ràng, có version</text><line x1="360" y1="84" x2="360" y2="100" stroke="#B7791F" stroke-width="1.5" stroke-dasharray="5 4"/><rect x="30" y="104" width="165" height="56" rx="8" fill="#174C43"/><text x="112.5" y="128.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Zone controller</text><text x="112.5" y="143" font-size="10.5" fill="#fff" text-anchor="middle">cung cấp service</text><rect x="260" y="100" width="200" height="64" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="360" y="121.5" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Middleware</text><text x="360" y="135.8" font-size="10.5" fill="#1c2928" text-anchor="middle">SOME/IP trên Ethernet</text><text x="360" y="150.2" font-size="10.5" fill="#1c2928" text-anchor="middle">tìm service, đóng gói, truyền</text><rect x="525" y="104" width="165" height="56" rx="8" fill="#2A8C8C"/><text x="607.5" y="128.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">IVI</text><text x="607.5" y="143" font-size="10.5" fill="#fff" text-anchor="middle">đăng ký và sử dụng</text><line x1="195" y1="132" x2="258" y2="132" stroke="#174C43" stroke-width="1.8" marker-end="url(#s6-soa-f)"/><text x="227" y="125" font-size="10" fill="#596966" text-anchor="middle">offer</text><line x1="460" y1="122" x2="523" y2="122" stroke="#174C43" stroke-width="1.8" marker-end="url(#s6-soa-f)"/><text x="492" y="115" font-size="10" fill="#596966" text-anchor="middle">data</text><line x1="525" y1="146" x2="462" y2="146" stroke="#2A8C8C" stroke-width="1.8" marker-end="url(#s6-soa-t)"/><text x="492" y="159" font-size="10" fill="#596966" text-anchor="middle">subscribe</text><rect x="30" y="198" width="165" height="48" rx="8" fill="#fff" stroke="#A64E32" stroke-width="1.6" stroke-dasharray="5 4"/><text x="112.5" y="218.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Zone controller v2</text><text x="112.5" y="233" font-size="10.5" fill="#1c2928" text-anchor="middle">cùng interface</text><line x1="112" y1="198" x2="112" y2="163" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s6-soa-c)"/><text x="120" y="185" font-size="10" fill="#A64E32">thay thế</text><rect x="525" y="198" width="165" height="48" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="607.5" y="218.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">IVI không cần sửa</text><text x="607.5" y="233" font-size="10.5" fill="#1c2928" text-anchor="middle">vì interface giữ nguyên</text></svg><figcaption>Bên cung cấp và bên dùng chỉ gặp nhau ở interface, nên có thể thay một bên mà bên kia không đổi.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Vehicle computer gom nhiều chức năng trên một SoC, SOA và middleware cho chúng phối hợp qua interface thay vì phụ thuộc trực tiếp, còn communication là các đường CAN, Ethernet, SerDes và virtio bên dưới. Interface ổn định là điều kiện để thay từng phần độc lập.</p></div>
+<h3 id="p2-5">2.5 OTA, feature deployment, data feedback và continuous improvement</h3>
+<h4>a) OTA</h4>
+<p>OTA là đường dẫn đưa phần mềm mới từ backend xuống xe. Thường chia hai loại: SOTA cập nhật ứng dụng và phần mềm cấp cao, FOTA cập nhật firmware của ECU. Thành phần chính gồm backend quản lý chiến dịch cập nhật, TCU nhận gói qua cellular, một update master trong xe điều phối thứ tự, và update agent trên từng ECU thực hiện việc cài.</p>
+<p>Bảo mật là điều kiện bắt buộc: gói được ký số, xe kiểm tra chữ ký trước khi cài, kênh truyền được mã hóa. Uptane là một framework tham khảo phổ biến cho OTA ô tô. UNECE R156 yêu cầu OEM vận hành một hệ thống quản lý software update, thường gọi là SUMS.</p>
+<p>Một chu trình đầy đủ gồm bốn bước:</p>
+<ol>
+<li>Build và ký số gói cập nhật.</li>
+<li>Phát hành theo đợt nhỏ, ví dụ 1% đội xe trước (giả định minh họa).</li>
+<li>Xe gửi về log, crash report, số liệu sử dụng.</li>
+<li>Nhóm phát triển phân tích, sửa lỗi và phát hành tiếp.</li>
+</ol>
+<p>Để cập nhật an toàn, CDC thường dùng phân vùng A/B: bản mới được ghi vào phân vùng không hoạt động, chỉ chuyển sang khi khởi động thành công, nếu lỗi thì quay lại bản cũ.</p>
+<figure class="fig"><svg viewBox="0 0 720 270" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Vòng lặp OTA bốn bước và cơ chế A/B partition: ghi bản mới vào slot B, boot thử, lỗi thì quay về A"><defs><marker id="s6-ota-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker><marker id="s6-ota-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker><marker id="s6-ota-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Vòng lặp OTA và cập nhật A/B</text><rect x="40" y="52" width="180" height="52" rx="8" fill="#174C43"/><text x="130" y="74.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">1. Build và ký số</text><text x="130" y="89" font-size="10.5" fill="#fff" text-anchor="middle">gói cập nhật</text><rect x="270" y="52" width="180" height="52" rx="8" fill="#A64E32"/><text x="360" y="74.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">2. Rollout từng đợt</text><text x="360" y="89" font-size="10.5" fill="#fff" text-anchor="middle">1% đội xe trước</text><rect x="270" y="172" width="180" height="52" rx="8" fill="#2A8C8C"/><text x="360" y="194.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">3. Xe gửi dữ liệu về</text><text x="360" y="209" font-size="10.5" fill="#fff" text-anchor="middle">log, crash, usage</text><rect x="40" y="172" width="180" height="52" rx="8" fill="#2A6F66"/><text x="130" y="194.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">4. Phân tích, sửa lỗi</text><text x="130" y="209" font-size="10.5" fill="#fff" text-anchor="middle">rồi phát hành tiếp</text><line x1="220" y1="78" x2="268" y2="78" stroke="#596966" stroke-width="1.8" marker-end="url(#s6-ota-m)"/><line x1="360" y1="104" x2="360" y2="170" stroke="#596966" stroke-width="1.8" marker-end="url(#s6-ota-m)"/><line x1="270" y1="198" x2="222" y2="198" stroke="#596966" stroke-width="1.8" marker-end="url(#s6-ota-m)"/><line x1="130" y1="172" x2="130" y2="106" stroke="#596966" stroke-width="1.8" marker-end="url(#s6-ota-m)"/><text x="245" y="136" font-size="11" fill="#174C43" text-anchor="middle" font-weight="700">cải tiến</text><text x="245" y="151" font-size="11" fill="#174C43" text-anchor="middle" font-weight="700">liên tục</text><line x1="478" y1="44" x2="478" y2="250" stroke="#c9d8d3" stroke-width="1.2"/><text x="595" y="56" font-size="11.5" fill="#174C43" text-anchor="middle" font-weight="700">A/B partition trên CDC</text><rect x="492" y="70" width="100" height="44" rx="8" fill="#174C43"/><text x="542" y="88.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Slot A</text><text x="542" y="103" font-size="10.5" fill="#fff" text-anchor="middle">bản đang chạy</text><rect x="600" y="70" width="100" height="44" rx="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2" stroke-dasharray="5 4"/><text x="650" y="88.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Slot B</text><text x="650" y="103" font-size="10.5" fill="#1c2928" text-anchor="middle">ghi bản mới</text><rect x="522" y="140" width="150" height="34" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="597" y="160.8" font-size="11" fill="#1c2928" text-anchor="middle">Khởi động thử từ B</text><line x1="650" y1="114" x2="630" y2="138" stroke="#596966" stroke-width="1.5" marker-end="url(#s6-ota-m)"/><rect x="492" y="204" width="100" height="44" rx="8" fill="#2A8C8C"/><text x="542" y="222.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Thành công</text><text x="542" y="237" font-size="10.5" fill="#fff" text-anchor="middle">dùng bản B</text><rect x="600" y="204" width="100" height="44" rx="8" fill="#A93226"/><text x="650" y="222.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Lỗi</text><text x="650" y="237" font-size="10.5" fill="#fff" text-anchor="middle">quay về A</text><line x1="570" y1="174" x2="548" y2="202" stroke="#2A8C8C" stroke-width="1.5" marker-end="url(#s6-ota-t)"/><line x1="624" y1="174" x2="646" y2="202" stroke="#A93226" stroke-width="1.5" marker-end="url(#s6-ota-r)"/></svg><figcaption>Dữ liệu từ xe quay về nuôi bản phát hành sau, còn A/B partition bảo đảm luôn có đường lui khi bản mới lỗi.</figcaption></figure>
+<p>Trước khi cài, xe còn phải kiểm tra điều kiện: xe đang đỗ, pin đủ, và người dùng đồng ý nếu việc cài làm gián đoạn sử dụng.</p>
+<h4>b) Feature deployment</h4>
+<p>Phát hành phần mềm và bật tính năng là hai việc có thể tách rời. Mã của feature có thể đã nằm trên xe từ bản trước, nhưng chỉ chạy khi một feature flag hoặc cấu hình từ backend cho phép. Cách này cho phép:</p>
+<ul>
+<li>Bật thử cho một nhóm xe nhỏ và tắt ngay nếu có vấn đề, không cần gói OTA mới.</li>
+<li>Bật theo thị trường, theo biến thể xe, hoặc theo gói dịch vụ khách hàng đã mua.</li>
+<li>Ra mắt đồng loạt vào một ngày cố định dù gói cài đặt đã được phân phối từ trước.</li>
+</ul>
+<p>Rủi ro là số tổ hợp flag tăng rất nhanh, và mỗi tổ hợp là một cấu hình cần được kiểm thử.</p>
+<h4>c) Data feedback</h4>
+<p>Xe gửi về crash report, log, số liệu hiệu năng và cách người dùng dùng tính năng. Dữ liệu này cho thấy lỗi nào xảy ra ngoài thực tế mà phòng lab không tái hiện được. Ba ràng buộc cần tính tới: quyền riêng tư theo các quy định như GDPR cùng sự đồng ý của người dùng, chi phí truyền qua cellular, và dung lượng lưu trữ trên xe. Vì vậy xe thường chỉ gửi dữ liệu tóm tắt hoặc lấy mẫu, và chỉ thu dữ liệu chi tiết theo yêu cầu khi điều tra một lỗi cụ thể.</p>
+<h4>d) Continuous improvement</h4>
+<p>Vòng lặp chỉ có giá trị khi có thước đo. Ví dụ CDC: theo dõi tỉ lệ crash của launcher, thời gian khởi động IVI, tỉ lệ người dùng dùng điều khiển giọng nói. Mỗi bản phát hành được so với bản trước trên các chỉ số này. Nếu chỉ số xấu đi ngay ở đợt đầu, rollout dừng lại và có thể rollback trước khi lỗi lan ra cả đội xe.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>OTA đưa phần mềm xuống xe một cách an toàn, feature flag tách việc cài khỏi việc bật, và dữ liệu phản hồi có thước đo khép kín vòng lặp cải tiến. Rollout từng đợt, A/B partition và kiểm tra điều kiện xe giữ cho vòng lặp đó an toàn.</p></div>
+<h3 id="p2-6">2.6 Tác động của SDV đến organization, process, testing và business model</h3>
+<p>SDV không chỉ là thay đổi kỹ thuật. Nó buộc doanh nghiệp đổi cách làm việc ở bốn mặt.</p>
+<figure class="fig"><svg viewBox="0 0 720 284" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Organization, process, testing và business model: cách làm trước kia và cách làm với SDV"><defs><marker id="s6-org-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A64E32"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Bốn mặt thay đổi khi chuyển sang SDV</text><text x="280" y="50" font-size="11" fill="#596966" text-anchor="middle" font-weight="700">Trước kia</text><text x="570" y="50" font-size="11" fill="#174C43" text-anchor="middle" font-weight="700">Với SDV</text><rect x="20" y="60" width="130" height="44" rx="8" fill="#174C43"/><text x="85" y="85.8" font-size="11" fill="#fff" text-anchor="middle">Organization</text><rect x="162" y="60" width="236" height="44" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2"/><text x="280" y="78.8" font-size="10.5" fill="#1c2928" text-anchor="middle">Supplier giao hộp đen</text><text x="280" y="92.5" font-size="10.5" fill="#1c2928" text-anchor="middle">theo từng ECU</text><line x1="400" y1="82" x2="436" y2="82" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s6-org-c)"/><rect x="440" y="60" width="260" height="44" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="570" y="78.8" font-size="10.5" fill="#1c2928" text-anchor="middle">OEM sở hữu platform,</text><text x="570" y="92.5" font-size="10.5" fill="#1c2928" text-anchor="middle">supplier giao component</text><rect x="20" y="114" width="130" height="44" rx="8" fill="#174C43"/><text x="85" y="139.8" font-size="11" fill="#fff" text-anchor="middle">Process</text><rect x="162" y="114" width="236" height="44" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2"/><text x="280" y="132.9" font-size="10.5" fill="#1c2928" text-anchor="middle">Chu kỳ dài theo mẫu xe,</text><text x="280" y="146.5" font-size="10.5" fill="#1c2928" text-anchor="middle">chốt phần mềm ở SOP</text><line x1="400" y1="136" x2="436" y2="136" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s6-org-c)"/><rect x="440" y="114" width="260" height="44" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="570" y="132.9" font-size="10.5" fill="#1c2928" text-anchor="middle">CI/CD chia nhịp theo criticality,</text><text x="570" y="146.5" font-size="10.5" fill="#1c2928" text-anchor="middle">vẫn ASPICE, ISO 26262</text><rect x="20" y="168" width="130" height="44" rx="8" fill="#174C43"/><text x="85" y="193.8" font-size="11" fill="#fff" text-anchor="middle">Testing</text><rect x="162" y="168" width="236" height="44" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2"/><text x="280" y="186.9" font-size="10.5" fill="#1c2928" text-anchor="middle">Test cuối dự án</text><text x="280" y="200.5" font-size="10.5" fill="#1c2928" text-anchor="middle">trên ECU và xe thật</text><line x1="400" y1="190" x2="436" y2="190" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s6-org-c)"/><rect x="440" y="168" width="260" height="44" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="570" y="186.9" font-size="10.5" fill="#1c2928" text-anchor="middle">SIL, virtual ECU, HIL</text><text x="570" y="200.5" font-size="10.5" fill="#1c2928" text-anchor="middle">tự động sau mỗi thay đổi</text><rect x="20" y="222" width="130" height="44" rx="8" fill="#174C43"/><text x="85" y="247.8" font-size="11" fill="#fff" text-anchor="middle">Business model</text><rect x="162" y="222" width="236" height="44" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2"/><text x="280" y="240.9" font-size="10.5" fill="#1c2928" text-anchor="middle">Doanh thu một lần</text><text x="280" y="254.5" font-size="10.5" fill="#1c2928" text-anchor="middle">khi bán xe</text><line x1="400" y1="244" x2="436" y2="244" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s6-org-c)"/><rect x="440" y="222" width="260" height="44" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="570" y="240.9" font-size="10.5" fill="#1c2928" text-anchor="middle">Subscription, mở khóa</text><text x="570" y="254.5" font-size="10.5" fill="#1c2928" text-anchor="middle">tính năng suốt vòng đời</text></svg><figcaption>Bốn mặt đổi theo cùng một hướng và phụ thuộc nhau: phát hành thường xuyên chỉ khả thi khi test đã tự động.</figcaption></figure>
+<h4>a) Organization</h4>
+<p>OEM xây đội phần mềm nội bộ lớn, supplier chuyển từ giao hộp đen sang giao component tích hợp vào nền tảng của OEM. Xuất hiện những vai trò mới: nhóm platform phát triển phần nền dùng chung cho nhiều dòng xe, product owner chịu trách nhiệm từng feature suốt vòng đời, nhóm vận hành đội xe theo dõi các đợt rollout, và trung tâm giám sát an ninh xe, thường gọi là VSOC.</p>
+<p>Thách thức: tuyển và giữ kỹ sư phần mềm, phối hợp giữa nhóm phần cứng và phần mềm có nhịp làm việc rất khác nhau. Cấu trúc tổ chức cũng có xu hướng in dấu lên kiến trúc: nếu mỗi domain vẫn là một phòng ban riêng thì kiến trúc rất khó thoát khỏi kiểu domain.</p>
+<p>Ví dụ CDC: supplier giao Android Automotive BSP, OEM tự phát triển launcher và app.</p>
+<h4>b) Process</h4>
+<p>Quy trình chuyển từ chu kỳ dài theo mẫu xe sang CI/CD, nhưng vẫn phải đáp ứng ASPICE, ISO 26262 và ISO/SAE 21434. Cách làm thường gặp là chia nhịp theo criticality: phần QM như app media phát hành thường xuyên, phần có ASIL đi qua đầy đủ quy trình safety và phát hành thưa hơn.</p>
+<p>Ví dụ CDC: app IVI có thể ra bản mới hàng tháng, trong khi phần cluster hiển thị đèn cảnh báo chỉ cập nhật vài lần mỗi năm (giả định minh họa).</p>
+<h4>c) Testing</h4>
+<p>Kiểm thử tự động tăng mạnh ở mọi tầng: unit test, SIL, virtual ECU để test trước khi có phần cứng, HIL với ECU thật và mạng mô phỏng, rồi mới đến xe thử. Vì phát hành thường xuyên, bộ regression phải chạy tự động sau mỗi thay đổi và trên nhiều biến thể xe.</p>
+<p>Giới hạn: test ảo khó bắt lỗi timing, lỗi driver và lỗi phụ thuộc phần cứng. Vì vậy HIL và dữ liệu từ đội xe thật vẫn không thể bỏ. Ví dụ CDC: launcher được test trên Android Automotive emulator mỗi lần commit, còn chuỗi camera lùi được test trên giá HIL có màn hình và camera thật.</p>
+<h4>d) Business model</h4>
+<p>Xe có thể sinh doanh thu sau khi bán: subscription, mở khóa tính năng, kho ứng dụng, dịch vụ dữ liệu. Đổi lại, OEM phải vận hành backend và hỗ trợ phần mềm cho đội xe trong nhiều năm. Khách hàng cũng dễ phản ứng nếu phải trả tiền cho thứ phần cứng đã có sẵn trên xe, nên chọn tính năng nào để thu phí là quyết định nhạy cảm.</p>
+<p>Ví dụ CDC: gói navigation cao cấp theo năm, hoặc mở khóa màn hình giải trí hàng ghế sau cho xe đã lắp sẵn màn hình.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>SDV thay đổi ai làm gì, làm theo nhịp nào, kiểm thử ra sao và kiếm tiền thế nào. Tổ chức theo platform, quy trình chia nhịp theo criticality, test tự động nhiều tầng và doanh thu suốt vòng đời phải đi cùng nhau, vì kỹ thuật không đủ nếu tổ chức không đổi theo.</p></div>
+<h3 id="p2-7">2.7 SDV thay đổi boundary giữa ECU, domain và cloud như thế nào?</h3>
+<p>Trong kiến trúc cũ, ranh giới là vật lý: mỗi ECU một hộp, một chức năng, một supplier. Trong SDV, ranh giới chuyển thành ranh giới logic giữa các service và partition.</p>
+<h4>a) Ranh giới ECU</h4>
+<p>Nhiều ECU nhỏ được gộp thành VM hoặc process trên một vehicle computer. Ranh giới không còn là vỏ hộp mà là partition có giới hạn CPU, bộ nhớ và quyền truy cập thiết bị. Supplier có thể giao phần mềm chạy trong partition của mình thay vì giao cả hộp.</p>
+<p>Hệ quả: trách nhiệm tích hợp chuyển sang OEM. Khi có lỗi, không thể chỉ thay hộp ECU của một supplier, mà phải tìm xem partition nào đã vượt giới hạn của nó.</p>
+<h4>b) Ranh giới domain</h4>
+<p>Trong kiến trúc domain, ranh giới domain trùng với ranh giới ECU và thường trùng cả ranh giới phòng ban. Khi nhiều domain chạy trên cùng một vehicle computer, ranh giới domain trở thành ranh giới partition và ranh giới mức ASIL.</p>
+<p>Tính năng liên domain trở nên dễ hơn, ví dụ cockpit hiển thị hình 3D quanh xe từ hệ thống đỗ xe của ADAS, hoặc đổi màu đèn cabin theo chế độ lái. Nhưng ranh giới phải được bảo vệ chặt hơn: lỗi trong partition infotainment không được lan sang partition ADAS. Câu hỏi "dữ liệu này thuộc domain nào" được thay bằng "service nào sở hữu dữ liệu này, và ai được phép dùng".</p>
+<h4>c) Ranh giới với cloud</h4>
+<p>Một số xử lý nặng chuyển lên cloud, như nhận dạng giọng nói hoặc tính tuyến đường, còn xe giữ phần cần độ trễ thấp và an toàn. Nhiều chức năng được chia đôi: xe xử lý lệnh đơn giản ngay tại chỗ, cloud xử lý câu hỏi phức tạp. Khi mất mạng, phần trên xe vẫn chạy ở mức tối thiểu.</p>
+<p>Tiêu chí để quyết định đặt chức năng ở đâu:</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Tiêu chí</th><th>Nên đặt trên xe</th><th>Có thể đặt trên cloud</th></tr></thead>
+<tbody>
+<tr><td>Safety</td><td>Chức năng có ASIL, cảnh báo</td><td>Chức năng QM, tiện ích</td></tr>
+<tr><td>Độ trễ</td><td>Cần phản hồi trong mili giây</td><td>Chấp nhận chờ vài giây</td></tr>
+<tr><td>Mất kết nối</td><td>Phải chạy khi không có mạng</td><td>Được phép tạm ngưng hoặc có fallback</td></tr>
+<tr><td>Dữ liệu</td><td>Dữ liệu nhạy cảm như hình camera cabin</td><td>Dữ liệu đã ẩn danh hoặc tổng hợp</td></tr>
+<tr><td>Tính toán</td><td>Vừa sức phần cứng trên xe</td><td>Cần mô hình lớn hoặc dữ liệu của cả đội xe</td></tr>
+</tbody></table></div>
+<p>Quy tắc chung: chức năng an toàn và thời gian thực ở trên xe, chức năng có thể chịu mất mạng mới đặt lên cloud. Ví dụ CDC: cảnh báo trên cluster phải chạy local, còn gợi ý điểm sạc có thể lấy từ cloud.</p>
+<figure class="fig"><svg viewBox="0 0 720 282" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Từ ECU riêng lẻ sang partition trên vehicle computer, ranh giới domain thành ranh giới partition; chức năng an toàn ở xe, chức năng chịu được mất mạng lên cloud"><defs><marker id="s6-bnd-f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#174C43"/></marker><marker id="s6-bnd-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker><marker id="s6-bnd-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Ranh giới mới: partition, domain và cloud</text><text x="90" y="54" font-size="10.5" fill="#596966" text-anchor="middle" font-weight="700">Trước: mỗi ECU</text><text x="90" y="68" font-size="10.5" fill="#596966" text-anchor="middle">một hộp, một supplier</text><rect x="30" y="84" width="120" height="34" rx="8" fill="#E5EFEB" stroke="#596966" stroke-width="1.2"/><text x="90" y="104.7" font-size="10.5" fill="#1c2928" text-anchor="middle">ECU 1 · supplier 1</text><rect x="30" y="128" width="120" height="34" rx="8" fill="#E5EFEB" stroke="#596966" stroke-width="1.2"/><text x="90" y="148.7" font-size="10.5" fill="#1c2928" text-anchor="middle">ECU 2 · supplier 2</text><rect x="30" y="172" width="120" height="34" rx="8" fill="#E5EFEB" stroke="#596966" stroke-width="1.2"/><text x="90" y="192.7" font-size="10.5" fill="#1c2928" text-anchor="middle">ECU 3 · supplier 3</text><line x1="160" y1="136" x2="196" y2="136" stroke="#596966" stroke-width="1.8" marker-end="url(#s6-bnd-m)"/><rect x="200" y="40" width="230" height="176" rx="10" fill="#E5EFEB" stroke="#174C43" stroke-width="1.4"/><text x="315" y="60" font-size="11.5" fill="#174C43" text-anchor="middle" font-weight="700">Vehicle computer (SDV)</text><rect x="214" y="70" width="202" height="32" rx="8" fill="#174C43"/><text x="315" y="89.8" font-size="11" fill="#fff" text-anchor="middle">Cockpit · VM cluster</text><rect x="214" y="108" width="202" height="32" rx="8" fill="#2A8C8C"/><text x="315" y="127.8" font-size="11" fill="#fff" text-anchor="middle">Cockpit · VM IVI</text><line x1="208" y1="148" x2="422" y2="148" stroke="#A93226" stroke-width="1.6" stroke-dasharray="5 4"/><rect x="214" y="156" width="202" height="32" rx="8" fill="#2A6F66"/><text x="315" y="175.8" font-size="11" fill="#fff" text-anchor="middle">ADAS · partition đỗ xe</text><text x="315" y="206" font-size="10" fill="#A93226" text-anchor="middle">ranh giới domain = partition, ASIL</text><rect x="490" y="40" width="210" height="176" rx="10" fill="#fff" stroke="#2A8C8C" stroke-width="1.4" stroke-dasharray="5 4"/><text x="595" y="60" font-size="11.5" fill="#2A8C8C" text-anchor="middle" font-weight="700">Cloud</text><rect x="505" y="74" width="180" height="36" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="595" y="95.8" font-size="11" fill="#1c2928" text-anchor="middle">Nhận dạng giọng nói</text><rect x="505" y="118" width="180" height="36" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="595" y="139.8" font-size="11" fill="#1c2928" text-anchor="middle">Tính tuyến đường</text><rect x="505" y="162" width="180" height="36" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="595" y="183.8" font-size="11" fill="#1c2928" text-anchor="middle">Gợi ý điểm sạc</text><line x1="432" y1="128" x2="488" y2="128" stroke="#2A8C8C" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#s6-bnd-t)" marker-start="url(#s6-bnd-t)"/><text x="460" y="148" font-size="10" fill="#A93226" text-anchor="middle">có thể</text><text x="460" y="160" font-size="10" fill="#A93226" text-anchor="middle">mất mạng</text><rect x="200" y="232" width="230" height="36" rx="8" fill="#174C43"/><text x="315" y="253.8" font-size="11" fill="#fff" text-anchor="middle">Giữ ở xe: an toàn, thời gian thực</text><rect x="490" y="232" width="210" height="36" rx="8" fill="#2A8C8C"/><text x="595" y="253.8" font-size="11" fill="#fff" text-anchor="middle">Lên cloud: chịu được mất mạng</text><line x1="315" y1="216" x2="315" y2="230" stroke="#174C43" stroke-width="1.5" marker-end="url(#s6-bnd-f)"/><line x1="595" y1="216" x2="595" y2="230" stroke="#2A8C8C" stroke-width="1.5" marker-end="url(#s6-bnd-t)"/></svg><figcaption>Ranh giới không còn là vỏ hộp ECU: domain thành partition trên cùng máy tính, còn cloud nhận phần chịu được mất mạng.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Ranh giới ECU thành partition, ranh giới domain thành ranh giới partition và ASIL trên cùng máy tính, còn ranh giới với cloud được vạch theo safety, độ trễ, khả năng mất kết nối, dữ liệu và nhu cầu tính toán.</p></div>
+<h3 id="p2-8">2.8 Kiến trúc nào hỗ trợ khả năng mở rộng tốt hơn?</h3>
+<p>Câu trả lời ngắn: kiến trúc zonal kết hợp vehicle computer trung tâm thường mở rộng tốt hơn domain thuần, với hybrid là đường đi tới đó. Nhưng "mở rộng" có nhiều chiều, và mỗi kiến trúc mạnh yếu khác nhau theo từng chiều.</p>
+<h4>a) Bốn chiều của khả năng mở rộng</h4>
+<ul>
+<li><b>Thêm I/O</b>: lắp thêm sensor, actuator, màn hình.</li>
+<li><b>Thêm feature</b>: phát hành tính năng phần mềm mới cho xe đã bán.</li>
+<li><b>Thêm biến thể</b>: dùng chung platform cho nhiều mức trang bị và nhiều dòng xe.</li>
+<li><b>Tăng năng lực tính toán</b>: nâng cấp sức mạnh xử lý khi feature đòi hỏi nhiều hơn.</li>
+</ul>
+<h4>b) So sánh theo từng chiều</h4>
+<div class="table-scroll"><table>
+<thead><tr><th>Kiến trúc</th><th>Thêm I/O</th><th>Thêm feature</th><th>Thêm biến thể</th><th>Tăng tính toán</th></tr></thead>
+<tbody>
+<tr><td>Domain</td><td>Phải đi dây về đúng domain controller</td><td>Dễ trong một domain, khó khi cần nhiều domain</td><td>Đổi domain controller theo gói trang bị</td><td>Nâng từng domain riêng, khá linh hoạt</td></tr>
+<tr><td>Zonal</td><td>Dễ nhất, nối vào zone gần nhất</td><td>Phụ thuộc logic đặt ở zone hay ở trung tâm</td><td>Zone dùng chung cho nhiều dòng xe</td><td>Phụ thuộc máy tính phía trên</td></tr>
+<tr><td>Centralized</td><td>Dễ, qua zone</td><td>Dễ nhất, mọi dữ liệu ở một chỗ</td><td>Một máy tính cho nhiều cấu hình, bản rẻ có thể dư phần cứng</td><td>Khó, cần module tính toán thay được</td></tr>
+<tr><td>Hybrid</td><td>Tốt ở phần đã chuyển sang zone</td><td>Tốt trong domain mạnh, bị giới hạn ở phần còn CAN</td><td>Linh hoạt nhưng nhiều tổ hợp phải test</td><td>Nâng được từng domain controller</td></tr>
+</tbody></table></div>
+<h4>c) Điều kiện phía phần mềm</h4>
+<p>Mở rộng tốt còn phụ thuộc vào phần mềm: interface có version, middleware hỗ trợ service discovery, tài nguyên CPU và RAM có dự phòng, platform software dùng chung cho nhiều dòng xe, và pipeline build, test tự động đủ nhanh để chịu thêm biến thể. Phần cứng zonal mà phần mềm vẫn gắn cứng signal và cấu hình thì vẫn không mở rộng được.</p>
+<h4>d) Giới hạn của centralized</h4>
+<p>Máy tính trung tâm mở rộng tốt về feature nhưng có trần về năng lực. Khi chạm trần, nâng cấp giữa vòng đời xe rất đắt. Nó cũng là điểm hỏng tập trung, cần dự phòng nguồn và tính toán cho chức năng safety. Vì vậy một số thiết kế giữ hai hoặc ba máy tính lớn thay vì chỉ một.</p>
+<p>Ví dụ: thêm một màn hình hàng ghế sau. Với CDC có GPU dư và display output trống, chỉ cần thêm một VM hoặc app mới. Trong kiến trúc domain thuần không có dự phòng, việc này có thể đòi một ECU giải trí riêng, thêm dây và cập nhật cấu hình gateway.</p>
+<figure class="fig"><svg viewBox="0 0 720 266" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="So sánh các bước thêm màn hình hàng ghế sau trong kiến trúc domain không dự phòng và trong kiến trúc zonal với CDC có headroom"><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Thêm màn hình hàng ghế sau: hai kiến trúc</text><rect x="20" y="40" width="330" height="200" rx="10" fill="#E5EFEB"/><text x="185" y="60" font-size="11.5" fill="#A64E32" text-anchor="middle" font-weight="700">Domain thuần, không dự phòng</text><rect x="36" y="72" width="298" height="32" rx="8" fill="#fff" stroke="#A64E32" stroke-width="1.2"/><text x="185" y="91.7" font-size="10.5" fill="#1c2928" text-anchor="middle">1. Thêm một ECU giải trí riêng</text><rect x="36" y="112" width="298" height="32" rx="8" fill="#fff" stroke="#A64E32" stroke-width="1.2"/><text x="185" y="131.7" font-size="10.5" fill="#1c2928" text-anchor="middle">2. Đi thêm dây nguồn và tín hiệu</text><rect x="36" y="152" width="298" height="32" rx="8" fill="#fff" stroke="#A64E32" stroke-width="1.2"/><text x="185" y="171.7" font-size="10.5" fill="#1c2928" text-anchor="middle">3. Cập nhật cấu hình gateway</text><rect x="36" y="192" width="298" height="32" rx="8" fill="#fff" stroke="#A64E32" stroke-width="1.2"/><text x="185" y="211.7" font-size="10.5" fill="#1c2928" text-anchor="middle">4. Test lại tích hợp cả domain</text><rect x="370" y="40" width="330" height="200" rx="10" fill="#E5EFEB"/><text x="535" y="60" font-size="11.5" fill="#174C43" text-anchor="middle" font-weight="700">Zonal + CDC có headroom</text><rect x="386" y="72" width="298" height="32" rx="8" fill="#2A6F66"/><text x="535" y="91.7" font-size="10.5" fill="#fff" text-anchor="middle">1. Nối màn hình vào display output trống</text><rect x="386" y="112" width="298" height="32" rx="8" fill="#2A6F66"/><text x="535" y="131.7" font-size="10.5" fill="#fff" text-anchor="middle">2. Zone sau cấp nguồn qua eFuse</text><rect x="386" y="152" width="298" height="32" rx="8" fill="#2A8C8C"/><text x="535" y="171.7" font-size="10.5" fill="#fff" text-anchor="middle">3. Thêm VM hoặc app qua OTA</text><text x="535" y="214" font-size="10" fill="#596966" text-anchor="middle">chỉ làm được khi GPU, RAM đã dư từ đầu</text><text x="360" y="258" font-size="10" fill="#596966" text-anchor="middle">Số bước chỉ minh họa ý tưởng (giả định minh họa)</text></svg><figcaption>Khả năng mở rộng đến từ kiến trúc và từ phần cứng đã dự phòng; thiếu một trong hai thì việc nhỏ cũng thành dự án lớn.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Zonal kết hợp centralized mở rộng tốt nhất về I/O và feature, domain linh hoạt khi nâng từng phần, hybrid là đường chuyển tiếp. Khả năng mở rộng thực tế còn cần interface có version, tài nguyên dự phòng và một kế hoạch cho trần năng lực của máy tính trung tâm.</p></div>
+<h3 id="p2-9">2.9 Những dependency nào khiến việc cập nhật phần mềm trở nên rủi ro?</h3>
+<p>Cập nhật rủi ro khi một thành phần thay đổi kéo theo thành phần khác hỏng mà không ai biết trước. Các dependency thường gặp:</p>
+<ul>
+<li><b>Interface giữa ECU</b>: IVI mới gửi message định dạng mới, nhưng zone controller vẫn chạy bản cũ.</li>
+<li><b>Bootloader và firmware</b>: bản OS mới cần firmware bootloader mới hơn.</li>
+<li><b>Calibration và cấu hình biến thể</b>: một bản phần mềm áp lên nhiều cấu hình xe khác nhau.</li>
+</ul>
+<p>Ngoài ba loại trên còn những dependency ít ai để ý cho tới khi sự cố xảy ra:</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Dependency</th><th>Vì sao rủi ro</th><th>Ví dụ CDC</th><th>Biện pháp</th></tr></thead>
+<tbody>
+<tr><td>API giữa app và platform</td><td>Platform đổi API, app cũ gọi vào chỗ không còn</td><td>Bản Android Automotive mới đổi quyền truy cập một vehicle property, app bên thứ ba mất dữ liệu</td><td>Kiểm tra API level, test app phổ biến trước khi phát hành</td></tr>
+<tr><td>Backend và cloud API</td><td>Đội xe chạy nhiều version cùng lúc, backend đổi API làm xe cũ lỗi</td><td>Dịch vụ thời tiết đổi định dạng trả về, IVI bản cũ hiện màn hình trống</td><td>Backend giữ hỗ trợ một số version trước</td></tr>
+<tr><td>Dữ liệu lưu trên xe</td><td>Bản mới đổi cấu trúc dữ liệu, rollback về bản cũ không đọc được nữa</td><td>Profile người dùng và danh sách yêu thích sau khi migrate</td><td>Migration có thể đảo ngược, sao lưu trước khi đổi</td></tr>
+<tr><td>Phiên bản phần cứng</td><td>Các lô sản xuất dùng linh kiện khác nhau</td><td>Hai loại panel màn hình cần driver khác nhau</td><td>Gói cập nhật biết đúng hardware revision của xe</td></tr>
+<tr><td>Khóa và chứng chỉ</td><td>Certificate hết hạn hoặc bị thay, kết nối bị từ chối</td><td>IVI không kết nối được backend sau khi đổi chứng chỉ</td><td>Quản lý vòng đời chứng chỉ, cập nhật trước hạn</td></tr>
+</tbody></table></div>
+<p>Cách giảm rủi ro: quản lý version theo bộ, kiểm tra tương thích trước khi cài, cập nhật nhiều ECU theo thứ tự xác định, và luôn có đường rollback. Ví dụ CDC: gói OTA chỉ cài khi xác nhận zone controller đã ở version tương thích.</p>
+<p>"Version theo bộ" nghĩa là backend coi tập phiên bản của mọi ECU trên một xe là một cấu hình đã được test cùng nhau, và chỉ chuyển xe từ cấu hình đã kiểm chứng này sang cấu hình đã kiểm chứng khác. Nhờ đó không có chiếc xe nào rơi vào một tổ hợp phiên bản chưa ai từng chạy thử.</p>
+<figure class="fig"><svg viewBox="0 0 720 304" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Gói OTA IVI phải khớp tám loại dependency; compatibility check quyết định cài vào slot B hay hoãn và báo backend"><defs><marker id="s6-dep-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker><marker id="s6-dep-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker><marker id="s6-dep-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Trước khi cài gói OTA: kiểm tra mọi dependency</text><rect x="20" y="120" width="124" height="56" rx="8" fill="#A64E32"/><text x="82" y="144.6" font-size="11.5" fill="#fff" text-anchor="middle" font-weight="700">Gói OTA</text><text x="82" y="159.5" font-size="11" fill="#fff" text-anchor="middle">IVI v5</text><line x1="144" y1="148" x2="168" y2="148" stroke="#596966" stroke-width="1.8" marker-end="url(#s6-dep-m)"/><rect x="170" y="40" width="330" height="212" rx="10" fill="#E5EFEB" stroke="#174C43" stroke-width="1.4"/><text x="335" y="59" font-size="11" fill="#174C43" text-anchor="middle" font-weight="700">Dependency phải khớp</text><rect x="182" y="68" width="150" height="38" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="257" y="83.8" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Interface</text><text x="257" y="97.5" font-size="10" fill="#1c2928" text-anchor="middle">zone controller</text><rect x="182" y="113" width="150" height="38" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="257" y="128.8" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">API platform</text><text x="257" y="142.5" font-size="10" fill="#1c2928" text-anchor="middle">Android, VHAL</text><rect x="182" y="158" width="150" height="38" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="257" y="173.9" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Bootloader</text><text x="257" y="187.5" font-size="10" fill="#1c2928" text-anchor="middle">và firmware</text><rect x="182" y="203" width="150" height="38" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="257" y="218.9" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Calibration</text><text x="257" y="232.5" font-size="10" fill="#1c2928" text-anchor="middle">biến thể xe</text><rect x="338" y="68" width="150" height="38" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="413" y="83.8" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Backend</text><text x="413" y="97.5" font-size="10" fill="#1c2928" text-anchor="middle">cloud API</text><rect x="338" y="113" width="150" height="38" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="413" y="128.8" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Dữ liệu lưu</text><text x="413" y="142.5" font-size="10" fill="#1c2928" text-anchor="middle">profile, migration</text><rect x="338" y="158" width="150" height="38" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="413" y="173.9" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Hardware</text><text x="413" y="187.5" font-size="10" fill="#1c2928" text-anchor="middle">revision, panel</text><rect x="338" y="203" width="150" height="38" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="413" y="218.9" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Chứng chỉ</text><text x="413" y="232.5" font-size="10" fill="#1c2928" text-anchor="middle">khóa bảo mật</text><line x1="500" y1="148" x2="528" y2="148" stroke="#596966" stroke-width="1.8" marker-end="url(#s6-dep-m)"/><rect x="530" y="124" width="170" height="48" rx="8" fill="#E2BD69"/><text x="615" y="144.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Compatibility check</text><text x="615" y="159" font-size="10.5" fill="#1c2928" text-anchor="middle">trước khi cài</text><rect x="530" y="48" width="170" height="46" rx="8" fill="#A93226"/><text x="615" y="67.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Thiếu điều kiện</text><text x="615" y="82" font-size="10.5" fill="#fff" text-anchor="middle">hoãn, báo backend</text><rect x="530" y="202" width="170" height="46" rx="8" fill="#2A8C8C"/><text x="615" y="221.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Đủ điều kiện</text><text x="615" y="236" font-size="10.5" fill="#fff" text-anchor="middle">cài vào slot B</text><line x1="615" y1="124" x2="615" y2="96" stroke="#A93226" stroke-width="1.6" marker-end="url(#s6-dep-r)"/><line x1="615" y1="172" x2="615" y2="200" stroke="#2A8C8C" stroke-width="1.6" marker-end="url(#s6-dep-t)"/><rect x="20" y="264" width="680" height="30" rx="8" fill="#174C43"/><text x="360" y="282.9" font-size="11" fill="#fff" text-anchor="middle">Version theo bộ: xe chỉ chuyển giữa các cấu hình đã được test cùng nhau</text></svg><figcaption>Một gói cập nhật chỉ được cài khi mọi dependency đã khớp; thiếu một điều kiện thì hoãn thay vì liều.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Rủi ro nằm ở dependency ẩn giữa interface, API platform, firmware, cấu hình, dữ liệu lưu trữ, phần cứng, chứng chỉ và backend. Quản lý version theo bộ, kiểm tra tương thích trước khi cài và rollback có tính tới dữ liệu là biện pháp chính.</p></div>
+<div class="next-prev"><a href="4_Cybersecurity_Long-term_Maintenance.html">← 4 · Cybersecurity &amp; Long-term Maintenance</a><a href="7_System_Software_Stack_Linux_Android_Automotive_QNX_AUTOSAR.html">7 · System Software Stack Deep Dive →</a></div>
+</article>
+  <footer class="article-footer"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></footer>
+  </main>
+</div>
+<script src="../assets/glossary-data.js"></script>
+<script src="../assets/term-glossary.js" data-unit="A.4"></script>
+</body>
+</html>

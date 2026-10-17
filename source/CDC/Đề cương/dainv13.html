@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+  <script src="Topics/assets/site-ui.js" data-site-ui></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DaiNV13 · Fast Track CDC/SDV</title>
+<style>
+:root {
+  --navy: #14213D; --navy2: #1F2E52; --ink: #263046; --muted: #5d6677; --line: #dde2ea;
+  --paper: #f1f2f5; --card: #fafbfc;
+  --cdc: #174C43; --cdc-soft: #E5EFEB;      /* màu thư viện Topics */
+  --ai: #E2631C; --ai-soft: #FDEEE4;        /* màu khóa AI */
+  --task: #B3261E; --amber: #F2A65A;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Segoe UI", Calibri, Arial, sans-serif; background: var(--paper); color: var(--ink); line-height: 1.5; }
+a { color: inherit; }
+.hero { background: var(--navy); color: #fff; padding: 40px 16px 34px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+.hero .wrap { padding: 0; }
+.eyebrow { color: var(--amber); font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.hero h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.1; margin: 8px 0 10px; }
+.hero p { color: #C3CBD8; font-size: 16px; max-width: 70ch; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.chip { background: var(--navy2); border-radius: 999px; padding: 5px 14px; font-size: 13.5px; color: #E6EAF1; }
+.chip.amber { background: var(--amber); color: var(--navy); font-weight: 700; }
+
+main { padding: 28px 0 60px; }
+h2 { font-size: 22px; margin: 34px 0 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; display: flex; flex-direction: column; gap: 12px; }
+.panel.cdc { box-shadow: inset 0 0 0 1px var(--cdc-soft); }
+.panel .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; border-radius: 6px; padding: 3px 8px; width: max-content; }
+.cdc .tag { background: var(--cdc-soft); color: var(--cdc); }
+.ai .tag { background: var(--ai-soft); color: var(--ai); }
+.panel h3 { font-size: 24px; }
+.cdc h3 { color: var(--cdc); } .ai h3 { color: var(--ai); }
+.panel p { color: var(--muted); font-size: 14.5px; }
+.stats { display: flex; gap: 22px; flex-wrap: wrap; }
+.stat b { display: block; font-size: 28px; line-height: 1.1; }
+.cdc .stat b { color: var(--cdc); } .ai .stat b { color: var(--ai); }
+.stat span { font-size: 12.5px; color: var(--muted); }
+.links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.btn { text-decoration: none; font-size: 14px; font-weight: 600; border-radius: 10px; padding: 9px 14px; border: 1px solid var(--line); background: light-dark(#f7f8fa, #151a27); }
+.cdc .btn.main { background: var(--cdc); color: #fff; border-color: var(--cdc); }
+.ai .btn.main { background: var(--ai); color: #fff; border-color: var(--ai); }
+.btn:hover { border-color: var(--ink); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.weeks { display: grid; gap: 10px; }
+.week { background: var(--card); border: 1px solid var(--line); border-radius: 12px; display: grid; grid-template-columns: 150px 1fr; overflow: hidden; }
+.week.done { opacity: .62; }
+.wk-head { background: light-dark(#EEF1F6, #1a222f); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.wk-head b { font-size: 18px; }
+.wk-head span { font-size: 12.5px; color: var(--muted); }
+.wk-head em { font-style: normal; font-size: 12px; font-weight: 600; color: var(--navy2); }
+.wk-head label { font-size: 12px; color: var(--muted); margin-top: 6px; cursor: pointer; user-select: none; }
+.wk-body { padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 8px; align-content: center; }
+.it { text-decoration: none; font-size: 13.5px; border-radius: 8px; padding: 6px 10px; border: 1px solid var(--line); }
+.it.c { background: var(--cdc-soft); color: var(--cdc); border-color: light-dark(#CFE0D8, #304a3e); }
+.it.a { background: var(--ai-soft); color: light-dark(#9A3D0A, #f7b089); border-color: light-dark(#F6D3BD, #513727); }
+.it.t { background: light-dark(#FDECEA, #2e1c19); color: var(--task); border-color: light-dark(#F3C5C0, #512b27); font-weight: 600; }
+.it.n { background: light-dark(#f7f8fa, #151a27); color: var(--muted); }
+.it:hover { border-color: var(--ink); }
+
+.ojt { background: var(--navy); color: #fff; border-radius: 16px; padding: 22px 24px; display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; }
+.ojt p { color: #C3CBD8; font-size: 14.5px; }
+.ojt h3 { font-size: 21px; margin-bottom: 4px; }
+.ojt .big { font-size: 34px; font-weight: 800; color: var(--amber); white-space: nowrap; }
+.ojt .links .btn { background: var(--navy2); color: #fff; border-color: #33436A; }
+table { width: 100%; border-collapse: collapse; background: light-dark(#f7f8fa, #151a27); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+th { background: light-dark(#EEF1F6, #1a222f); font-size: 13px; }
+footer { color: var(--muted); font-size: 12.5px; text-align: center; margin-top: 36px; }
+@media (max-width: 640px) {
+  .week { grid-template-columns: 1fr; }
+  .ojt { grid-template-columns: 1fr; }
+}
+</style>
+<style id="theme-fix">
+html[data-theme="dark"]{--ink:#cbd3e1;--muted:#949eb0;--line:#2d364a;--paper:#161c2a;--card:#1d2537;
+--cdc:#7cc8b2;--cdc-soft:#16302a;--ai-soft:#2e1c12;--task:#f08a80}html[data-theme="dark"] .cdc .btn.main{background:#24584d;border-color:#24584d;color:#fff}
+html[data-theme="dark"] table{background:var(--card)}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Automotive Senior Fast Track · CDC/SDV</div>
+    <h1>DaiNV13</h1>
+    <p>Điểm vào cho toàn bộ đề cương: thư viện topic CDC/SDV và khóa AI Transformation for Automotive Senior Engineers, kèm lộ trình theo tuần và đề tài OJT.</p>
+    <div class="chips">
+      <span class="chip">NS SmartMeter (NSSMAP26)</span>
+      <span class="chip">Site HL</span>
+      <span class="chip amber">DEV03 → DEV04</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <h2>Hai phần nội dung</h2>
+  <div class="grid2">
+    <section class="panel cdc">
+      <span class="tag">Topics · CDC/SDV</span>
+      <h3>Thư viện topic CDC/SDV</h3>
+      <p>Unit A–C (kiến trúc xe, vòng đời phần mềm, cybersecurity, ảo hóa, trade-off, research graphics/audio/runtime) cùng hướng dẫn Assignment, Review và OJT.</p>
+      <div class="stats">
+        <div class="stat"><b>15</b><span>topic học</span></div>
+        <div class="stat"><b>8</b><span>kickoff · bài tập · review · OJT</span></div>
+      </div>
+      <div class="links">
+        <a class="btn main" href="#lo-trinh">Mở danh sách topic</a>
+      </div>
+    </section>
+    <section class="panel ai">
+      <span class="tag">AI · Tài liệu chuẩn</span>
+      <h3>Khóa AI Transformation</h3>
+      <p>CASAN, hệ thống tư duy (Tam phân, thang ủy quyền L0–L5), sáu năng lực N1–N6, program 12 tuần với 9 buổi D0–D8, bộ bài đọc 0A → 8 và glossary.</p>
+      <div class="stats">
+        <div class="stat"><b>12</b><span>unit AI-01 → AI-12</span></div>
+        <div class="stat"><b>19</b><span>trang tài liệu gốc</span></div>
+        <div class="stat"><b>97</b><span>câu hỏi ôn tập</span></div>
+      </div>
+      <div class="links">
+        <a class="btn main" href="AI/index.html">Mở khóa AI</a>
+        <a class="btn" href="AI/cau-hoi-on-tap.html">Câu hỏi ôn tập</a>
+        <a class="btn" href="AI/06-program.html">Program 12 tuần</a>
+        <a class="btn" href="AI/van-hanh/glossary.html">Glossary</a>
+      </div>
+    </section>
+  </div>
+
+  <h2 id="lo-trinh">Lộ trình theo tuần</h2>
+  <div class="legend">
+    <span><i style="background:var(--cdc-soft);border:1px solid light-dark(#CFE0D8, #304a3e)"></i>Topic CDC/SDV</span>
+    <span><i style="background:var(--ai-soft);border:1px solid light-dark(#F6D3BD, #513727)"></i>Unit AI</span>
+    <span><i style="background:light-dark(#FDECEA, #2e1c19);border:1px solid light-dark(#F3C5C0, #512b27)"></i>Bài tập · Review · OJT</span>
+    <span>Theo Fast_Track_CDC_Weekly_Checklist.xlsx · tick “Đã xong” để đánh dấu (lưu trên trình duyệt này)</span>
+  </div>
+  <div class="weeks">
+    <div class="week" data-week="W1"><div class="wk-head"><b>W1</b><span>29/09 – 04/10</span><em>Khởi động</em><label><input type="checkbox"> Đã xong</label></div>
+      <div class="wk-body"><span class="it n">Ký Training Commitment · kiểm tra Coursera, folder, group chat · đọc syllabus · xác định level mục tiêu</span></div></div>
+    <div class="week" data-week="W2"><div class="wk-head"><b>W2</b><span>05/10 – 11/10</span><em>Learning + Topic</em><label><input type="checkbox"> Đã xong</label></div>
+      <div class="wk-body">
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/1_Automotive_Industry_Engineering_Economics.html">1 · Industry &amp; Economics</a>
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/3_Automotive_Software_Lifecycle_Quality_Governance.html">3 · Lifecycle &amp; Quality</a>
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/4_Cybersecurity_Long-term_Maintenance.html">4 · Cybersecurity</a>
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/6_Modern_Vehicle_Architecture_SDV.html">6 · Vehicle Architecture &amp; SDV</a>
+        <a class="it a" href="AI/tap-doc/tap-0a.html">AI-01 · Bài 0A</a>
+        <a class="it a" href="AI/tap-doc/tap-0b.html">AI-02 · Bài 0B</a>
+        <a class="it t" href="Topics/34_OJT_Topic_Selection_Implementation_Evaluation.html">OJT: đề xuất 2–3 topic</a>
+      </div></div>
+    <div class="week" data-week="W3"><div class="wk-head"><b>W3</b><span>12/10 – 18/10</span><em>Review #1</em><label><input type="checkbox"> Đã xong</label></div>
+      <div class="wk-body">
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/7_System_Software_Stack_Linux_Android_Automotive_QNX_AUTOSAR.html">7 · System Software Stack</a>
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/8_Virtualization_Mixed_Criticality_Systems.html">8 · Virtualization</a>
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/10_SA_Role_Complexity_Lifecycle_Governance.html">10 · SA Role &amp; Governance</a>
+        <a class="it a" href="AI/tap-doc/tap-0c.html">AI-03 · Bài 0C</a>
+        <a class="it t" href="Topics/11_Assignment_1_Architecture_Context_Foundation.html">11 · Assignment #1</a>
+        <a class="it t" href="Topics/13_Mentor_Review_A9.html">13 · Review #1</a>
+        <a class="it t" href="Topics/34_OJT_Topic_Selection_Implementation_Evaluation.html">OJT: chốt topic</a>
+      </div></div>
+    <div class="week" data-week="W4"><div class="wk-head"><b>W4</b><span>19/10 – 25/10</span><em>Learning + Design</em><label><input type="checkbox"> Đã xong</label></div>
+      <div class="wk-body">
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/14_Digital_Engineering_A8_Platform.html">14 · Digital Engineering</a>
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/16_Architecture_Decision_Trade-off_Analysis.html">16 · Trade-off Analysis</a>
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/17_Requirements_Embedded_Architecture_Data_Design.html">17 · Requirements &amp; Data Design</a>
+        <a class="it a" href="AI/tap-doc/tap-1.html">AI-04 · D0 Data Boundaries</a>
+        <a class="it a" href="AI/03-tu-duy.html">AI-05 · D1 Delegation Map</a>
+        <a class="it t" href="Topics/34_OJT_Topic_Selection_Implementation_Evaluation.html">OJT: design &amp; roadmap</a>
+      </div></div>
+    <div class="week" data-week="W5"><div class="wk-head"><b>W5</b><span>26/10 – 01/11</span><em>Implementation</em><label><input type="checkbox"> Đã xong</label></div>
+      <div class="wk-body">
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/19_Quality_Cloud_Migration_DevOps_Governed_AI.html">19 · Quality, DevOps &amp; Governed AI</a>
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/20_Troubleshooting_RCA_Controlled_Documentation.html">20 · RCA &amp; Documentation</a>
+        <a class="it a" href="AI/tap-doc/tap-2.html">AI-06 · D2 Context &amp; Skills</a>
+        <a class="it t" href="Topics/21_Assignment_2_Architecture_Governance_Decision_Analysis.html">21 · Assignment #2</a>
+        <a class="it t" href="Topics/34_OJT_Topic_Selection_Implementation_Evaluation.html">OJT: bắt đầu triển khai</a>
+      </div></div>
+    <div class="week" data-week="W6"><div class="wk-head"><b>W6</b><span>02/11 – 08/11</span><em>Review #2</em><label><input type="checkbox"> Đã xong</label></div>
+      <div class="wk-body">
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/25_Research_Graphics_Display_Architecture.html">25 · Graphics &amp; Display</a>
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/26_Research_Audio_System_Architecture.html">26 · Audio System</a>
+        <a class="it a" href="AI/tap-doc/tap-3.html">AI-07 · D3 Rules → Code</a>
+        <a class="it a" href="AI/tap-doc/tap-3.html">AI-08 · D4 Coding Agent</a>
+        <a class="it t" href="Topics/23_Review_QA_B7.html">23 · Review #2</a>
+      </div></div>
+    <div class="week" data-week="W7"><div class="wk-head"><b>W7</b><span>09/11 – 15/11</span><em>Completion</em><label><input type="checkbox"> Đã xong</label></div>
+      <div class="wk-body">
+        <a class="it c" href="Topics/B%E1%BA%A5m%20%C4%91%E1%BB%83%20xem%20gi%E1%BA%A3i%20th%C3%ADch/28_Research_Cross-domain_Runtime_Architecture.html">28 · Cross-domain Runtime</a>
+        <a class="it a" href="AI/tap-doc/tap-4.html">AI-09 · D5 Orchestration</a>
+        <a class="it a" href="AI/tap-doc/tap-5.html">AI-10 · D6 Verification</a>
+        <a class="it t" href="Topics/29_Assignment_3_Research_Synthesis_Architecture_Sharing.html">29 · Assignment #3</a>
+      </div></div>
+    <div class="week" data-week="W8"><div class="wk-head"><b>W8</b><span>16/11 – 20/11</span><em>Learning Gate</em><label><input type="checkbox"> Đã xong</label></div>
+      <div class="wk-body">
+        <a class="it a" href="AI/tap-doc/tap-6.html">AI-11 · D7 Value-stream</a>
+        <a class="it a" href="AI/tap-doc/tap-6.html">AI-12 · D8 Deployment</a>
+        <span class="it n">Hoàn thành toàn bộ Learning · đóng băng phạm vi OJT</span>
+      </div></div>
+    <div class="week" data-week="W9"><div class="wk-head"><b>W9</b><span>21/11 – 27/11</span><em>Review #3</em><label><input type="checkbox"> Đã xong</label></div>
+      <div class="wk-body">
+        <a class="it t" href="Topics/31_Mentor_Review_C6.html">31 · Review #3</a>
+        <a class="it t" href="Topics/34_OJT_Topic_Selection_Implementation_Evaluation.html">OJT: demo kết quả, AI usage, impact</a>
+      </div></div>
+    <div class="week" data-week="W10"><div class="wk-head"><b>W10</b><span>28/11 – 04/12</span><em>Final Preparation</em><label><input type="checkbox"> Đã xong</label></div>
+      <div class="wk-body"><span class="it n">Hoàn thiện final slide, demo, report · luyện phần bảo vệ</span></div></div>
+    <div class="week" data-week="W11"><div class="wk-head"><b>W11</b><span>05/12 – 11/12</span><em>Evaluation</em><label><input type="checkbox"> Đã xong</label></div>
+      <div class="wk-body"><a class="it t" href="Topics/34_OJT_Topic_Selection_Implementation_Evaluation.html">Bảo vệ final project · nộp deliverables</a></div></div>
+  </div>
+
+  <h2>Đề tài OJT</h2>
+  <section class="ojt">
+    <div>
+      <h3>Tối ưu thời gian khởi động Cluster 3D</h3>
+      <p>Từ boot đến khung hình 3D đầu tiên trên SoC Telechips Dolphin+ (TCC803x). Phân tích boot chart, thứ tự systemd, phụ thuộc IDC / H.264 / CGI / SOME-IP và trình tự nạp asset; đo baseline; bỏ phụ thuộc không cần thiết, nạp trước hoặc nạp song song asset.</p>
+      <div class="links" style="margin-top:12px">
+        <a class="btn" href="Topics/34_OJT_Topic_Selection_Implementation_Evaluation.html">Hướng dẫn OJT</a>
+        <a class="btn" href="../DaiNV13/DaiNV13_OJT_Introduction.pptx">Slide giới thiệu (.pptx)</a>
+      </div>
+    </div>
+    <div class="big">~5,2 s → &lt; 5 s</div>
+  </section>
+
+  <h2>Điều kiện hoàn thành</h2>
+  <table>
+    <tr><th>Hạng mục</th><th>Yêu cầu</th></tr>
+    <tr><td>Attendance</td><td>Tham gia ít nhất 80% các buổi review với mentor (khoảng 3 buổi: W3, W6, W9)</td></tr>
+    <tr><td>Assignments</td><td>Hoàn thành 100% bài tập (3 assignment)</td></tr>
+    <tr><td>Điểm bài khóa / Final</td><td>Tối thiểu 7/10</td></tr>
+    <tr><td>OJT Assessment</td><td>Tối thiểu mức B</td></tr>
+    <tr><td>Final Defense</td><td>Hoàn thành phần bảo vệ và nộp deliverables (slide, demo, báo cáo)</td></tr>
+  </table>
+
+  <footer>Nguồn: FA_CDC_Senior_Fasttrack_Syllabus_v1.1 · Fast_Track_CDC_Weekly_Checklist.xlsx · CDC_SDV_Senior_FastTrack_Learning_Plan.xlsx</footer>
+</main>
+<script>
+// Đánh dấu tuần đã xong — chỉ lưu trên trình duyệt hiện tại.
+const KEY = 'dainv13-weeks-done';
+let done = {};
+try { done = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { done = {}; }
+document.querySelectorAll('.week').forEach(w => {
+  const cb = w.querySelector('input[type=checkbox]');
+  const id = w.dataset.week;
+  cb.checked = !!done[id];
+  w.classList.toggle('done', cb.checked);
+  cb.addEventListener('change', () => {
+    done[id] = cb.checked;
+    w.classList.toggle('done', cb.checked);
+    try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (e) {}
+  });
+});
+</script>
+<script src="Topics/assets/glossary-data.js"></script>
+<script src="Topics/assets/term-glossary.js"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8">
+  <script src="../Topics/assets/site-ui.js" data-site-ui></script><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hệ thống tư duy — AI Transformation SA/PTL</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/style.css">
+<style>
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 26px}
+.step{display:flex;align-items:center;gap:7px;font-family:var(--disp);font-size:14px;font-weight:600;color:var(--muted);background:light-dark(#f7f8fa, #151a27);border:1px solid var(--line);border-radius:20px;padding:6px 14px 6px 6px;transition:.15s}
+.step:hover{text-decoration:none;border-color:var(--teal);color:var(--ink)}
+.step.cur{background:light-dark(var(--ink), #2b3f78);color:#fff;border-color:var(--ink)}
+.step.sn{width:22px;height:22px;border-radius:50%;background:var(--line);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:12px;font-family:var(--mono)}
+.step.cur.sn{background:var(--orange);color:#fff}
+.gap-t td:nth-child(2){color:light-dark(#8a1f1f, #e79696)}.gap-t td:nth-child(3){color:var(--green)}
+.tam-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:16px 0}
+.tam{border-radius:12px;padding:20px;color:#fff;display:flex;flex-direction:column;min-height:150px}
+.tam.machine{background:linear-gradient(150deg,#2F9E6B,#237a52)}
+.tam.agent{background:linear-gradient(150deg,#33B2C1,#268290)}
+.tam.human{background:linear-gradient(150deg,light-dark(#F37021, #684027),#c9551a)}
+.tam-who{font-family:var(--mono);font-size:12px;opacity:.85}
+.tam-name{font-family:var(--disp);font-size:21px;font-weight:700;margin:4px 0 8px}
+.tam-desc{font-size:13.5px;flex:1}
+.tam-enf{font-size:12px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.25);font-family:var(--mono)}
+@media(max-width:820px){.tam-row{grid-template-columns:1fr}}</style>  <link rel="stylesheet" href="assets/dark.css">
+</head><body>
+<nav class="topbar"><a class="home" href="index.html">◈ AI Transformation SA/PTL</a><span class="crumb">03 / tu-duy</span><span class="nav-actions"><a class="nav-link" href="cau-hoi-on-tap.html">Câu hỏi ôn tập</a><span class="nav-sep" aria-hidden="true"></span><a class="nav-btn" href="index.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></span></nav>
+<div class="wrap"><div class="steps"><a class="step" href="01-casan.html"><span class="sn">1</span>CASAN</a><a class="step" href="02-nhu-cau.html"><span class="sn">2</span>Nhu cầu SA</a><a class="step cur" href="03-tu-duy.html"><span class="sn">3</span>Hệ thống tư duy</a><a class="step" href="04-nang-luc.html"><span class="sn">4</span>Năng lực</a><a class="step" href="05-foundation.html"><span class="sn">5</span>Foundation</a><a class="step" href="06-program.html"><span class="sn">6</span>Program</a></div><h1>Hệ thống tư duy</h1>
+<p class="lead" style="margin-top:2px">"Tam phân" nghĩa đơn giản là chia làm ba: đứng trước bất kỳ công việc nào, xếp từng bước vào một trong ba nhóm dưới đây.</p><div class="callout" style="margin-top:4px">"Tam phân" là tư duy tổng hợp từ các nguồn đã kiểm chứng: ① Nguyên tắc phân tầng — tầng xác định do machine code kiểm tra, tầng phán đoán do con người; ② Chức năng Constrain/Verify trong khung chức năng vận hành agent; ③ Delegation Map theo chuẩn CASAN của FPT. So với khung 4D của Anthropic (chữ D1 chỉ hỏi "giao AI hay tự làm"), tam phân thêm nhánh thứ ba: <b>Việc xác định phải dùng machine code</b> — sinh ra toàn bộ nội dung ràng buộc CI/CD, permission và kiểm chứng.</div>
+
+<div class="doc-meta">Phương Pháp</div>
+<div class="sec-intro">SA/PTL chưa có <b>Thao tác phân định</b> — việc nào phải cưỡng chế bằng machine code, việc nào giao được cho agent, việc nào tuyệt đối giữ cho con người review. Phương pháp này dạy tư duy hệ thống thay vì các kỹ thuật rời rạc.</div>
+
+<h2>Nguyên tắc</h2>
+<div class="tam-row">
+<div class="tam machine"><div class="tam-who">Machine Code</div><div class="tam-name">Xác định</div><p class="tam-desc">Đúng/sai kiểm tra được bằng chương trình</p><div class="tam-enf">code · gate · hook · CI</div></div>
+<div class="tam agent"><div class="tam-who">AI Agent</div><div class="tam-name">ỦY QUYỀN được</div><p class="tam-desc">Tác vụ cần suy luận, kết quả sai phát hiện được</p><div class="tam-enf">context · rule · skills · agentic loop</div></div>
+<div class="tam human"><div class="tam-who">Human</div><div class="tam-name">Không ỦY QUYỀN được</div><p class="tam-desc">Hậu quả nghiêm trọng khi không phát hiện kịp, trách nhiệm không chuyển giao cho AI Agent được</p><div class="tam-enf">Human-in-the-loop là điểm chốt bắt buộc</div></div></div>
+<div class="callout">Sai lầm thường gặp: để quy tắc trong prompt và hy vọng (hard-gate phải dùng machine code) · đổ lỗi model khi không thực hiện được công việc như mong muốn (ủy quyền cho AI Agent nhưng chưa đưa context đầy đủ, rõ ràng) · tự động hóa công việc vì làm được về mặt kỹ thuật (không kiểm tra về trách nhiệm, tính pháp lý).</div>
+
+<h2>Thang ủy quyền L0–L5</h2>
+<p class="lead">Tam phân trả lời câu hỏi "công việc này thuộc về ai?"; L0–L5 trả lời tiếp " AI Agent được tự chạy tới đâu?".</p>
+<table><tr><th style="width:150px">Mức</th><th>AI được làm</th><th style="width:260px">Ai quyết</th></tr>
+<tr><td class="rn">L0 · Observe</td><td>Quan sát / tóm tắt, không đổi gì</td><td class="rk">—</td></tr>
+<tr><td class="rn">L1 · Draft</td><td>Nháp — người duyệt 100%</td><td class="rk">Người</td></tr>
+<tr><td class="rn">L2 · Recommend</td><td>Đề xuất phương án</td><td class="rk">Người</td></tr>
+<tr><td class="rn">L3 · Execute (bounded)</td><td>Thực thi tác vụ rủi RO Thấp trong giới hạn</td><td class="rk">AI chạy · người kiểm duyệt hoặc bỏ qua</td></tr>
+<tr><td class="rn">L4 · Operate workflow</td><td>Vận hành cả luồng: hàng rào + audit + xử lý ngoại lệ</td><td class="rk">AI chạy · người duyệt các hạng mục an toàn</td></tr>
+<tr><td class="rn">L5 · Restricted</td><td>Tự chủ cao vùng phức tạp / rủi ro cao</td><td class="warn">Luôn cần con người</td></tr></table>
+<div class="gate-box"><b>Ba luật cứng:</b> ① AI không tự push/merge/release · ② AI không đụng bí mật (.env, credential, dữ liệu khách) · ③ Đang chờ người duyệt thì AI không được tự đánh dấu là Done.</div>
+
+<h2>Từ tam phân đến Delegation Map</h2>
+<p class="lead">Để xếp một bước vào Máy / Agent / Người và chọn mức L, hỏi bốn câu theo Learning Plan: risk, reversibility, ambiguity, required judgment.</p>
+<table><tr><th style="width:170px">Yếu tố</th><th>Câu hỏi</th><th style="width:300px">Nghiêng về</th></tr>
+<tr><td class="rn">Risk</td><td>Sai thì hậu quả gì, chạm dữ liệu mức nào, có ghi vào hệ thống không?</td><td class="rk">Cao → Người hoặc Agent tối đa L3</td></tr>
+<tr><td class="rn">Reversibility</td><td>Sai có hoàn tác được nhanh và rẻ không (revert diff, chạy lại script)?</td><td class="rk">Không đảo ngược được (release, gửi khách) → Người</td></tr>
+<tr><td class="rn">Ambiguity</td><td>Đúng/sai có tiêu chí rõ, kiểm được bằng chương trình không?</td><td class="rk">Rõ → Máy · cần đọc hiểu → Agent · mơ hồ → Người làm rõ trước</td></tr>
+<tr><td class="rn">Required judgment</td><td>Có cần ai chịu trách nhiệm hoặc kinh nghiệm miền để quyết không?</td><td class="rk">Có → Người (điểm chốt bắt buộc)</td></tr></table>
+<p><b>Chia việc lớn thành bước kiểm được:</b> viết việc thành workflow tuần tự; mỗi bước phải có một đầu ra kiểm được (diff, file, exit code, JSON, kết quả test). Bước nào còn lẫn hai nhóm thì tách tiếp đến khi mỗi bước thuộc đúng một nhóm. Bước không có cách kiểm là dấu hiệu cắt chưa đủ nhỏ.</p>
+<p><b>Approval points và escalation path:</b> điểm duyệt đặt ở mọi bước nhóm Người và theo mức L của bước Agent (L1 duyệt 100%, L2 người quyết, L3 kiểm ngẫu nhiên, L4 duyệt ngoại lệ). Escalation path ghi rõ khi nào agent phải dừng (requirement mơ hồ, validator lỗi, chạm dữ liệu vượt mức, vùng đỏ) và chuyển cho ai, kèm bối cảnh và câu hỏi cần quyết. Người duyệt vắng mặt không bao giờ được coi là đã duyệt.</p>
+<table><tr><th style="width:230px">Bước (thêm signal CAN mới vào parser)</th><th style="width:110px">Nhóm · L</th><th>Kiểm bằng</th><th style="width:230px">Duyệt / escalate</th></tr>
+<tr><td>Đọc spec DBC, trích signal</td><td class="rn">Agent · L1</td><td>đối chiếu bảng trích với DBC</td><td class="rk">PTL duyệt 100%; spec mâu thuẫn → hỏi PTL</td></tr>
+<tr><td>Sinh code parser + unit test</td><td class="rn">Agent · L2</td><td>build, unit test, lint</td><td class="rk">Dev review diff</td></tr>
+<tr><td>Kiểm tên, range, endianness</td><td class="rn">Máy</td><td>script validator trong CI (fail-closed)</td><td class="rk">validator lỗi → chặn, báo Dev</td></tr>
+<tr><td>Đánh giá ảnh hưởng an toàn, timing</td><td class="rn">Người</td><td>review của SA</td><td class="rk">SA ký; không chắc → escalate safety lead</td></tr>
+<tr><td>Merge và release</td><td class="rn">Người</td><td>luật cứng ①</td><td class="rk">PTL</td></tr></table>
+<div class="callout">Delegation map cho một workflow engineering = bảng như trên, mỗi bước có: nhóm tam phân · mức L (nếu Agent) · đánh giá bốn yếu tố · dữ liệu chạm và mức · cách kiểm hoặc cơ chế cưỡng chế · điểm duyệt · người nhận escalate. Đây là bảng tam phân của BT-1.</div>
+
+<h2>Năm chức năng của tầng vận hành agent</h2>
+<table><tr><th style="width:220px">Chức năng</th><th style="width:180px">Nguyên lý</th><th>Tam phân ở đâu</th></tr>
+<tr><td>Context</td><td>Information Sufficiency</td><td>Chất lượng output = sự đầy đủ, rõ ràng trong context bạn đưa</td></tr>
+<tr><td>Tools</td><td>Clear Interface / api</td><td>Tool viết ra để agent hiểu và không dùng sai</td></tr>
+<tr><td>Constrain</td><td>Fail-Safe Defaults</td><td>Mọi năng lực của Agent được tắt mặc định, cưỡng chế bằng hạ tầng</td></tr>
+<tr><td>Verify</td><td>Input Isolation</td><td>Kiểm tra bằng dữ liệu có cấu trúc</td></tr>
+<tr><td>Orchestrate</td><td>Workflow vs Autonomous</td><td>Quyết định ở mức kiến trúc Agentic System</td></tr></table>
+<h2>Ánh xạ từ khung 4D của Anthropic</h2>
+<p class="lead">Khung 4D (Delegation · Description · Discernment · Diligence) là thực hành tốt ở mức CÁ NHÂN khi sử dụng AI. Khóa học này nâng từ 4D lên mức HỆ THỐNG cho cả đội</p>
+<table><tr><th style="width:280px">Khung 4D</th><th>Khóa này</th></tr>
+<tr><td><b>Delegation</b> — việc này giao AI hay tự làm?</td><td>Tam phân + thang L0–L5 ở cấp Quy Trình: Delegation Map cho cả đội, không phải quyết định từng cá nhân sử dụng AI</td></tr>
+<tr><td><b>Description</b> — viết prompt đủ context</td><td>K1 Ngoại hóa tri thức thành artifact cho cả đội dùng chung, prompt dạng SOP — không phụ thuộc người viết</td></tr>
+<tr><td><b>Discernment</b> — đọc kỹ, thẩm định output</td><td>K4 Kiểm chứng: verifier ba tầng TỰ ĐỘNG trong CI/CD — vì  effort con người review không scale khi output từ AI tăng lên</td></tr>
+<tr><td><b>Diligence</b> — trách nhiệm, minh bạch cá nhân</td><td>K0 + K5: ranh giới cưỡng chế bằng hạ tầng + tuyên bố AI Usage với khách hàng</td></tr></table>
+<div class="callout"><b>4D là khung tư duy cá nhân cho sử dụng AI · khóa này xây tư duy hệ thống để cả đội không phải dựa vào kỹ năng của từng người.</b> Học viên còn ở Cấp 1 (chưa có kiến thức nền về 4D) học từ Bài 0.</div>
+
+
+<div class="keyq-box"><p class="keyq-title">Câu hỏi trọng tâm</p><p class="keyq-lead">Các câu hỏi bám trực tiếp yêu cầu của Learning Plan cho bài này. Hãy trả lời được trước khi sang bài sau; bấm vào câu hỏi để xem đáp án và giải thích.</p><p class="keyq-unit">Unit D.5 · AI-05</p><ol><li><a href="cau-hoi-on-tap.html#ai-05-q1">Nhiệm vụ nào giao cho AI, nhiệm vụ nào cần con người, phân định bằng tiêu chí gì?</a></li><li><a href="cau-hoi-on-tap.html#ai-05-q2">Áp risk, reversibility, ambiguity và required judgment vào delegation thế nào?</a></li><li><a href="cau-hoi-on-tap.html#ai-05-q3">Chia một nhiệm vụ lớn thành các bước có thể kiểm tra thế nào?</a></li><li><a href="cau-hoi-on-tap.html#ai-05-q4">Approval points đặt ở đâu, escalation path cần những gì?</a></li><li><a href="cau-hoi-on-tap.html#ai-05-q5">Delegation map cho một workflow engineering cần có gì?</a></li></ol></div><!-- /keyq-box -->
+<div class="next-prev"><a href="02-nhu-cau.html">← Nhu cầu SA</a><a href="04-nang-luc.html"> Năng lực →</a></div><footer>FPT Automotive · AI Transformation cho SA/PTL</footer></div><script src="../Topics/assets/glossary-data.js"></script>
+<script src="../Topics/assets/term-glossary.js" data-unit="AI"></script>
+</body></html>

@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="../assets/site-ui.js" data-site-ui></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đề cương · Graphics &amp; Display Architecture</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f3f0e8;
+  --surface: #f9f7f1;
+  --ink: #2a3431;
+  --muted: #62706b;
+  --line: #dbd7cb;
+  --forest: #174c43;
+  --forest-soft: #e3ece6;
+  --copper: #a64e32;
+  --gold: #e2bd69;
+  --code: #ebe7dd;
+  --focus: #b34d31;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--copper); }
+a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.reader-header {
+  min-height: 74px;
+  padding: 12px clamp(20px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--forest);
+  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.reader-header a { color: white; text-decoration: none; }
+.reader-header nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; font-size: 0.9rem; }
+
+/* Navigation buttons: same shape/order as the AI library (secondary links | ← Quay lại | ⌂ Trang chủ) */
+.nav-link { padding: 6px 4px; color: #d4e4de; font-weight: 500; white-space: nowrap; }
+.reader-header a.nav-link:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+.nav-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(255, 255, 255, 0.3); }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.nav-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.nav-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.nav-ico { flex: none; width: 16px; height: 16px; }
+.reader-header .nav-btn { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+.reader-header .nav-btn:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.reader-header .nav-btn--primary { color: var(--forest); border-color: var(--gold); background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); }
+.reader-header .nav-btn--primary:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.article-footer .nav-btn { color: var(--forest); border-color: var(--forest); background: transparent; }
+.article-footer .nav-btn:hover { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary:hover { border-color: var(--copper); background: var(--copper); }
+.reader-header nav a:hover { color: var(--gold); }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; line-height: 1.12; }
+.brand small { color: #d4e4de; font-size: 0.75rem; font-weight: 400; }
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  border-radius: 2px;
+}
+
+.reader-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+
+.contents-panel {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 32px 20px 28px clamp(20px, 4vw, 48px);
+  border-right: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--copper);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contents-panel ul { margin: 0; padding: 0; list-style: none; }
+.contents-panel li { margin: 0; padding: 0; }
+.contents-panel a {
+  display: block;
+  padding: 7px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.contents-panel a:hover { color: var(--forest); text-decoration: underline; }
+.contents-panel .toc-level-3 { padding-left: 14px; border-left: 1px solid var(--line); }
+
+.article {
+  min-width: 0;
+  padding: 26px clamp(22px, 5vw, 76px) 70px;
+}
+
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+article { max-width: 900px; }
+article h1, article h2, article h3, .library-intro h1 {
+  color: light-dark(#26403d, #c5e8e4);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  line-height: 1.18;
+}
+article h1 { margin: 0 0 28px; font-size: 2.35rem; }
+article h2 {
+  margin: 48px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+}
+article h3 { margin: 32px 0 12px; color: var(--forest); font-size: 1.24rem; }
+article p { margin: 0 0 18px; }
+article li { margin: 6px 0; padding-left: 4px; }
+article ul, article ol { margin: 0 0 22px; padding-left: 26px; }
+article strong { color: light-dark(#26403c, #c3e9e3); }
+
+blockquote {
+  margin: 22px 0;
+  padding: 15px 20px;
+  border-left: 4px solid var(--copper);
+  background: light-dark(#f8eee8, #31231a);
+  color: light-dark(#543e35, #d4c2bb);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+.table-scroll { width: 100%; margin: 22px 0 26px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.92rem; }
+th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--forest-soft); color: light-dark(#26403c, #c3e9e3); font-weight: 700; }
+tr:nth-child(even) td { background: light-dark(#f9f7f2, #2c2918); }
+
+code, pre { font-family: Consolas, "Courier New", monospace; }
+code { padding: 0.1em 0.28em; background: var(--code); color: light-dark(#24433e, #c3dfda); font-size: 0.9em; }
+pre {
+  max-width: 100%;
+  margin: 20px 0 26px;
+  padding: 18px 20px;
+  overflow: auto;
+  border-left: 3px solid var(--forest);
+  background: light-dark(#e9eeea, #222c25);
+  color: light-dark(#26403d, #d0e6e4);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; color: inherit; }
+hr { margin: 36px 0; border: 0; border-top: 1px solid var(--line); }
+
+.audit-item { margin: 14px 0; }
+
+.audit-item details {
+  margin-top: 9px;
+  border-left: 3px solid #86a99e;
+  background: var(--forest-soft);
+}
+.audit-item summary {
+  padding: 9px 13px;
+  color: var(--forest);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.answer-body { padding: 0 14px 10px; }
+.answer-body p { margin: 4px 0 10px; }
+.answer-body ul { margin: -4px 0 12px; padding-left: 22px; }
+.answer-body li { margin: 3px 0; line-height: 1.55; }
+/* Key questions: map 1-1 to the Learning Plan "Unit Detail" requirements of the topic */
+details.audit-reveal { margin: 8px 0 18px; border-left: 3px solid #86a99e; background: var(--forest-soft); }
+details.audit-reveal > summary { padding: 9px 13px; color: var(--forest); cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.audit-key-intro { margin: 18px 0 28px; padding: 16px 20px 14px; border: 1px solid light-dark(#e6cf95, #62542f); border-left: 6px solid var(--gold); background: light-dark(#fff7e0, #312b1a); }
+.audit-key-intro p { margin: 0 0 8px; }
+.audit-key-intro ol { margin: 0; padding-left: 22px; }
+.audit-key-intro li { margin: 4px 0; }
+.audit-key-intro .req-tag { color: var(--muted); font-size: 0.8rem; }
+.audit-question-heading.audit-key { padding: 10px 14px; border-left: 6px solid var(--copper); background: light-dark(#fbeee4, #31251a); }
+.audit-question-heading.audit-key::after {
+  content: "Tr\1ECDng t\00E2m";
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--copper);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+details.audit-key-reveal, .audit-item details.audit-key-reveal { border-left: 6px solid var(--copper); background: light-dark(#f9f7f2, #2c2317); }
+details.audit-key-reveal > summary, .audit-item details.audit-key-reveal summary { color: var(--copper); }
+
+.article-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 54px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.library-main { width: min(1120px, 100%); margin: 0 auto; padding: 50px clamp(20px, 5vw, 72px) 76px; }
+.library-intro { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+.library-intro h1 { margin: 0; font-size: 3rem; }
+.library-intro h1 span { color: var(--copper); }
+
+.search-label { display: block; margin: 0 0 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#topic-search {
+  width: min(520px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-intro { max-width: 740px; color: var(--muted); }
+.qa-filter { margin: 26px 0 34px; }
+.qa-filter label { display: block; margin-bottom: 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#qa-search {
+  width: min(640px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-filter p { margin: 7px 0 0; color: var(--muted); font-size: 0.82rem; }
+.qa-topic { margin-top: 40px; }
+.qa-topic-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.qa-topic-heading h2 { flex: 1; }
+.qa-topic-heading a { flex: none; font-size: 0.86rem; }
+.qa-question[hidden], .qa-topic[hidden] { display: none; }
+.search-status { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.topic-list { margin-top: 8px; border-top: 1px solid var(--line); }
+.topic-link {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 15px;
+  min-height: 72px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topic-link:hover { background: light-dark(#e8eee9, #222d23); color: var(--forest); }
+.topic-number { color: var(--copper); font-family: Georgia, serif; font-size: 1.1rem; }
+.topic-title { font-weight: 650; }
+.topic-arrow { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.source-note { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.87rem; }
+
+@media (max-width: 860px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .contents-panel {
+    position: static;
+    max-height: none;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contents-panel nav { max-height: 210px; overflow: auto; }
+  .article { padding-top: 22px; }
+}
+
+@media (max-width: 560px) {
+  .reader-header { align-items: flex-start; padding: 12px 17px; }
+  .reader-header { flex-wrap: wrap; }
+  .reader-header nav { gap: 6px 8px; }
+  .nav-sep { display: none; }
+  .nav-btn { min-height: 34px; padding: 6px 12px; }
+  .library-intro h1 { font-size: 2.25rem; }
+  article h1 { font-size: 1.9rem; }
+  article h2 { font-size: 1.4rem; }
+  .topic-link { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .topic-arrow { display: none; }
+  .qa-topic-heading { align-items: flex-start; flex-direction: column; gap: 0; }
+  th, td { min-width: 130px; padding: 9px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* Highlight non-AI (CDC/SDV) topics in the library index */
+.topic-link.topic-core { background: var(--forest-soft); box-shadow: inset 5px 0 0 var(--forest); }
+.topic-link.topic-core .topic-title { color: var(--forest); }
+.topic-link.topic-core .topic-number { color: var(--forest); font-weight: 700; }
+.topic-link.topic-core:hover { background: light-dark(#d4e5de, #233930); }
+.topic-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 18px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.legend-swatch { display: inline-block; width: 18px; height: 14px; margin-right: -10px; border: 1px solid var(--line); vertical-align: -2px; }
+.legend-swatch.legend-core { background: var(--forest-soft); box-shadow: inset 4px 0 0 var(--forest); }
+
+/* Non-learning items (assignment / review / OJT) among CDC/SDV topics: red text */
+.topic-link.topic-task .topic-title, .topic-link.topic-task .topic-number { color: light-dark(#b3261e, #e9847e); }
+.topic-link.topic-task:hover .topic-title { color: light-dark(#8c1d18, #ed9794); }
+.legend-task { color: light-dark(#b3261e, #e9847e); font-weight: 600; }
+/* Study-time note per topic (from Fast_Track_CDC_Weekly_Checklist.xlsx) */
+.topic-time { display: block; margin-top: 3px; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.topic-link.topic-task .topic-time { color: light-dark(#b3261e, #e9847e); opacity: 0.85; }
+.legend-time { flex-basis: 100%; color: var(--muted); }
+
+/* ---- Thuật ngữ: bấm để xem giải nghĩa ---- */
+.gl {
+  border-bottom: 1.5px dotted #6f9a8e;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color .12s;
+}
+.gl:hover { background: var(--forest-soft); }
+.gl:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.gl.is-open { background: var(--forest-soft); border-bottom-style: solid; border-bottom-color: var(--forest); }
+.gl-pop {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(28, 41, 40, .16);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gl-term { display: block; margin-bottom: 2px; color: var(--forest); font-weight: 700; font-size: .82rem; }
+.gl-hint { color: var(--muted); font-size: .85rem; }
+.gl-hint .gl-demo { border-bottom: 1.5px dotted #6f9a8e; }
+
+/* ---- Checklist đầu ra (tick được, lưu trên trình duyệt) ---- */
+.checklist { margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 16px 14px; }
+.checklist > h3 { margin-top: 18px; }
+.cl-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--muted); font-size: .9rem; }
+.cl-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 99px; background: var(--forest-soft); overflow: hidden; }
+.cl-bar > i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s; }
+.cl-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.cl-item { padding: 9px 0 10px; border-top: 1px dashed var(--line); }
+.cl-item:first-child { border-top: 0; }
+.cl-item > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.cl-item input[type="checkbox"] { margin-top: .35em; width: 17px; height: 17px; accent-color: var(--forest); flex: none; }
+.cl-item.is-done > label > span { color: var(--muted); text-decoration: line-through; text-decoration-color: light-dark(#9fb3ad, #495c56); }
+.cl-pass, .cl-src { margin: 4px 0 0 27px; font-size: .9rem; }
+.cl-pass { color: var(--ink); }
+.cl-src { color: var(--muted); font-size: .82rem; }
+.cl-reset { margin-left: auto; border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 2px 9px; color: var(--muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.cl-reset:hover { color: var(--copper); border-color: var(--copper); }
+
+/* Lesson style for CDC/SDV topics — mirrors the teaching layout of the AI library
+   (bài đọc: hook → giải thích → ví dụ → vì sao quan trọng → nghiền ngẫm → thực hành → tự kiểm)
+   while keeping the CDC palette of reader.css. Load AFTER reader.css. */
+:root {
+  --teal: #2A8C8C; --teal-soft: #EEF7F6;
+  --violet: #6A4FC0; --violet-soft: #F5F2FD;
+  --green: #2E7D4F; --green-soft: #EFF8F2;
+  --amber: #B7791F; --amber-soft: #FFF7E8;
+  --red: #A93226; --red-soft: #FCEFEC;
+}
+
+body.lesson-page article { max-width: 800px; }
+body.lesson-page article p, body.lesson-page article li { line-height: 1.75; }
+body.lesson-page article h2 { margin-top: 44px; }
+body.lesson-page article h2 .sec-no { color: var(--copper); font-weight: 700; margin-right: 6px; }
+
+/* Bài nav (pill row, like .tapnav in the AI library) */
+.bai-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+.bai-nav a { font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--surface); }
+.bai-nav a:hover { border-color: var(--forest); color: var(--forest); }
+.bai-nav a.cur { background: var(--forest); border-color: var(--forest); color: #fff; }
+.bai-nav .grp { font-size: 0.7rem; font-weight: 700; color: var(--copper); align-self: center; margin: 0 2px 0 6px; letter-spacing: .06em; }
+
+.lesson-kicker { margin: 0 0 6px; color: var(--copper); font-size: 0.78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+body.lesson-page article h1 { margin-bottom: 10px; }
+.lesson-meta { margin: 0 0 18px; font-weight: 600; color: light-dark(#2c4b46, #bfdad5); font-size: 0.95rem; }
+
+/* Bản đồ bài — chuỗi khái niệm */
+.roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 24px; font-size: 0.86rem; }
+.roadmap span { background: var(--forest-soft); color: var(--forest); border: 1px solid light-dark(#c9ddd5, #314e42); border-radius: 8px; padding: 5px 10px; font-weight: 600; }
+.roadmap i { color: var(--muted); font-style: normal; }
+
+/* Figure card for SVG diagrams */
+.fig { margin: 24px 0; background: light-dark(#f9f7f2, #202819); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 12px; box-shadow: 0 1px 3px rgba(23,76,67,.06); overflow-x: auto; }
+.fig svg { width: 100%; height: auto; display: block; min-width: 560px; }
+.fig figcaption, .fig .cap { margin-top: 8px; color: var(--muted); font-size: 0.84rem; text-align: center; font-style: italic; }
+
+/* Opening question of a section */
+.hook { font-size: 1.04rem; color: light-dark(#26403c, #c6e2de); border-left: 3px solid var(--copper); padding: 4px 0 4px 14px; margin: 6px 0 18px; }
+
+/* Plain-language explanation */
+.plain { background: var(--forest-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0 18px; }
+.plain .ttl { color: var(--forest); }
+
+/* Generic box header */
+.box { border-radius: 12px; padding: 14px 18px; margin: 20px 0; }
+.box > .ttl, .plain > .ttl { margin: 0 0 7px; font-weight: 700; font-size: 0.86rem; }
+.box p { margin: 6px 0; }
+.box ul, .box ol { margin: 6px 0; padding-left: 22px; }
+.box li { margin: 4px 0; }
+
+.ex { background: var(--teal-soft); border: 1px solid var(--teal); }
+.ex > .ttl { color: light-dark(#1d6b6b, #a8e7e7); }
+.case { background: light-dark(#f9f7f2, #2c2117); border: 1px solid light-dark(#EBB28F, #63432f); border-left: 4px solid var(--copper); }
+.case > .ttl { color: var(--copper); font-size: 0.74rem; text-transform: uppercase; letter-spacing: .05em; }
+.pitfall { background: var(--amber-soft); border: 1px solid light-dark(#EBC77A, #695833); }
+.pitfall > .ttl { color: light-dark(#8A5A00, #ffd88f); }
+.why { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--forest); }
+.why > .ttl { color: var(--forest); }
+
+.practice { background: var(--green-soft); border: 1px solid var(--green); }
+.practice > .ttl { color: light-dark(#1F6340, #ade5c9); }
+.remember { background: var(--forest); color: #E4EFEB; }
+.remember > .ttl { color: var(--gold); }
+.remember b, .remember strong { color: #fff; }
+
+/* Sai vs đúng */
+.contrast { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.contrast > div { border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; }
+.contrast .bad { background: var(--red-soft); border: 1px solid light-dark(#E3A79F, #60342e); }
+.contrast .good { background: var(--green-soft); border: 1px solid light-dark(#9CCFB0, #326747); }
+.contrast .ttl { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
+.contrast .bad .ttl { color: var(--red); }
+.contrast .good .ttl { color: var(--green); }
+.contrast p { margin: 4px 0; }
+
+/* Step-by-step anatomy */
+.steps { list-style: none; counter-reset: st; padding-left: 0 !important; }
+.steps > li { counter-increment: st; position: relative; padding: 2px 0 2px 42px !important; margin: 12px 0 !important; }
+.steps > li::before { content: counter(st); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+
+/* Small term chips inline */
+.term { font-weight: 650; color: light-dark(#26403c, #c3e9e3); }
+.term-gloss { color: var(--muted); font-size: 0.92em; }
+
+/* Lesson prev/next */
+.next-prev { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .contrast { grid-template-columns: 1fr; }
+  .fig svg { min-width: 520px; }
+}
+
+/* ---------- Learning reflection + Unit assessment (assets/assessment.js) ---------- */
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.refl-intro { color: light-dark(#2c4b46, #bfdad5); }
+.refl-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--violet); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.refl-label { margin: 0 0 4px !important; font-weight: 700; color: light-dark(#3f2c86, #a99ade); }
+.refl-hint { color: light-dark(#41506B, #aeb9ce); font-size: 0.93rem; margin-bottom: 8px; }
+.refl-hint ul { margin: 4px 0 0; padding-left: 20px; }
+.refl-hint li { margin: 2px 0; }
+#reflection-app textarea, #quiz-app textarea, #workshop-app textarea { width: 100%; font: inherit; font-size: 0.95rem; line-height: 1.55; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); color: var(--ink); resize: vertical; }
+#reflection-app textarea:focus, #quiz-app textarea:focus, #workshop-app textarea:focus { outline: 2px solid var(--gold); border-color: var(--forest); }
+.refl-sample { margin-top: 8px; }
+.refl-sample summary { cursor: pointer; color: var(--forest); font-size: 0.86rem; font-weight: 600; }
+.refl-sample-body { margin: 6px 0; padding: 8px 12px; background: var(--forest-soft); border-radius: 6px; font-size: 0.92rem; }
+.refl-sample-body ul { margin: 4px 0; padding-left: 20px; }
+.refl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 6px; }
+.refl-tools p { flex-basis: 100%; margin: 2px 0 0; }
+.tool-msg { color: var(--green); font-size: 0.86rem; }
+.act-btn, .mini-btn { font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1.5px solid var(--forest); }
+.act-btn { background: var(--forest); color: #fff; }
+.act-btn:hover { background: var(--copper); border-color: var(--copper); }
+.mini-btn { background: transparent; color: var(--forest); padding: 5px 12px; font-size: 0.82rem; }
+.mini-btn:hover { background: var(--forest-soft); }
+.mini-btn.danger { color: var(--red); border-color: light-dark(#E3A79F, #60342e); }
+.assess-note { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; }
+.assess-note.small { background: transparent; padding: 0; }
+
+table.rubric select { font: inherit; font-size: 0.86rem; padding: 4px 6px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ws-col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.ws-h { margin: 0 0 4px !important; font-weight: 700; color: var(--forest); font-size: 0.9rem; }
+.ws-col ol, .ws-col ul { margin: 0 !important; padding-left: 20px !important; font-size: 0.93rem; }
+table.rubric td.num { text-align: center; font-weight: 700; color: var(--copper); }
+table.rubric td { font-size: 0.9rem; }
+table.rubric textarea { min-width: 180px; }
+.rub-pts { font-size: 0.82rem; color: var(--forest); font-weight: 600; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.dash-card.pass { border-color: light-dark(#9CCFB0, #326747); background: var(--green-soft); }
+.dash-card.fail { border-color: light-dark(#E3A79F, #60342e); background: var(--red-soft); }
+.dash-h { margin: 0 !important; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-v { margin: 2px 0 !important; font-size: 1.6rem; font-weight: 700; color: var(--forest); }
+.dash-sub { margin: 0 !important; font-size: 0.84rem; color: var(--muted); }
+
+/* ---------- Knowledge questions (open questions, self-rated) ---------- */
+.kq-howto { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kq-toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.kq-filter { font-size: 0.88rem; color: var(--forest); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.kq-progress { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; }
+.kq-track { flex: 1; height: 8px; border-radius: 99px; background: light-dark(#E3E8E2, #272f25); overflow: hidden; display: flex; }
+.kq-track .seg { height: 100%; }
+.seg-yes { background: var(--green); } .seg-part { background: light-dark(#D9A441, #665027); } .seg-no { background: light-dark(#C0504D, #6a2a28); }
+.kq-count { font-size: 0.84rem; color: var(--muted); white-space: nowrap; }
+.kq-group { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; border-bottom: 1px dashed var(--line); }
+.kq-group-title { margin: 0 0 6px !important; font-size: 1.08rem !important; }
+.kq-back { font-size: 0.82rem; white-space: nowrap; }
+.kq-list { padding-left: 26px !important; margin-top: 8px !important; }
+.kq-item { margin: 12px 0 !important; padding: 10px 14px !important; border: 1px solid var(--line); border-left: 4px solid light-dark(#C9D3CF, #3b4843); border-radius: 10px; background: var(--surface); }
+.kq-item[data-rate="yes"] { border-left-color: var(--green); }
+.kq-item[data-rate="part"] { border-left-color: #D9A441; }
+.kq-item[data-rate="no"] { border-left-color: #C0504D; }
+.only-weak .kq-item[data-rate="yes"] { display: none; }
+.kq-q { margin: 0 0 6px !important; font-weight: 600; line-height: 1.6 !important; }
+.kq-type { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 4px; background: var(--forest-soft); color: var(--forest); font-size: 0.72rem; font-weight: 700; letter-spacing: .03em; vertical-align: 2px; text-transform: uppercase; }
+.kq-mine, .kq-answer { margin: 6px 0; }
+.kq-mine summary, .kq-answer summary { cursor: pointer; font-size: 0.86rem; font-weight: 600; color: var(--forest); }
+.kq-mine textarea { margin-top: 6px; width: 100%; font: inherit; font-size: 0.95rem; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; resize: vertical; }
+.kq-answer-body { margin-top: 6px; padding: 10px 14px; background: light-dark(#F4F8F6, #1b2a22); border: 1px solid light-dark(#D5E3DD, #2f473d); border-radius: 8px; font-size: 0.95rem; }
+.kq-answer-body p { margin: 4px 0 8px !important; }
+.kq-answer-body ul, .kq-answer-body ol { margin: 4px 0 8px !important; padding-left: 20px !important; }
+.kq-answer-body li { margin: 2px 0 !important; }
+.kq-refs { font-size: 0.84rem; color: var(--muted); border-top: 1px dashed light-dark(#D5E3DD, #2f473d); padding-top: 6px; margin-top: 8px !important; }
+.kq-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.kq-rate-l { font-size: 0.8rem; color: var(--muted); }
+.kq-rbtn { font: inherit; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid light-dark(#C9D3CF, #3b4843); background: light-dark(#f9f7f2, #192320); color: var(--muted); cursor: pointer; }
+.kq-rbtn[aria-pressed="true"].r-yes { background: var(--green); border-color: var(--green); color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-part { background: light-dark(#D9A441, #665027); border-color: #D9A441; color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-no { background: light-dark(#C0504D, #6a2a28); border-color: #C0504D; color: #fff; }
+
+
+  </style>
+  <style>
+    article h4 { margin: 22px 0 8px; color: var(--forest); font-size: 1.02rem; }
+    td.c, th.c { text-align: center; }
+    tr.total td { font-weight: 700; background: var(--forest-soft) !important; }
+    .fig svg .hit:hover { opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="../assets/dark.css">
+</head>
+<body class="topic-page lesson-page">
+<header class="reader-header">
+    <a class="brand" href="../../dainv13.html"><span class="brand-mark">Đ</span><span>Đề cương<br><small>Graphics &amp; Display Architecture</small></span></a>
+    <nav aria-label="Page actions"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></nav>
+</header>
+<div class="reader-layout">
+  <aside class="contents-panel">
+    <p class="eyebrow">Nội dung trang</p>
+    <nav aria-label="Topic contents"><ul>
+<li class="toc-level-2"><a href="#p1">Phần 1 · Giải thích chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-2">1.2 Tổng quan về chủ đề</a></li>
+<li class="toc-level-2"><a href="#p2">Phần 2 · Nội dung chi tiết</a></li>
+<li class="toc-level-3"><a href="#p2-1">2.1 Kiến trúc đồ họa và hiển thị trong xe</a></li>
+<li class="toc-level-3"><a href="#p2-2">2.2 Display pipeline, graphics stack, display output</a></li>
+<li class="toc-level-3"><a href="#p2-3">2.3 Rendering, composition, frame timing, latency</a></li>
+<li class="toc-level-3"><a href="#p2-4">2.4 GPU, bandwidth, buffer, resource sharing</a></li>
+<li class="toc-level-3"><a href="#p2-5">2.5 HMI, multi-display, safety display, degradation</a></li>
+<li class="toc-level-3"><a href="#p2-6">2.6 Performance measurement, failure analysis</a></li>
+<li class="toc-level-3"><a href="#p2-7">2.7 Một frame đi qua hệ thống như thế nào?</a></li>
+<li class="toc-level-3"><a href="#p2-8">2.8 Nguyên nhân dropped frame, tearing, latency cao</a></li>
+<li class="toc-level-3"><a href="#p2-9">2.9 Governance cho GPU/display dùng chung</a></li>
+</ul></nav>
+  </aside>
+  <main class="article">
+    <article>
+<p class="lesson-kicker">Đề cương chi tiết · Research Topic 1</p>
+<h1 id="top">Graphics &amp; Display Architecture</h1>
+<p class="lesson-meta">Kiến trúc đồ họa &amp; hiển thị trong xe · đọc ~60 phút</p>
+
+<h2 id="p1"><span class="sec-no">1 ·</span> Giải thích chủ đề</h2>
+
+<h3 id="p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</h3>
+<ul>
+<li><b><span class="term">Graphics <span class="term-gloss">(đồ họa)</span></span></b>: phần <b>tạo ra pixel <span class="term-gloss">(điểm ảnh)</span></b>: app <span class="term-gloss">(ứng dụng)</span> mô tả cảnh, graphics API (OpenGL ES <span class="term-gloss">(OpenGL for Embedded Systems – API đồ họa cho thiết bị nhúng)</span>, Vulkan <span class="term-gloss">(API đồ họa thế hệ mới, ít overhead CPU)</span>) và driver <span class="term-gloss">(trình điều khiển phần cứng; hoặc yếu tố thúc đẩy)</span> chuyển thành lệnh, <span class="term">GPU <span class="term-gloss">(Graphics Processing Unit – bộ xử lý đồ họa)</span></span> chạy shader <span class="term-gloss">(chương trình nhỏ chạy trên GPU tính vị trí/màu)</span> và ghi vào buffer <span class="term-gloss">(vùng đệm dữ liệu)</span> trong DRAM <span class="term-gloss">(Dynamic Random-Access Memory – bộ nhớ RAM chính)</span>. Câu hỏi chính: tốn bao nhiêu thời gian GPU và băng thông.</li>
+<li><b><span class="term">Display Architecture <span class="term-gloss">(kiến trúc hiển thị)</span></span></b>: cách <b>đưa pixel tới người dùng</b>: compositor <span class="term-gloss">(bộ ghép nhiều lớp hình thành khung hình)</span> ghép layer <span class="term-gloss">(lớp, tầng)</span>, display controller <span class="term-gloss">(bộ điều khiển hiển thị)</span> đọc buffer theo vsync <span class="term-gloss">(tín hiệu nhịp quét dọc của màn hình)</span>, link (DSI <span class="term-gloss">(Display Serial Interface – giao tiếp hiển thị nối tiếp)</span>, eDP <span class="term-gloss">(embedded DisplayPort – DisplayPort nội bộ nối SoC với panel)</span>, LVDS <span class="term-gloss">(Low-Voltage Differential Signaling – truyền tín hiệu vi sai áp thấp)</span>, SerDes <span class="term-gloss">(Serializer/Deserializer – chip chuyển song song ↔ nối tiếp)</span>) đưa tới panel <span class="term-gloss">(tấm màn hình vật lý)</span>. "Architecture <span class="term-gloss">(kiến trúc)</span>" gồm cả thành phần lẫn quyết định về owner <span class="term-gloss">(người/nhóm chịu trách nhiệm chính)</span>, ưu tiên, timing <span class="term-gloss">(đặc tính thời gian: trễ, jitter, hạn chót)</span> và hành vi khi lỗi.</li>
+</ul>
+
+<h3 id="p1-2">1.2 Tổng quan về chủ đề</h3>
+<p>Cluster <span class="term-gloss">(cụm đồng hồ táp-lô)</span>, center <span class="term-gloss">(trung tâm)</span>, HUD <span class="term-gloss">(Head-Up Display – màn hình chiếu lên kính lái)</span>, passenger <span class="term-gloss">(hành khách)</span> ngày càng do <b>một</b> <span class="term">CDC <span class="term-gloss">(Cockpit Domain Controller – máy tính trung tâm khoang lái)</span></span> trên một SoC <span class="term-gloss">(System-on-Chip – chip tích hợp CPU, GPU, NPU…)</span> điều khiển. Cluster chạy trên VM <span class="term-gloss">(Virtual Machine – máy ảo)</span> tin cậy (QNX <span class="term-gloss">(hệ điều hành thời gian thực microkernel)</span>/RTOS <span class="term-gloss">(Real-Time Operating System – hệ điều hành thời gian thực)</span>), IVI <span class="term-gloss">(In-Vehicle Infotainment – hệ thống thông tin giải trí trên xe)</span> chạy Android Automotive <span class="term-gloss">(hệ điều hành Android cho xe)</span> trên VM khác; cả hai dùng chung GPU, display controller và DRAM. Mỗi frame <span class="term-gloss">(khung dữ liệu trên bus; khung hình)</span> đi qua app → API <span class="term-gloss">(Application Programming Interface – giao diện lập trình ứng dụng)</span> → driver → GPU → buffer queue <span class="term-gloss">(hàng đợi chờ xử lý)</span> → compositor → display controller → link → panel, và chặng nào cũng có thể làm frame chờ, bị bỏ hoặc bị xé.</p>
+<p>Chủ đề gồm graphics stack <span class="term-gloss">(chuỗi phần mềm/phần cứng từ app tới màn hình)</span> trên Android <span class="term-gloss">(hệ điều hành mở của Google)</span>, Linux/Wayland <span class="term-gloss">(ngăn xếp hiển thị Linux dùng Wayland)</span>, QNX; rendering <span class="term-gloss">(kết xuất hình ảnh để hiển thị)</span>, composition <span class="term-gloss">(sự ghép các layer thành ảnh cuối)</span>, vsync, buffer, fence <span class="term-gloss">(đối tượng đồng bộ báo buffer sẵn sàng)</span> quyết định timing; cách chia GPU, băng thông, buffer giữa domain <span class="term-gloss">(miền chức năng của xe)</span>. Tiếp theo là HMI <span class="term-gloss">(Human-Machine Interface – giao diện người–máy)</span> nhiều màn hình, nội dung safety-relevant <span class="term-gloss">(liên quan an toàn)</span>, degradation <span class="term-gloss">(suy giảm có kiểm soát)</span>, đo hiệu năng và phân tích lỗi. Cuối cùng là governance <span class="term-gloss">(quản trị: quy tắc, vai trò, quyền quyết định)</span> cho tài nguyên đồ họa dùng chung.</p>
+
+<h2 id="p2"><span class="sec-no">2 ·</span> Nội dung chi tiết</h2>
+
+<!-- 2.1 -->
+<h3 id="p2-1">2.1 Kiến trúc đồ họa và hiển thị trong xe</h3>
+
+<h4>a) Các màn hình trong cockpit và vai trò của chúng</h4>
+<p>Vai trò và mức quan trọng của từng màn là đầu vào đầu tiên, trước cả việc chọn GPU. Cấu hình mẫu (giả định minh họa):</p>
+<div class="table-scroll"><table><thead><tr><th>Display <span class="term-gloss">(màn hình, hiển thị)</span></th><th>Nội dung</th><th>Mức quan trọng</th><th>Domain</th><th>Mode <span class="term-gloss">(chế độ hoạt động)</span>, link</th></tr></thead><tbody>
+<tr><td><b>Cluster</b></td><td>Tốc độ, telltale <span class="term-gloss">(đèn báo trên cụm đồng hồ)</span>, cảnh báo, chỉ dẫn rẽ</td><td>Cao, một phần safety-relevant</td><td>VM QNX/RTOS</td><td>1920×720, 60 Hz <span class="term-gloss">(Hertz – số lần mỗi giây)</span>; LVDS/SerDes</td></tr>
+<tr><td><b>HUD</b></td><td>Tốc độ, chỉ dẫn, ADAS <span class="term-gloss">(Advanced Driver Assistance Systems – hệ thống hỗ trợ lái nâng cao)</span></td><td>Cao</td><td>Cluster VM</td><td>Thấp hơn, 60 Hz; SerDes</td></tr>
+<tr><td><b>Center (IVI)</b></td><td>Bản đồ, media <span class="term-gloss">(nội dung đa phương tiện)</span>, camera <span class="term-gloss">(máy quay, cảm biến hình ảnh trên xe)</span> lùi</td><td>Trung bình; cao khi camera lùi</td><td>VM Android</td><td>1920×1080, 60 Hz; eDP</td></tr>
+<tr><td><b>Passenger</b></td><td>Video <span class="term-gloss">(hình ảnh động)</span>, game <span class="term-gloss">(trò chơi)</span></td><td>Thấp</td><td>IVI VM hoặc riêng</td><td>1920×1080, 60 Hz; SerDes</td></tr>
+</tbody></table></div>
+
+<h4>b) Các khối phần cứng tham gia</h4>
+<ul>
+<li><b>CPU <span class="term-gloss">(Central Processing Unit – bộ xử lý trung tâm)</span></b>: app, layout <span class="term-gloss">(bố cục)</span>, command buffer <span class="term-gloss">(bộ đệm lệnh vẽ gửi cho GPU)</span>, compositor. <b>GPU</b>: vẽ, đôi khi ghép layer; thường <span class="term">tile-based <span class="term-gloss">(GPU vẽ từng ô màn hình trong bộ nhớ on-chip để giảm truy cập DRAM)</span></span> (Adreno <span class="term-gloss">(dòng GPU của Qualcomm trong SoC Snapdragon)</span>, Mali <span class="term-gloss">(dòng GPU của Arm dùng trong nhiều SoC)</span>, PowerVR).</li>
+<li><b><span class="term">DPU <span class="term-gloss">(Display Processing Unit – khối xử lý hiển thị trong SoC)</span></span></b>: số plane <span class="term-gloss">(lớp phần cứng của bộ điều khiển hiển thị)</span>, format <span class="term-gloss">(định dạng dữ liệu)</span>, output <span class="term-gloss">(đầu ra)</span> là giới hạn cứng. <b>VPU <span class="term-gloss">(Video Processing Unit – khối giải/mã hóa video)</span>, ISP <span class="term-gloss">(Image Signal Processor – bộ xử lý tín hiệu ảnh camera)</span></b>: video, camera ghi thẳng vào buffer.</li>
+<li><b>DRAM, interconnect <span class="term-gloss">(mạng kết nối nội bộ SoC giữa CPU, GPU, DPU và DRAM)</span></b>: chứa mọi buffer; băng thông là tài nguyên chung "vô hình". <b><span class="term">SMMU <span class="term-gloss">(System Memory Management Unit – IOMMU trên kiến trúc Arm)</span>/IOMMU <span class="term-gloss">(Input-Output Memory Management Unit – MMU cho thiết bị)</span></span></b>: chặn đọc buffer chéo domain.</li>
+<li><b>Link, panel</b>: <span class="term">MIPI DSI <span class="term-gloss">(MIPI Display Serial Interface – giao tiếp hiển thị nối tiếp MIPI)</span></span>, <span class="term">eDP</span>, <span class="term">LVDS</span> cho khoảng ngắn; <span class="term">SerDes</span> cho vài mét; panel có <span class="term">TCON <span class="term-gloss">(Timing Controller – chip điều khiển định thời trên panel)</span></span>, backlight <span class="term-gloss">(đèn nền màn hình LCD)</span>.</li>
+</ul>
+
+<h4>c) Graphics stack theo từng hệ điều hành</h4>
+<p>CDC thường chạy ít nhất hai cột song song trên hai VM.</p>
+<div class="table-scroll"><table><thead><tr><th>Chức năng</th><th>Android Automotive</th><th>Linux <span class="term-gloss">(hệ điều hành mã nguồn mở)</span> / Wayland <span class="term-gloss">(giao thức hiển thị Linux giữa app và compositor)</span></th><th>QNX</th></tr></thead><tbody>
+<tr><td>Graphics API</td><td>Vulkan, OpenGL ES; HWUI <span class="term-gloss">(thư viện render UI tăng tốc phần cứng của Android)</span>/Skia <span class="term-gloss">(thư viện đồ họa 2D dùng trong Android và Chrome)</span></td><td>OpenGL ES, Vulkan (Mesa <span class="term-gloss">(bộ driver đồ họa mã nguồn mở OpenGL/Vulkan)</span>/vendor <span class="term-gloss">(hãng cung cấp)</span>)</td><td>OpenGL ES, Vulkan</td></tr>
+<tr><td>Buffer, queue</td><td>gralloc <span class="term-gloss">(HAL cấp phát buffer đồ họa trên Android)</span>, AHardwareBuffer <span class="term-gloss">(API buffer đồ họa dùng chung trên Android NDK)</span>; BufferQueue <span class="term-gloss">(hàng đợi buffer giữa producer và consumer đồ họa trên Android)</span></td><td>GBM <span class="term-gloss">(Generic Buffer Management – API cấp phát buffer đồ họa trên Linux)</span>, dma-buf <span class="term-gloss">(buffer kernel Linux chia sẻ giữa GPU, DPU, camera qua file descriptor)</span>; wl_buffer</td><td>Screen buffer, pmem <span class="term-gloss">(cơ chế cấp phát bộ nhớ liền kề kiểu cũ của vendor)</span></td></tr>
+<tr><td>Policy <span class="term-gloss">(chính sách, luật vận hành)</span> cửa sổ</td><td>WindowManager <span class="term-gloss">(dịch vụ Android quản lý chính sách cửa sổ)</span>, CarService <span class="term-gloss">(service hệ thống AAOS giữa Car API và Vehicle HAL)</span></td><td>IVI shell <span class="term-gloss">(trình nhận và chạy lệnh gõ)</span> / layer manager <span class="term-gloss">(người quản lý)</span></td><td>HMI manager dự án</td></tr>
+<tr><td>Compositor</td><td>SurfaceFlinger <span class="term-gloss">(dịch vụ compositor của Android)</span></td><td>Weston <span class="term-gloss">(compositor tham chiếu của Wayland)</span> hoặc tự viết</td><td>Screen <span class="term-gloss">(màn hình)</span></td></tr>
+<tr><td>Plane, driver</td><td>HWC HAL <span class="term-gloss">(Hardware Abstraction Layer – lớp trừu tượng phần cứng)</span>; DRM/KMS <span class="term-gloss">(Direct Rendering Manager / Kernel Mode Setting – điều khiển GPU, display)</span></td><td>DRM/KMS atomic commit <span class="term-gloss">(áp dụng đồng loạt các thay đổi hiển thị một lần)</span></td><td>Screen pipeline <span class="term-gloss">(chuỗi bước tự động nối tiếp)</span>; driver vendor</td></tr>
+</tbody></table></div>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>CDC lái nhiều màn hình có mức quan trọng khác nhau, do nhiều domain/OS <span class="term-gloss">(Operating System – hệ điều hành)</span> vẽ, nhưng <b>dùng chung một GPU, một DPU và một DRAM</b>. Mỗi OS có graphics stack riêng với cùng chức năng. Bắt đầu từ bảng display, rồi mới chọn cách chia tài nguyên.</p>
+</div>
+
+<!-- 2.2 -->
+<h3 id="p2-2">2.2 Display pipeline từ application đến compositor, graphics stack và display output</h3>
+
+<figure class="fig">
+<svg viewBox="0 0 720 430" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Display pipeline trên CDC: cluster VM QNX và IVI VM Android đi qua hypervisor tới GPU, DRAM, DPU dùng chung rồi ra bốn panel">
+<defs>
+<filter id="c2-sh" x="-10%" y="-20%" width="120%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#174C43" flood-opacity="0.15"/></filter>
+<marker id="c2-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+<marker id="c2-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Display pipeline trên CDC: hai đường render gặp nhau ở GPU, DRAM và DPU</text>
+<rect x="16" y="34" width="338" height="196" rx="10" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/>
+<rect x="366" y="34" width="338" height="196" rx="10" fill="#FBF1EC" stroke="#A64E32" stroke-width="1.2"/>
+<text x="185" y="52" text-anchor="middle" font-size="12" font-weight="700" fill="#174C43">Cluster VM · QNX (tin cậy)</text>
+<text x="535" y="52" text-anchor="middle" font-size="12" font-weight="700" fill="#A64E32">IVI VM · Android Automotive</text>
+<g fill="#fff" stroke="#2A6F66" stroke-width="1">
+<rect x="40" y="60" width="290" height="22" rx="7"/>
+<rect x="40" y="94" width="290" height="22" rx="7"/>
+<rect x="40" y="128" width="290" height="22" rx="7"/>
+<rect x="40" y="162" width="290" height="22" rx="7"/>
+</g>
+<rect x="40" y="196" width="290" height="22" rx="7" fill="#174C43"/>
+<g fill="#fff" stroke="#A64E32" stroke-width="1">
+<rect x="390" y="60" width="290" height="22" rx="7"/>
+<rect x="390" y="94" width="290" height="22" rx="7"/>
+<rect x="390" y="128" width="290" height="22" rx="7"/>
+<rect x="390" y="162" width="290" height="22" rx="7"/>
+</g>
+<rect x="390" y="196" width="290" height="22" rx="7" fill="#A64E32"/>
+<g text-anchor="middle" font-size="10.5" fill="#1c2928">
+<text x="185" y="75">HMI cluster (Kanzi / Qt Quick)</text>
+<text x="185" y="109">OpenGL ES 3.x + EGL</text>
+<text x="185" y="143">GPU driver: UMD → KMD (guest)</text>
+<text x="185" y="177">Window buffer + acquire fence</text>
+<text x="185" y="211" fill="#fff" font-weight="700">QNX Screen (compositor)</text>
+<text x="535" y="75">App + UI toolkit (View, Compose · HWUI/Skia)</text>
+<text x="535" y="109">Vulkan / OpenGL ES</text>
+<text x="535" y="143">GPU driver frontend (para-virtualized)</text>
+<text x="535" y="177">BufferQueue + acquire fence (gralloc)</text>
+<text x="535" y="211" fill="#fff" font-weight="700">SurfaceFlinger + HWC (compositor)</text>
+</g>
+<g stroke="#596966" stroke-width="1.3" marker-end="url(#c2-ar)">
+<line x1="185" y1="83" x2="185" y2="93"/><line x1="185" y1="117" x2="185" y2="127"/><line x1="185" y1="151" x2="185" y2="161"/><line x1="185" y1="185" x2="185" y2="195"/>
+<line x1="535" y1="83" x2="535" y2="93"/><line x1="535" y1="117" x2="535" y2="127"/><line x1="535" y1="151" x2="535" y2="161"/><line x1="535" y1="185" x2="535" y2="195"/>
+<line x1="185" y1="231" x2="185" y2="241"/><line x1="535" y1="231" x2="535" y2="241"/>
+<line x1="121" y1="269" x2="121" y2="281"/><line x1="599" y1="269" x2="599" y2="281"/>
+</g>
+<rect x="16" y="242" width="688" height="26" rx="8" fill="#174C43" filter="url(#c2-sh)"/>
+<text x="360" y="259" text-anchor="middle" font-size="11" fill="#fff">Hypervisor type-1 · GPU backend + scheduler · SMMU/IOMMU · shared memory giữa VM</text>
+<g filter="url(#c2-sh)">
+<rect x="16" y="282" width="210" height="50" rx="9" fill="#A64E32"/>
+<rect x="255" y="282" width="210" height="50" rx="9" fill="#2A6F66"/>
+<rect x="494" y="282" width="210" height="50" rx="9" fill="#174C43"/>
+</g>
+<g text-anchor="middle" fill="#fff">
+<text x="121" y="302" font-size="12" font-weight="700">GPU (dùng chung)</text>
+<text x="121" y="320" font-size="9.5" opacity="0.92">context theo VM · priority</text>
+<text x="360" y="302" font-size="12" font-weight="700">DRAM + interconnect</text>
+<text x="360" y="320" font-size="9.5" opacity="0.92">buffer, texture, framebuffer</text>
+<text x="599" y="302" font-size="12" font-weight="700">DPU / display controller</text>
+<text x="599" y="320" font-size="9.5" opacity="0.92">plane 0–1 cluster · plane 2–3 IVI</text>
+</g>
+<g stroke="#596966" stroke-width="1.3" marker-start="url(#c2-ar)" marker-end="url(#c2-ar)">
+<line x1="228" y1="307" x2="253" y2="307"/><line x1="467" y1="307" x2="492" y2="307"/>
+</g>
+<g stroke="#596966" stroke-width="1.3" fill="none">
+<line x1="599" y1="332" x2="599" y2="346"/>
+<line x1="97" y1="346" x2="623" y2="346"/>
+</g>
+<g stroke="#596966" stroke-width="1.3" marker-end="url(#c2-ar)">
+<line x1="97" y1="346" x2="97" y2="359"/><line x1="272" y1="346" x2="272" y2="359"/><line x1="447" y1="346" x2="447" y2="359"/><line x1="623" y1="346" x2="623" y2="359"/>
+</g>
+<g stroke-width="1.3">
+<rect x="16" y="360" width="163" height="44" rx="8" fill="#E5EFEB" stroke="#174C43"/>
+<rect x="191" y="360" width="163" height="44" rx="8" fill="#E5EFEB" stroke="#174C43"/>
+<rect x="366" y="360" width="163" height="44" rx="8" fill="#FBF1EC" stroke="#A64E32"/>
+<rect x="541" y="360" width="163" height="44" rx="8" fill="#FBF1EC" stroke="#A64E32"/>
+</g>
+<g text-anchor="middle">
+<text x="97" y="378" font-size="11.5" font-weight="700" fill="#174C43">Cluster 1920×720</text>
+<text x="97" y="395" font-size="9.5" fill="#596966">LVDS hoặc SerDes</text>
+<text x="272" y="378" font-size="11.5" font-weight="700" fill="#174C43">HUD</text>
+<text x="272" y="395" font-size="9.5" fill="#596966">SerDes (GMSL / FPD-Link)</text>
+<text x="447" y="378" font-size="11.5" font-weight="700" fill="#A64E32">Center 1920×1080</text>
+<text x="447" y="395" font-size="9.5" fill="#596966">eDP</text>
+<text x="623" y="378" font-size="11.5" font-weight="700" fill="#A64E32">Passenger 1920×1080</text>
+<text x="623" y="395" font-size="9.5" fill="#596966">SerDes</text>
+</g>
+<text x="360" y="422" text-anchor="middle" font-size="10" font-style="italic" fill="#596966">Mỗi mũi tên là một boundary nơi frame có thể phải chờ — đặt timestamp tại đó (mode, link: giả định minh họa)</text>
+</svg>
+<figcaption>Phần mềm của hai domain tách nhau, nhưng phần cứng ở ba ô giữa là chung: mọi vấn đề "chạy riêng thì tốt, chạy chung thì lỗi" nằm ở đây.</figcaption>
+</figure>
+
+<h4>a) Từng chặng của pipeline và kiểu hỏng của nó</h4>
+<div class="table-scroll"><table><thead><tr><th>Chặng</th><th>Kiểu hỏng thường gặp</th></tr></thead><tbody>
+<tr><td>Application <span class="term-gloss">(ứng dụng; hoặc sự áp dụng)</span></td><td>Dữ liệu cũ, blocking I/O <span class="term-gloss">(Input/Output – vào/ra)</span> trên UI thread <span class="term-gloss">(luồng chính xử lý giao diện)</span></td></tr>
+<tr><td>UI toolkit (Kanzi <span class="term-gloss">(công cụ và engine thiết kế HMI 3D cho ô tô)</span>, Qt Quick <span class="term-gloss">(framework UI khai báo của Qt dùng QML)</span>, HWUI)</td><td>Layout chậm, quá nhiều draw-call <span class="term-gloss">(một lệnh vẽ gửi qua graphics API)</span>, GC <span class="term-gloss">(Garbage Collection – thu gom rác bộ nhớ)</span></td></tr>
+<tr><td>Graphics API</td><td>Chờ CPU–GPU thừa (glFinish <span class="term-gloss">(lệnh OpenGL chặn CPU đến khi GPU xong)</span>, vkQueueWaitIdle <span class="term-gloss">(lệnh Vulkan chờ queue GPU rỗng)</span>)</td></tr>
+<tr><td>GPU driver (<span class="term">UMD <span class="term-gloss">(User-Mode Driver – biên dịch shader, dựng command)</span></span>, <span class="term">KMD <span class="term-gloss">(Kernel-Mode Driver – quản lý bộ nhớ, submit, scheduling GPU)</span></span>)</td><td>Compile shader lúc chạy, job <span class="term-gloss">(tác vụ)</span> dài không preempt <span class="term-gloss">(chiếm quyền chạy)</span> được</td></tr>
+<tr><td>Buffer queue</td><td>Queue sâu (frame cũ), thiếu buffer trống</td></tr>
+<tr><td>Compositor</td><td>Lỡ vsync, fallback <span class="term-gloss">(phương án dự phòng)</span> sang GPU composition <span class="term-gloss">(dùng GPU để ghép các layer)</span></td></tr>
+<tr><td>DPU</td><td><span class="term">Underrun <span class="term-gloss">(thiếu dữ liệu khi DPU quét không kịp)</span></span>, lỡ vblank <span class="term-gloss">(vertical blanking – khoảng nghỉ giữa hai lần quét)</span></td></tr>
+<tr><td>Link, panel</td><td>Mất link, lỗi CRC <span class="term-gloss">(Cyclic Redundancy Check – mã kiểm tra vòng)</span>, EMC <span class="term-gloss">(Electromagnetic Compatibility – tương thích điện từ)</span>; panel chậm khi lạnh, tự buffer thêm frame</td></tr>
+</tbody></table></div>
+
+<h4>b) Graphics stack: buffer được cấp phát và chuyển tay thế nào</h4>
+<p>Giữa các chặng chỉ chuyển <b>handle <span class="term-gloss">(tham chiếu tới tài nguyên)</span></b> buffer (<span class="term">dma-buf</span>, gralloc), không copy pixel.</p>
+<ul>
+<li><b>Format</b>: RGBA8888 <span class="term-gloss">(định dạng pixel 4 kênh, 8 bit mỗi kênh)</span> 4 byte/pixel <span class="term-gloss">(số byte mỗi pixel)</span>, RGB565 <span class="term-gloss">(định dạng pixel 16 bit, 2 byte mỗi pixel)</span> 2 byte <span class="term-gloss">(đơn vị dữ liệu 8 bit)</span>, NV12 <span class="term-gloss">(định dạng YUV 4:2:0 bán phẳng cho video)</span> 1,5 byte; format nén (AFBC) chỉ dùng được khi <b>cả GPU lẫn DPU</b> hiểu.</li>
+<li><b>Thuộc tính</b>: contiguous <span class="term-gloss">(bộ nhớ vật lý liền kề)</span> hay IOMMU, cached <span class="term-gloss">(bộ nhớ đệm)</span>, protected <span class="term-gloss">(được bảo vệ)</span>, carve-out <span class="term-gloss">(vùng nhớ dành riêng cho một domain)</span> cho cluster; chia giữa VM qua shared memory (2.7c).</li>
+</ul>
+
+<h4>c) Display output: hardware plane hay GPU composition</h4>
+<p>Compositor giao từng layer cho một <span class="term">hardware plane <span class="term-gloss">(lớp phần cứng của DPU tự ghép không cần GPU)</span></span> (HWC <span class="term-gloss">(Hardware Composer – HAL Android gán layer lên plane phần cứng)</span>: <i>device composition</i>), hoặc GPU ghép thành một buffer (<i>client composition</i>). DRM/KMS dùng <b>plane → CRTC <span class="term-gloss">(khối scanout tạo luồng pixel và timing trong DRM/KMS)</span> → encoder <span class="term-gloss">(khối chuyển luồng pixel sang tín hiệu cổng ra trong DRM/KMS)</span> → connector <span class="term-gloss">(đầu ra hiển thị vật lý; hoặc đầu nối dây)</span></b> và <span class="term">atomic commit</span>.</p>
+<div class="table-scroll"><table><thead><tr><th>Tiêu chí</th><th>Hardware plane</th><th>GPU composition</th></tr></thead><tbody>
+<tr><td>GPU, latency <span class="term-gloss">(độ trễ)</span></td><td>Không tốn; ít chặng</td><td>Thêm pass <span class="term-gloss">(đạt, qua)</span>, có thể thêm chu kỳ</td></tr>
+<tr><td>Băng thông</td><td>Đọc mỗi layer một lần</td><td>Đọc mọi layer + ghi + đọc lại</td></tr>
+<tr><td>Rủi ro</td><td>Hết plane → fallback ngầm</td><td>GPU bận vì domain khác → lỡ vsync</td></tr>
+</tbody></table></div>
+<p>Quy định <b>layer nào luôn giữ plane</b> (camera lùi, telltale, video) và đo cả đường fallback, vì nó chạy lúc hệ thống bận nhất.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Frame đi qua <b>app → toolkit → API → driver → queue → compositor → DPU → link → panel</b>; giữa các chặng chỉ chuyển handle buffer kèm fence. Hardware plane rẻ nhưng có hạn; GPU composition linh hoạt nhưng tốn GPU, băng thông. Quy định layer giữ plane và đo cả fallback.</p>
+</div>
+
+<!-- 2.3 -->
+<h3 id="p2-3">2.3 Rendering, composition, frame timing, latency và synchronization</h3>
+
+<h4>a) Rendering: GPU làm gì và nghẽn ở đâu</h4>
+<p>Dây chuyền: <b>vertex <span class="term-gloss">(đỉnh hình học)</span> → rasterization <span class="term-gloss">(bước chia hình thành pixel)</span> → fragment <span class="term-gloss">(điểm ảnh ứng viên GPU tính màu)</span> → blend <span class="term-gloss">(trộn màu lớp trên với lớp dưới theo alpha)</span></b>. Chi phí fragment ∝ <b>độ phân giải × số lớp chồng × độ nặng shader</b>; blur <span class="term-gloss">(làm mờ)</span>, bóng đổ tốn nhất.</p>
+<ul>
+<li><span class="term">CPU-bound <span class="term-gloss">(bị giới hạn bởi CPU)</span></span>: nhiều draw-call, layout chậm; GPU mạnh hơn không giúp.</li>
+<li><span class="term">GPU-bound <span class="term-gloss">(bị giới hạn bởi GPU)</span></span>: shader nặng, <span class="term">overdraw <span class="term-gloss">(vẽ đè một pixel nhiều lần)</span></span>; giảm resolution <span class="term-gloss">(độ phân giải)</span>/hiệu ứng.</li>
+<li><b>Bandwidth <span class="term-gloss">(băng thông)</span>-bound <span class="term-gloss">(bị giới hạn bởi; cận)</span></b>: GPU chờ DRAM; nặng hơn khi domain khác cùng dùng.</li>
+</ul>
+
+<h4>b) Composition và vsync</h4>
+<p>Display chỉ nhận hình mới tại <span class="term">vblank</span> (<span class="term">vsync</span>); ở 60 Hz <span class="term">frame budget <span class="term-gloss">(ngân sách thời gian cho một frame)</span></span> là 16,67 ms <span class="term-gloss">(millisecond – mili giây)</span>. Compositor lấy buffer mới nhất có fence đã signal <span class="term-gloss">(tín hiệu dữ liệu xe trên bus)</span>, commit <span class="term-gloss">(lần ghi thay đổi vào kho mã)</span> cho vblank sau. Android dùng <i>vsync-app</i> và <i>vsync-sf</i> lệch pha.</p>
+<figure class="fig">
+<svg viewBox="0 0 720 330" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Timeline qua các vsync: frame N đúng nhịp, frame N+1 lỡ vsync nên panel hiển thị lại frame N">
+<text x="360" y="20" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Frame N+1 lỡ vsync: panel quét lại frame N (60 Hz, giả định minh họa)</text>
+<g fill="#F4F7F6">
+<rect x="110" y="56" width="600" height="26" rx="5"/><rect x="110" y="92" width="600" height="26" rx="5"/>
+<rect x="110" y="128" width="600" height="26" rx="5"/><rect x="110" y="164" width="600" height="26" rx="5"/>
+</g>
+<g font-size="11" fill="#1c2928" font-weight="700">
+<text x="16" y="73">App / CPU</text><text x="16" y="109">GPU</text><text x="16" y="145">Compositor</text><text x="16" y="181">Scanout / panel</text>
+</g>
+<g stroke="#B7791F" stroke-width="1.2" stroke-dasharray="4 3">
+<line x1="120" y1="44" x2="120" y2="196"/><line x1="265" y1="44" x2="265" y2="196"/><line x1="410" y1="44" x2="410" y2="196"/><line x1="555" y1="44" x2="555" y2="196"/><line x1="700" y1="44" x2="700" y2="196"/>
+</g>
+<g font-size="10" fill="#B7791F" text-anchor="middle" font-weight="700">
+<text x="120" y="40">vsync 0</text><text x="265" y="40">16,7</text><text x="410" y="40">33,3</text><text x="555" y="40">50,0</text><text x="694" y="40">66,7 ms</text>
+</g>
+<rect x="121" y="130" width="28" height="22" rx="4" fill="#8FA5A0"/>
+<rect x="121" y="166" width="143" height="22" rx="4" fill="#8FA5A0"/>
+<rect x="266" y="166" width="143" height="22" rx="4" fill="#8FA5A0"/>
+<rect x="122" y="58" width="33" height="22" rx="4" fill="#2A8C8C"/>
+<rect x="159" y="94" width="39" height="22" rx="4" fill="#2A8C8C"/>
+<rect x="266" y="130" width="28" height="22" rx="4" fill="#2A8C8C"/>
+<rect x="411" y="166" width="143" height="22" rx="4" fill="#2A8C8C"/>
+<rect x="266" y="58" width="37" height="22" rx="4" fill="#A64E32"/>
+<rect x="307" y="94" width="126" height="22" rx="4" fill="#A64E32"/>
+<rect x="556" y="130" width="32" height="22" rx="4" fill="#A64E32"/>
+<rect x="412" y="130" width="120" height="22" rx="4" fill="#fff" stroke="#A93226" stroke-dasharray="3 2"/>
+<rect x="556" y="166" width="143" height="22" rx="4" fill="#fff" stroke="#A93226" stroke-width="1.5" stroke-dasharray="4 2"/>
+<polygon points="198,96 204,105 198,114 192,105" fill="#E2BD69" stroke="#B7791F"/>
+<polygon points="433,96 439,105 433,114 427,105" fill="#E2BD69" stroke="#A93226"/>
+<g font-size="10" fill="#fff" text-anchor="middle" font-weight="700">
+<text x="135" y="145">N−1</text><text x="192" y="181">N−2</text><text x="337" y="181">N−1</text>
+<text x="138" y="73">N</text><text x="178" y="109">N</text><text x="280" y="145">N</text><text x="482" y="181">N</text>
+<text x="284" y="73">N+1</text><text x="370" y="109">N+1 (CPU+GPU 19 ms)</text><text x="572" y="145">N+1</text>
+</g>
+<text x="472" y="145" text-anchor="middle" font-size="9.5" fill="#A93226">không có buffer mới</text>
+<text x="627" y="181" text-anchor="middle" font-size="10" font-weight="700" fill="#A93226">N (quét lại = jank)</text>
+<text x="705" y="210" text-anchor="end" font-size="10" fill="#A93226">N+1 lên panel ở 66,7 ms — trễ thêm trọn 16,7 ms</text>
+<g font-size="10" fill="#1c2928">
+<rect x="16" y="223" width="11" height="11" rx="2" fill="#2A8C8C"/><text x="32" y="232">Frame N (đúng nhịp)</text>
+<rect x="185" y="223" width="11" height="11" rx="2" fill="#A64E32"/><text x="201" y="232">Frame N+1 (vượt budget)</text>
+<polygon points="400,222 405,228.5 400,235 395,228.5" fill="#E2BD69" stroke="#B7791F"/><text x="411" y="232">acquire fence signal</text>
+<rect x="560" y="223" width="14" height="11" rx="2" fill="#fff" stroke="#A93226" stroke-dasharray="3 2"/><text x="580" y="232">frame lặp</text>
+</g>
+<rect x="16" y="246" width="688" height="72" rx="8" fill="#E5EFEB"/>
+<g font-size="10" fill="#1c2928">
+<text x="28" y="264">• Ở 16,7 ms compositor latch N (fence đã signal) và commit; N lên panel ở vblank 33,3 ms.</text>
+<text x="28" y="282">• N+1: CPU 4,5 ms + GPU 14,5 ms = 19 ms &gt; 16,7 ms → fence signal sau 33,3 ms → compositor không có buffer mới.</text>
+<text x="28" y="300">• Double buffering + FIFO: trễ 1 ms cũng mất trọn một chu kỳ; thêm buffer giảm block nhưng làm frame cũ hơn.</text>
+</g>
+</svg>
+<figcaption>Dropped frame <span class="term-gloss">(frame bị bỏ lỡ nhịp vsync)</span> không phải "mất" frame mà là panel quét lại frame cũ; người dùng thấy khựng, và nội dung mới trễ thêm một chu kỳ.</figcaption>
+</figure>
+
+<h4>c) Buffering và present mode</h4>
+<div class="table-scroll"><table><thead><tr><th>Cơ chế</th><th>Được</th><th>Mất</th></tr></thead><tbody>
+<tr><td>Double buffering <span class="term-gloss">(đệm kép hiển thị)</span></td><td>Không tearing <span class="term-gloss">(hình bị xé do lẫn frame cũ và mới)</span>, ít bộ nhớ</td><td>Chậm chút là mất trọn chu kỳ</td></tr>
+<tr><td>Triple <span class="term-gloss">(triple buffering – ba buffer luân phiên)</span> / FIFO <span class="term-gloss">(First In, First Out – vào trước ra trước; present mode chờ vblank)</span></td><td>Ít dropped frame</td><td><span class="term">Frame age <span class="term-gloss">(độ cũ của frame so với dữ liệu gốc)</span></span> tăng</td></tr>
+<tr><td>Mailbox <span class="term-gloss">(hộp thư phần cứng giữa các lõi/chip)</span></td><td>Không tearing, frame tươi</td><td>Vẽ cả frame bị bỏ</td></tr>
+<tr><td>Immediate <span class="term-gloss">(present mode lật buffer ngay, không chờ vblank)</span></td><td>Latency thấp nhất</td><td>Tearing</td></tr>
+</tbody></table></div>
+<p>Vulkan: <code>FIFO</code>, <code>MAILBOX</code>, <code>IMMEDIATE</code>; EGL <span class="term-gloss">(giao diện nối OpenGL ES với hệ thống cửa sổ của nền tảng)</span>: <code>eglSwapInterval</code>. Video ưu tiên mượt, cluster ưu tiên tươi.</p>
+
+<h4>d) Synchronization và các loại latency</h4>
+<p><span class="term">Fence</span>: <b>acquire <span class="term-gloss">(giành quyền dùng)</span></b> (GPU ghi xong), <b>release <span class="term-gloss">(phát hành phiên bản phần mềm)</span></b> (display đọc xong), <b>present <span class="term-gloss">(đưa lên màn hình)</span></b> (frame lên màn); qua <code>dma-fence</code>/<code>sync_file</code>, Vulkan semaphore <span class="term-gloss">(đối tượng đồng bộ giữa các tác vụ hoặc queue GPU)</span>. Thiếu fence gây tearing; chờ sai chỗ gây deadlock <span class="term-gloss">(các bên chờ nhau vô hạn, không ai tiến được)</span>.</p>
+<div class="table-scroll"><table><thead><tr><th>Đại lượng</th><th>Đo từ → tới</th><th>Dùng cho</th></tr></thead><tbody>
+<tr><td>Frame time <span class="term-gloss">(thời gian tạo một frame)</span></td><td>Bắt đầu → xong dựng frame (CPU + GPU)</td><td>Có kịp frame budget</td></tr>
+<tr><td>Frame age</td><td>State/input <span class="term-gloss">(trạng thái/đầu vào khởi đầu chuỗi frame)</span> tạo ra → frame được scanout <span class="term-gloss">(đọc framebuffer đẩy ra màn hình)</span></td><td>Nội dung còn tươi</td></tr>
+<tr><td>End-to-end <span class="term-gloss">(đầu-cuối, trọn cả chuỗi)</span></td><td>ECU <span class="term-gloss">(Electronic Control Unit – bộ điều khiển điện tử)</span> nguồn lấy mẫu → pixel ổn định</td><td>Contract <span class="term-gloss">(thỏa thuận ràng buộc giữa hai bên)</span> tín hiệu lái</td></tr>
+<tr><td>Motion-to-photon <span class="term-gloss">(độ trễ từ thao tác đến khi ảnh thay đổi trên màn hình)</span></td><td>Chạm/chuyển động → thay đổi trên màn</td><td>Touch <span class="term-gloss">(chạm, cảm ứng)</span>, rotary <span class="term-gloss">(núm xoay điều khiển HMI)</span>, HUD AR <span class="term-gloss">(Augmented Reality – thực tế tăng cường)</span></td></tr>
+<tr><td>Glass-to-glass <span class="term-gloss">(độ trễ từ sự kiện thật tới màn hình)</span></td><td>Ống kính camera → mặt kính màn</td><td>Camera lùi, e-mirror <span class="term-gloss">(gương chiếu hậu điện tử dùng camera và màn hình)</span></td></tr>
+</tbody></table></div>
+<pre><code>Latency tới panel ≈ t_app + t_GPU
+                 + chờ compositor (0 … 1 chu kỳ)
+                 + compose + chờ vblank của commit (≈ 1 chu kỳ)
+                 + quét tới dòng chứa nội dung (0 … 1 chu kỳ)
+                 + link/SerDes + TCON/response time của panel
+Ở 60 Hz, mỗi lần "chờ thêm một nhịp" cộng 16,7 ms.</code></pre>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>GPU có thể CPU-, GPU- hoặc bandwidth-bound; compositor ghép theo vsync nên trễ 1 ms cũng mất trọn chu kỳ 16,67 ms. Present mode đổi mượt lấy tươi hoặc tearing; fence đồng bộ producer <span class="term-gloss">(bên tạo/phát dữ liệu)</span>, consumer <span class="term-gloss">(bên dùng dữ liệu/dịch vụ)</span>. Latency phải ghi rõ quãng đo.</p>
+</div>
+
+<!-- 2.4 -->
+<h3 id="p2-4">2.4 GPU, memory bandwidth, buffer và resource sharing</h3>
+
+<h4>a) GPU như một tài nguyên dùng chung</h4>
+<p>Job của domain này có thể chờ job domain khác. Cluster giữ deadline <span class="term-gloss">(hạn chót)</span> khi IVI bận nhờ ba thông số: <b>priority <span class="term-gloss">(mức ưu tiên)</span></b>, <b>độ mịn preemption</b> (draw-call, primitive <span class="term-gloss">(đơn vị hình học cơ bản GPU vẽ, như tam giác)</span> hay tile <span class="term-gloss">(ô màn hình mà GPU tile-based xử lý từng phần)</span>, mất bao lâu) và <b>độ dài job tối đa</b> của domain thấp. Các số này khác theo GPU/driver <span class="term-gloss">(GPU và driver đồ họa đi kèm)</span>; lấy từ vendor và đo trên target <span class="term-gloss">(mục tiêu hoặc phần cứng đích)</span>.</p>
+<div class="table-scroll"><table><thead><tr><th>Cách chia GPU</th><th>Cơ chế</th><th>Ưu điểm</th><th>Hạn chế</th></tr></thead><tbody>
+<tr><td>Para-virtualized <span class="term-gloss">(ảo hóa qua driver ảo, guest không chạm phần cứng)</span></td><td>Frontend guest <span class="term-gloss">(hệ điều hành/VM chạy trên hypervisor)</span> gửi command <span class="term-gloss">(lệnh điều khiển)</span> tới backend host (VirtIO <span class="term-gloss">(chuẩn thiết bị ảo cho guest OS)</span>-GPU, PV vendor)</td><td>Host kiểm soát thứ tự, quota <span class="term-gloss">(hạn mức tài nguyên)</span>, quyền</td><td>Thêm latency; backend <span class="term-gloss">(hệ thống phía máy chủ, cloud)</span> là điểm lỗi chung</td></tr>
+<tr><td>Mediated pass-through <span class="term-gloss">(chia GPU với GPU ảo truy cập gần trực tiếp)</span> / SR-IOV-style <span class="term-gloss">(phong cách, văn phong)</span></td><td>Mỗi VM thấy một "GPU ảo"</td><td>Gần native <span class="term-gloss">(gốc, chạy trực tiếp không qua ảo hóa)</span></td><td>Cần GPU/driver hỗ trợ</td></tr>
+<tr><td>Hardware partitioning <span class="term-gloss">(phân vùng tài nguyên tách biệt)</span></td><td>Chia cứng GPU (Mali-G78AE)</td><td>Isolation <span class="term-gloss">(sự cách ly)</span>, timing dễ đoán nhất</td><td>Lãng phí phần rảnh</td></tr>
+<tr><td>Time slicing <span class="term-gloss">(chia thời gian dùng tài nguyên theo lát cho nhiều bên)</span> + priority</td><td>Khe thời gian, domain cao preempt</td><td>Dùng hết GPU</td><td>Khó chứng minh worst case <span class="term-gloss">(trường hợp xấu nhất)</span></td></tr>
+<tr><td>Đường render riêng</td><td>Telltale qua 2D engine <span class="term-gloss">(bộ máy, phần mềm lõi)</span>, plane riêng</td><td>GPU hang <span class="term-gloss">(treo, không phản hồi)</span> không ảnh hưởng</td><td>Nội dung hạn chế, tốn plane</td></tr>
+</tbody></table></div>
+
+<h4>b) Memory bandwidth</h4>
+<p>DRAM là nơi các domain va nhau nhiều nhất. Thiếu băng thông, DPU <b>underrun</b> (sọc, nháy, đen), nên interconnect có QoS <span class="term-gloss">(Quality of Service – mức đảm bảo chất lượng dịch vụ)</span> ưu tiên DPU.</p>
+<pre><code>scanout BW = width × height × bytes_per_pixel × refresh rate
+Cluster 0,33 + Center 0,50 + Passenger 0,50 + HUD 0,15 ≈ 1,5 GB/s
+Center ghép 3 layer bằng GPU: (3 đọc + 1 ghi) × 8,29 MB × 60 + DPU 0,5 ≈ 2,5 GB/s
+Cùng 3 layer qua 3 hardware plane: ≈ 1,5 GB/s
+(giả định minh họa, RGBA 60 Hz; chưa tính texture, overhead)</code></pre>
+
+<figure class="fig">
+<svg viewBox="0 0 720 345" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="GPU timeline với và không có preemption, và thanh ngân sách băng thông DRAM của các domain">
+<text x="360" y="20" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">GPU và DRAM dùng chung giữa cluster VM và IVI VM (giả định minh họa)</text>
+<text x="16" y="44" font-size="11.5" font-weight="700" fill="#2A6F66">a) GPU timeline trong hai chu kỳ 60 Hz</text>
+<g stroke="#B7791F" stroke-width="1.2" stroke-dasharray="4 3">
+<line x1="150" y1="56" x2="150" y2="150"/><line x1="420" y1="56" x2="420" y2="150"/><line x1="690" y1="56" x2="690" y2="150"/>
+</g>
+<g font-size="10" fill="#B7791F" text-anchor="middle" font-weight="700">
+<text x="150" y="162">0</text><text x="420" y="162">16,7 ms</text><text x="690" y="162">33,3 ms</text>
+</g>
+<g fill="#1c2928">
+<text x="16" y="80" font-size="11" font-weight="700">Không preempt</text>
+<text x="16" y="92" font-size="9.5" fill="#596966">(chạy hết job)</text>
+<text x="16" y="128" font-size="11" font-weight="700">Priority + preempt</text>
+<text x="16" y="140" font-size="9.5" fill="#596966">(job IVI bị ngắt)</text>
+</g>
+<rect x="166" y="68" width="65" height="28" rx="5" fill="#174C43"/>
+<rect x="231" y="68" width="405" height="28" rx="5" fill="#A64E32"/>
+<rect x="636" y="68" width="66" height="28" rx="5" fill="#A93226"/>
+<rect x="166" y="116" width="65" height="28" rx="5" fill="#174C43"/>
+<rect x="231" y="116" width="206" height="28" rx="5" fill="#A64E32"/>
+<rect x="437" y="116" width="16" height="28" rx="3" fill="#E2BD69"/>
+<rect x="453" y="116" width="65" height="28" rx="5" fill="#174C43"/>
+<rect x="518" y="116" width="172" height="28" rx="5" fill="#A64E32"/>
+<g font-size="10" fill="#fff" text-anchor="middle" font-weight="700">
+<text x="198" y="86">Cluster</text><text x="433" y="86">IVI: job dài 25 ms (bản đồ 3D + blur)</text><text x="669" y="86">Cluster</text>
+<text x="198" y="134">Cluster</text><text x="334" y="134">IVI</text><text x="485" y="134">Cluster</text><text x="604" y="134">IVI tiếp tục</text>
+</g>
+<polygon points="432,58 442,58 437,66" fill="#A93226"/>
+<text x="446" y="64" font-size="9.5" fill="#A93226">job cluster tới ở 17,7 ms</text>
+<text x="630" y="108" text-anchor="end" font-size="9.5" font-weight="700" fill="#A93226">cluster xong ở ~34 ms → lỡ vsync 33,3</text>
+<text x="452" y="162" font-size="9.5" fill="#B7791F">← preempt ~1 ms</text>
+<text x="16" y="190" font-size="11.5" font-weight="700" fill="#2A6F66">b) DRAM bandwidth (GB/s): tổng nhu cầu so với băng thông hiệu dụng</text>
+<text x="16" y="219" font-size="11" font-weight="700" fill="#1c2928">Nhu cầu ~11</text>
+<rect x="150" y="202" width="60" height="28" fill="#174C43"/>
+<rect x="210" y="202" width="40" height="28" fill="#2A6F66"/>
+<rect x="250" y="202" width="160" height="28" fill="#A64E32"/>
+<rect x="410" y="202" width="80" height="28" fill="#B7791F"/>
+<rect x="490" y="202" width="100" height="28" fill="#596966"/>
+<line x1="630" y1="196" x2="630" y2="238" stroke="#A93226" stroke-width="1.6" stroke-dasharray="4 3"/>
+<text x="700" y="250" text-anchor="end" font-size="10" fill="#A93226">băng thông hiệu dụng ~12</text>
+<g font-size="10" fill="#1c2928">
+<rect x="16" y="258" width="10" height="10" fill="#174C43"/><text x="31" y="267">Scanout 4 màn 1,5</text>
+<rect x="140" y="258" width="10" height="10" fill="#2A6F66"/><text x="155" y="267">GPU cluster 1,0</text>
+<rect x="258" y="258" width="10" height="10" fill="#A64E32"/><text x="273" y="267">GPU IVI + compose 4,0</text>
+<rect x="410" y="258" width="10" height="10" fill="#B7791F"/><text x="425" y="267">Video 4K 2,0</text>
+<rect x="510" y="258" width="10" height="10" fill="#596966"/><text x="525" y="267">CPU, camera, khác 2,5</text>
+</g>
+<rect x="16" y="280" width="688" height="56" rx="8" fill="#E5EFEB"/>
+<g font-size="10" fill="#1c2928">
+<text x="28" y="300">• Margin ~8 % là quá mỏng: IVI fallback sang GPU composition (+1 GB/s) là tổng sát mức hiệu dụng → DPU underrun.</text>
+<text x="28" y="320">• Thiếu bandwidth không làm DPU chậm mà làm hỏng hình; cần QoS cho DPU trên interconnect và budget theo domain.</text>
+</g>
+</svg>
+<figcaption>Trên: cùng tải nhưng có hoặc không có preemption quyết định cluster kịp vsync. Dưới: cộng nhu cầu băng thông của mọi bên mới thấy margin <span class="term-gloss">(phần dư dự phòng)</span> thật.</figcaption>
+</figure>
+
+<h4>c) Buffer: số lượng, kích thước, quyền sở hữu</h4>
+<pre><code>Bộ nhớ buffer = số buffer × bytes/frame      (giả định minh họa)
+Cluster 3 × 5,53 MB ≈ 16,6 MB; Center ≈ 25 MB/surface, 3 surface ≈ 75 MB
+Video NV12 4K 12,4 MB × 6–8 buffer ≈ 75–100 MB</code></pre>
+<p><b>Carve-out</b> giữ bộ nhớ cho cluster khi IVI dùng hết. Buffer chia giữa VM cần owner, fence, timeout <span class="term-gloss">(hết thời gian chờ)</span>, dọn khi restart <span class="term-gloss">(khởi động lại app, service hay VM)</span>; SMMU chặn đọc chéo.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>GPU chia giữa VM bằng para-virtualization, pass-through <span class="term-gloss">(giao thẳng thiết bị vật lý cho một VM)</span>, partitioning hoặc time slicing; cluster giữ deadline nhờ <b>priority, preemption, giới hạn job</b>, không nhờ GPU mạnh. Bandwidth cộng cho mọi domain kể cả fallback. Buffer cần carve-out, owner, fence, SMMU.</p>
+</div>
+
+<!-- 2.5 -->
+<h3 id="p2-5">2.5 HMI, multi-display, safety-relevant display và degradation behavior</h3>
+
+<h4>a) HMI và multi-display</h4>
+<p><span class="term">HMI</span> quyết định thông tin nào ở display nào, ưu tiên ra sao, làm gì khi một display không sẵn sàng. Nhiều màn trên một SoC cần thêm:</p>
+<ul>
+<li><b>Display map <span class="term-gloss">(bản đồ ai vẽ gì lên màn hình nào)</span></b>: owner, mức quan trọng, mode, plane, quyền overlay <span class="term-gloss">(lớp phủ)</span>, fallback của từng display; là gốc cho policy compositor và budget <span class="term-gloss">(ngân sách; hạn mức tài nguyên được cấp)</span>.</li>
+<li><b>Overlay do thành phần tin cậy quyết định</b>: app IVI chỉ xin layer; không app nào đè lên camera lùi hay cảnh báo.</li>
+<li><b>Chuyển màn</b>: chỉ dẫn rẽ sang cluster/HUD <span class="term-gloss">(cụm đồng hồ hoặc màn hình kính lái)</span> qua shared buffer hoặc dữ liệu để cluster tự vẽ; cách sau độc lập hơn.</li>
+<li><b>Lệch pha vsync</b>: animation <span class="term-gloss">(hoạt ảnh trên giao diện)</span> từ center sang cluster có thể lệch gần một chu kỳ.</li>
+<li><b>Khởi động</b>: cluster cần hình sớm; FMVSS <span class="term-gloss">(Federal Motor Vehicle Safety Standards – chuẩn an toàn xe của Mỹ)</span> 111 yêu cầu hình camera lùi trong 2,0 s.</li>
+</ul>
+
+<h4>b) Safety-relevant display</h4>
+<p>Telltale (ISO <span class="term-gloss">(International Organization for Standardization – tổ chức tiêu chuẩn quốc tế)</span> 2575), cảnh báo, tốc độ, vị trí số, camera lùi có thể safety-relevant tùy HARA <span class="term-gloss">(Hazard Analysis and Risk Assessment – phân tích mối nguy)</span>; ASIL <span class="term-gloss">(Automotive Safety Integrity Level – mức toàn vẹn an toàn)</span> theo ISO 26262 <span class="term-gloss">(chuẩn an toàn chức năng cho ô tô)</span> gán cho safety requirement <span class="term-gloss">(yêu cầu an toàn)</span>, không cho "màn cluster". Rủi ro: <b>không hiện</b>, <b>hiện sai</b>, <b>đóng băng</b>, <b>hiện quá muộn</b>.</p>
+
+<figure class="fig">
+<svg viewBox="0 0 720 345" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Đường hiển thị telltale riêng không qua GPU, CRC vùng telltale trong DPU, safety monitor và phản ứng fallback">
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Nội dung safety-relevant: đường riêng, giám sát CRC và fallback trên cluster</text>
+<g filter="url(#c2-sh)">
+<rect x="16" y="44" width="180" height="46" rx="9" fill="#2A6F66"/>
+<rect x="226" y="44" width="130" height="46" rx="9" fill="#A64E32"/>
+<rect x="16" y="118" width="250" height="50" rx="9" fill="#2A8C8C"/>
+<rect x="390" y="40" width="180" height="170" rx="10" fill="#174C43"/>
+<rect x="390" y="232" width="180" height="46" rx="9" fill="#A64E32"/>
+<rect x="592" y="226" width="114" height="74" rx="9" fill="#A93226"/>
+</g>
+<rect x="600" y="92" width="104" height="56" rx="9" fill="#E5EFEB" stroke="#174C43" stroke-width="1.3"/>
+<rect x="16" y="232" width="250" height="46" rx="9" fill="#fff" stroke="#2A6F66" stroke-width="1.3"/>
+<g fill="#E5EFEB">
+<rect x="402" y="70" width="156" height="26" rx="6"/><rect x="402" y="104" width="156" height="26" rx="6"/><rect x="402" y="138" width="156" height="26" rx="6"/>
+</g>
+<rect x="402" y="172" width="156" height="26" rx="6" fill="#E2BD69"/>
+<g text-anchor="middle">
+<text x="106" y="63" font-size="11.5" font-weight="700" fill="#fff">Cluster HMI · QNX VM</text>
+<text x="106" y="80" font-size="9.5" fill="#fff" opacity="0.92">kim, số, chỉ dẫn, hiệu ứng</text>
+<text x="291" y="63" font-size="11.5" font-weight="700" fill="#fff">GPU dùng chung</text>
+<text x="291" y="80" font-size="9.5" fill="#fff" opacity="0.92">có thể hang / bị chiếm</text>
+<text x="141" y="139" font-size="11" font-weight="700" fill="#fff">Telltale renderer · safety island</text>
+<text x="141" y="156" font-size="9.5" fill="#fff" opacity="0.92">bitmap dựng sẵn, không qua GPU</text>
+<text x="480" y="58" font-size="12" font-weight="700" fill="#fff">DPU</text>
+<text x="480" y="87" font-size="10" fill="#1c2928">Plane 1: HMI chính</text>
+<text x="480" y="121" font-size="10" fill="#1c2928">Plane 3: telltale, z cao</text>
+<text x="480" y="155" font-size="10" fill="#1c2928">Blend → output</text>
+<text x="480" y="189" font-size="10" font-weight="700" fill="#1c2928">CRC vùng telltale (ROI)</text>
+<text x="652" y="116" font-size="11" font-weight="700" fill="#174C43">Cluster panel</text>
+<text x="652" y="133" font-size="9.5" fill="#596966">qua SerDes</text>
+<text x="141" y="251" font-size="11" font-weight="700" fill="#1c2928">Frame counter / heartbeat HMI</text>
+<text x="141" y="268" font-size="9.5" fill="#596966">tăng mỗi frame; đứng &gt; 100 ms = treo</text>
+<text x="480" y="251" font-size="11.5" font-weight="700" fill="#fff">Safety monitor</text>
+<text x="480" y="268" font-size="9.5" fill="#fff" opacity="0.92">so CRC kỳ vọng · timeout</text>
+<text x="649" y="244" font-size="11" font-weight="700" fill="#fff">Phản ứng</text>
+<text x="649" y="261" font-size="9.5" fill="#fff">màn tối thiểu</text>
+<text x="649" y="275" font-size="9.5" fill="#fff">giữ telltale</text>
+<text x="649" y="289" font-size="9.5" fill="#fff">báo lỗi + DTC</text>
+</g>
+<g stroke="#596966" stroke-width="1.4" fill="none" marker-end="url(#c2-ar)">
+<line x1="197" y1="67" x2="224" y2="67"/>
+<path d="M357 67 H372 V83 H400"/>
+<path d="M267 143 H380 V117 H400"/>
+<line x1="571" y1="120" x2="598" y2="120"/>
+<line x1="480" y1="199" x2="480" y2="230"/>
+<line x1="267" y1="255" x2="388" y2="255"/>
+<line x1="571" y1="255" x2="590" y2="255"/>
+</g>
+<line x1="649" y1="225" x2="649" y2="151" stroke="#A93226" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#c2-arr)"/>
+<text x="656" y="192" font-size="9.5" font-weight="700" fill="#A93226">fallback</text>
+<text x="360" y="318" text-anchor="middle" font-size="10" font-style="italic" fill="#596966">Telltale không đi qua GPU dùng chung → GPU hang không xóa telltale (một lập luận freedom from interference).</text>
+<text x="360" y="334" text-anchor="middle" font-size="10" font-style="italic" fill="#596966">Mức ASIL và thời gian phản ứng (trong FTTI) lấy từ HARA và safety requirement của dự án.</text>
+</svg>
+<figcaption>Ba pattern <span class="term-gloss">(mẫu thiết kế)</span> kết hợp: giảm phụ thuộc (đường và plane riêng), giám sát output (CRC vùng pixel), giám sát thời gian (frame counter <span class="term-gloss">(bộ đếm frame mới)</span>, timeout).</figcaption>
+</figure>
+
+<p>CRC vùng pixel ở output DPU chứng minh đúng pixel đã ra khỏi SoC, mạnh hơn kiểm tra phần mềm. Link, TCON, panel cần diagnostic <span class="term-gloss">(chẩn đoán lỗi)</span> riêng; safety concept <span class="term-gloss">(khái niệm; giai đoạn ý tưởng ban đầu)</span> ghi rõ phạm vi bảo vệ dừng ở đâu.</p>
+
+<h4>c) Degradation behavior cho từng fault</h4>
+<p>Mỗi fault <span class="term-gloss">(lỗi gốc trong thành phần)</span>: phát hiện bằng gì, trong bao lâu, hiển thị gì, phục hồi thế nào. Thứ tự: safety <span class="term-gloss">(an toàn, thường là an toàn chức năng)</span>, thông tin lái, giải trí.</p>
+<div class="table-scroll"><table><thead><tr><th>Fault</th><th>Phát hiện</th><th>Hành vi</th><th>Thời hạn (giả định minh họa)</th></tr></thead><tbody>
+<tr><td>IVI VM crash <span class="term-gloss">(sập đột ngột)</span></td><td>Heartbeat <span class="term-gloss">(tín hiệu định kỳ báo còn sống)</span>, hypervisor event <span class="term-gloss">(sự kiện)</span></td><td>Cluster tiếp tục; center hiện recovery <span class="term-gloss">(phục hồi sau lỗi)</span>; IVI restart</td><td>Cluster không ảnh hưởng</td></tr>
+<tr><td>HMI cluster treo</td><td>Frame counter đứng</td><td>Màn tối thiểu (tốc độ, telltale) từ đường dự phòng</td><td>≤ 100 ms</td></tr>
+<tr><td>GPU hang</td><td>GPU watchdog <span class="term-gloss">(bộ canh, tự reset khi phần mềm treo)</span></td><td>Telltale qua plane riêng; domain recover <span class="term-gloss">(phục hồi)</span></td><td>≤ vài giây, đã đo</td></tr>
+<tr><td>GPU quá tải / nhiệt</td><td>Missed vsync <span class="term-gloss">(lỡ nhịp vsync)</span>, nhiệt</td><td>Giảm passenger rồi center; cluster giữ nguyên</td><td>Theo bậc throttle <span class="term-gloss">(hãm, giảm mức dùng tài nguyên)</span></td></tr>
+<tr><td>Sai telltale</td><td>CRC ROI <span class="term-gloss">(Return on Investment – lợi nhuận trên vốn đầu tư)</span> không khớp</td><td>Cảnh báo qua kênh khác (âm thanh, display khác)</td><td>Trong FTTI <span class="term-gloss">(Fault Tolerant Time Interval – khoảng thời gian chịu lỗi)</span></td></tr>
+<tr><td>Mất link / panel</td><td>Diagnostic SerDes, panel</td><td>Chuyển thông tin lái sang HUD/center</td><td>Theo yêu cầu</td></tr>
+</tbody></table></div>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Multi-display <span class="term-gloss">(nhiều màn hình trên cùng SoC)</span> cần display map, overlay do thành phần tin cậy giữ, xử lý lệch pha vsync và khởi động. Nội dung safety-relevant cần <b>đường ít phụ thuộc</b>, <b>CRC vùng pixel</b>, <b>giám sát thời gian</b>; ASIL lấy từ HARA. Degradation viết cho từng fault.</p>
+</div>
+
+<!-- 2.6 -->
+<h3 id="p2-6">2.6 Performance measurement và failure analysis</h3>
+
+<h4>a) Đo cái gì</h4>
+<ul>
+<li><b>Độ đều</b>: frame time p99/max <span class="term-gloss">(phân vị 99 và giá trị lớn nhất)</span>, missed vsync, jank <span class="term-gloss">(giật, khựng hình)</span>; không dùng trung bình.</li>
+<li><b>Độ tươi</b>: frame age, end-to-end, glass-to-glass; ghi rõ mốc.</li>
+<li><b>Khởi động</b>: time-to-first-frame cluster, camera lùi.</li>
+<li><b>Dư địa</b>: GPU busy <span class="term-gloss">(tỷ lệ thời gian GPU bận)</span> theo domain, bandwidth, plane; so budget ở 2.9.</li>
+<li><b>Lỗi phần cứng</b>: underrun, CRC mismatch <span class="term-gloss">(sự không khớp)</span>, GPU reset <span class="term-gloss">(đặt lại)</span>; khác 0 phải giải thích.</li>
+</ul>
+
+<h4>b) Đo bằng gì</h4>
+<ul>
+<li><b>Trace <span class="term-gloss">(dấu vết, truy vết)</span> có clock <span class="term-gloss">(đồng hồ, nguồn thời gian)</span> chung</b>: Perfetto (FrameTimeline), <code>dumpsys SurfaceFlinger</code>, <code>dumpsys gfxinfo</code> trên Android; ftrace (DRM vblank, dma-fence) trên Linux; System Profiler <span class="term-gloss">(công cụ đo và phân tích hiệu năng)</span> trên QNX.</li>
+<li><b>GPU counter <span class="term-gloss">(bộ đếm)</span>, timestamp query <span class="term-gloss">(truy vấn)</span></b>: Snapdragon Profiler <span class="term-gloss">(công cụ profiling GPU/SoC của Qualcomm)</span>, Arm Mobile Studio <span class="term-gloss">(bộ công cụ profiling CPU/GPU Mali của Arm)</span>, Android GPU Inspector; RenderDoc <span class="term-gloss">(công cụ mã nguồn mở chụp và phân tích từng frame)</span> cho một frame.</li>
+<li><b>Counter DPU, memory controller <span class="term-gloss">(bộ điều khiển bộ nhớ)</span></b>: underrun, CRC, bandwidth theo master <span class="term-gloss">(bên chủ, điều khiển)</span>.</li>
+<li><b>Đo ngoài</b>: camera tốc độ cao hoặc photodiode <span class="term-gloss">(cảm biến quang đo thời điểm điểm ảnh đổi sáng)</span> trên panel; là bằng chứng nghiệm thu end-to-end.</li>
+</ul>
+<p>Timestamp <span class="term-gloss">(dấu thời gian)</span> từng boundary <span class="term-gloss">(ranh giới phân chia trách nhiệm/phạm vi)</span> chỉ <b>chỗ cần sửa</b>; đo ngoài chứng minh <b>tổng</b>. Cần cả hai, với clock đối chiếu được giữa các VM.</p>
+
+<h4>c) Kịch bản đo</h4>
+<p><b>Đồng thời xấu nhất</b> (cluster animation, bản đồ 3D zoom <span class="term-gloss">(phóng to/thu nhỏ)</span>, video 4K, camera lùi, popup <span class="term-gloss">(cửa sổ bật lên)</span>), sau <b>thermal soak <span class="term-gloss">(chạy tải liên tục thời gian dài)</span></b>, khi lạnh, khi <b>cold boot <span class="term-gloss">(khởi động nguội từ trạng thái tắt hẳn)</span></b>, trên mọi <b>variant <span class="term-gloss">(biến thể sản phẩm theo thị trường/trang bị)</span></b>; chạy đủ dài (ví dụ 30 phút mỗi trạng thái), so <b>baseline <span class="term-gloss">(mốc chuẩn đã chốt)</span></b> theo build <span class="term-gloss">(bản dựng phần mềm)</span>.</p>
+
+<h4>d) Failure analysis</h4>
+<ol class="steps">
+<li><b>Mô tả triệu chứng</b>: display, nội dung, tần suất, điều kiện (tải, nhiệt, build). "Màn giật" chưa phải triệu chứng.</li>
+<li><b>Khoanh stage <span class="term-gloss">(giai đoạn, chặng)</span></b> bằng timestamp: app, GPU, queue, compositor, DPU hay link/panel <span class="term-gloss">(đường truyền hoặc tấm màn hình)</span>.</li>
+<li><b>Giả thuyết kèm dự đoán</b>: "nếu do job GPU dài của IVI thì tắt bản đồ 3D sẽ làm max latency cluster về &lt; 45 ms".</li>
+<li><b>Thử có kiểm soát</b>: đổi một biến mỗi lần, cùng kịch bản.</li>
+<li><b>Sửa đúng lớp</b>: sửa nguyên nhân (priority, chia job, plane), không che triệu chứng (thêm buffer).</li>
+<li><b>Regression <span class="term-gloss">(lỗi mới xuất hiện ở phần trước đây chạy đúng)</span></b> và <b>cập nhật</b> risk checklist <span class="term-gloss">(danh sách kiểm tra)</span>, budget.</li>
+</ol>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Đo frame time p99/max, frame age, latency, time-to-first-frame <span class="term-gloss">(thời gian tới frame đầu tiên)</span>, tải theo domain và lỗi phần cứng ở <b>kịch bản đồng thời xấu nhất</b>, sau thermal soak. Timestamp chỉ chỗ sửa, đo ngoài chứng minh tổng. Failure analysis <span class="term-gloss">(phân tích lỗi)</span>: triệu chứng → stage → giả thuyết → thử → sửa → regression.</p>
+</div>
+
+<!-- 2.7 -->
+<h3 id="p2-7">2.7 Một frame đi qua hệ thống như thế nào?</h3>
+
+<h4>a) Số tốc độ trên cluster (QNX VM)</h4>
+<p>Tốc độ đổi 59 → 60 km/h <span class="term-gloss">(kilômét trên giờ)</span>; mốc là giả định minh họa cho panel 60 Hz, double buffering, không tải nặng từ domain khác.</p>
+<ol class="steps">
+<li><b>0 ms — dữ liệu tới HMI</b> qua bus <span class="term-gloss">(đường truyền dùng chung)</span>, gateway <span class="term-gloss">(cổng nối giữa các mạng/miền)</span>, IPC (chặng network <span class="term-gloss">(mạng)</span> tính riêng). <i>T0.</i></li>
+<li><b>~4 ms — app submit <span class="term-gloss">(gửi lệnh)</span></b>: cập nhật state <span class="term-gloss">(trạng thái hiện tại của hệ thống, tín hiệu)</span>, góc kim, ghi command OpenGL ES. <i>T1.</i></li>
+<li><b>~9 ms — GPU vẽ xong</b>, acquire fence signal. <i>T2.</i></li>
+<li><b>16,7 ms — compositor latch <span class="term-gloss">(compositor chốt buffer mới để ghép vào frame)</span></b>: QNX Screen giao buffer cho plane, commit. <i>T3.</i></li>
+<li><b>33,3 ms — scanout</b> ở vblank; present fence <span class="term-gloss">(fence báo frame đã lên màn hình)</span>; buffer cũ trả qua release fence <span class="term-gloss">(fence báo display đã đọc xong buffer)</span>. <i>T4.</i></li>
+<li><b>~40 ms — pixel ổn định</b> sau SerDes, TCON, response time <span class="term-gloss">(thời gian phản hồi)</span>. <i>T5 chỉ đo được bằng thiết bị ngoài.</i></li>
+</ol>
+<p>GPU chiếm ~5 ms trên ~40 ms; còn lại là <b>chờ nhịp</b>. Với contract HMI → pixel 75 ms (giả định minh họa), lỡ hai nhịp (~73 ms) là sát giới hạn.</p>
+
+<h4>b) Một frame trên IVI (Android Automotive)</h4>
+<ol class="steps">
+<li><b>vsync-app</b>: Choreographer <span class="term-gloss">(lớp Android đánh thức UI theo nhịp vsync)</span> đánh thức UI thread: input <span class="term-gloss">(đầu vào)</span>, animation, layout.</li>
+<li><b>RenderThread <span class="term-gloss">(luồng render GPU của ứng dụng Android)</span></b>: HWUI/Skia ghi command, submit qua driver frontend para-virtualized tới scheduler GPU dùng chung.</li>
+<li><b>queueBuffer <span class="term-gloss">(trả buffer đã vẽ xong vào BufferQueue để hiển thị)</span></b>: buffer cùng acquire fence <span class="term-gloss">(fence báo GPU đã ghi xong buffer)</span> vào BufferQueue.</li>
+<li><b>vsync-sf</b>: SurfaceFlinger latch, hỏi HWC layer nào lên plane, layer nào ghép bằng GPU.</li>
+<li><b>Present</b>: atomic commit qua DRM/KMS; DPU trộn plane, xuất qua eDP ở vblank.</li>
+</ol>
+
+<h4>c) Khi frame vượt ranh giới VM</h4>
+<p>Thẻ chỉ dẫn rẽ của IVI: ghi shared buffer → báo cluster qua IPC/fence giữa VM → cluster dùng làm texture <span class="term-gloss">(ảnh nguồn GPU đọc khi vẽ)</span> hoặc plane. Phải rõ: ai sở hữu buffer, cluster làm gì khi IVI ngừng cập nhật (timeout, ẩn thẻ), có chặn nội dung vượt vùng không, latency thêm bao nhiêu.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Frame đi từ app → GPU → queue → compositor ở vsync → DPU scanout → link, panel. Trong ví dụ, GPU chỉ chiếm ~5 ms trên ~40 ms; phần lớn là <b>chờ nhịp</b>. Qua ranh giới VM cần shared buffer, fence, owner, timeout.</p>
+</div>
+
+<!-- 2.8 -->
+<h3 id="p2-8">2.8 Nguyên nhân của dropped frame, tearing hoặc latency cao là gì?</h3>
+<p><b>Dropped frame/jank <span class="term-gloss">(frame bị lỡ và hiện tượng giật)</span></b>: frame không kịp vsync. <b>Tearing</b>: DPU đọc buffer đang bị ghi hoặc bị đổi giữa lần quét. <b>Latency cao</b>: frame chờ quá lâu hoặc dữ liệu đã cũ từ đầu.</p>
+
+<h4>a) Dropped frame và jank</h4>
+<div class="table-scroll"><table><thead><tr><th>Nguyên nhân</th><th>Dấu hiệu trong trace</th><th>Xử lý</th></tr></thead><tbody>
+<tr><td>App/CPU vượt budget</td><td>UI thread dài, GPU rảnh</td><td>Đưa việc nặng khỏi UI thread, giảm draw-call</td></tr>
+<tr><td>GPU vượt budget</td><td>GPU busy liên tục, fence muộn</td><td>Giảm hiệu ứng, render thấp rồi scale <span class="term-gloss">(mở rộng quy mô; hệ số, thang đo)</span></td></tr>
+<tr><td>Contention <span class="term-gloss">(tranh chấp tài nguyên)</span> từ domain khác</td><td>Job cluster chờ job dài của IVI</td><td>Priority, preemption, giới hạn job</td></tr>
+<tr><td>Fallback GPU composition</td><td>Client composition tăng khi mở popup</td><td>Giữ plane cho layer quan trọng</td></tr>
+<tr><td>Thermal throttling <span class="term-gloss">(tự giảm xung nhịp khi quá nóng)</span></td><td>Tần số GPU giảm dần</td><td>Budget theo tần số sau soak</td></tr>
+<tr><td>Shader compile <span class="term-gloss">(biên dịch shader thành mã GPU)</span>, cấp phát lần đầu</td><td>Chỉ xảy ra lần đầu</td><td>Cache shader, cấp phát lúc khởi động</td></tr>
+<tr><td>Priority inversion <span class="term-gloss">(đảo ưu tiên)</span></td><td>Compositor chờ thread <span class="term-gloss">(luồng thực thi)</span> ưu tiên thấp</td><td>Sửa priority, tránh lock <span class="term-gloss">(khóa bảo vệ dữ liệu dùng chung giữa các luồng)</span> chung</td></tr>
+<tr><td>Frame pacing <span class="term-gloss">(nhịp ra frame đều đặn theo chu kỳ vsync)</span> sai</td><td>Nhịp 1-3-2-2 thay vì 2-2-2-2 ở 30 fps <span class="term-gloss">(Frames Per Second – số frame mỗi giây)</span></td><td>Đồng bộ với vsync</td></tr>
+</tbody></table></div>
+
+<h4>b) Tearing</h4>
+<p>Do flip <span class="term-gloss">(lật, đổi sang buffer mới)</span> ngoài vblank (immediate), front <span class="term-gloss">(buffer đang hiển thị)</span>-buffer rendering, thiếu fence, hoặc buffer chia giữa VM bị ghi khi bên kia đang đọc. Kiểm tra present mode, đường fence, và quay video panel để thấy đường xé.</p>
+
+<h4>c) Latency cao</h4>
+<p>Do queue sâu (FIFO), thêm chu kỳ composition, lệch pha app–compositor, dữ liệu nguồn cũ (gateway/IPC), buffer riêng của pipeline video/camera, panel post-processing <span class="term-gloss">(xử lý ảnh sau khi render)</span> hoặc chậm khi lạnh.</p>
+
+<h4>d) Mỗi cách sửa có giá của nó</h4>
+<p>Ngoài đánh đổi buffering ở 2.3c:</p>
+<ul>
+<li><b>Priority GPU cho cluster</b>: cluster kịp deadline, IVI chậm hơn khi bận.</li>
+<li><b>Plane riêng</b> (telltale, camera lùi, video): không phụ thuộc GPU, nhưng bớt plane cho layer khác.</li>
+<li><b>Giảm resolution/hiệu ứng</b> (passenger, bậc degradation): giảm tải, đổi lấy chất lượng hình.</li>
+</ul>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p><b>Dropped frame</b> do CPU/GPU <span class="term-gloss">(bộ xử lý trung tâm và bộ xử lý đồ họa)</span> vượt budget, contention, fallback, throttling. <b>Tearing</b> do flip ngoài vblank, thiếu fence. <b>Latency</b> do queue sâu, lệch pha, dữ liệu cũ; chọn cách sửa theo từng display.</p>
+</div>
+
+<!-- 2.9 -->
+<h3 id="p2-9">2.9 Khi nhiều domain dùng chung GPU/display resource, cần governance nào?</h3>
+<p>Priority, partitioning, QoS chỉ là cơ chế; <span class="term">governance</span> quy định ai được bao nhiêu, ai thắng khi tranh chấp, ai được thay đổi. Thiếu nó, xung đột chỉ lộ ra khi tích hợp trên target, lúc sửa đã đắt.</p>
+
+<figure class="fig">
+<svg viewBox="0 0 720 310" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Thứ tự ưu tiên năm mức cho GPU và display và luồng admission control cho thay đổi">
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Governance cho GPU/display dùng chung: thứ tự ưu tiên và admission control</text>
+<text x="16" y="46" font-size="11.5" font-weight="700" fill="#2A6F66">Thứ tự ưu tiên (hy sinh từ dưới lên)</text>
+<text x="360" y="46" font-size="11.5" font-weight="700" fill="#2A6F66">Admission control cho mỗi thay đổi</text>
+<g filter="url(#c2-sh)">
+<rect x="16" y="56" width="310" height="36" rx="8" fill="#A93226"/>
+<rect x="16" y="98" width="310" height="36" rx="8" fill="#174C43"/>
+<rect x="16" y="140" width="310" height="36" rx="8" fill="#2A6F66"/>
+<rect x="16" y="182" width="310" height="36" rx="8" fill="#2A8C8C"/>
+<rect x="16" y="224" width="310" height="36" rx="8" fill="#596966"/>
+</g>
+<g fill="#fff">
+<text x="28" y="71" font-size="11" font-weight="700">P0 · Safety: telltale, cảnh báo</text>
+<text x="28" y="85" font-size="9.5" opacity="0.92">giữ chỗ cố định, không bao giờ throttle</text>
+<text x="28" y="113" font-size="11" font-weight="700">P1 · Thông tin lái: cluster, HUD</text>
+<text x="28" y="127" font-size="9.5" opacity="0.92">budget GPU giữ chỗ, preempt được IVI</text>
+<text x="28" y="155" font-size="11" font-weight="700">P2 · Camera lùi, e-mirror</text>
+<text x="28" y="169" font-size="9.5" opacity="0.92">plane riêng, deadline time-to-first-frame</text>
+<text x="28" y="197" font-size="11" font-weight="700">P3 · IVI center: bản đồ, media</text>
+<text x="28" y="211" font-size="9.5" opacity="0.92">giảm hiệu ứng → 30 fps khi quá tải</text>
+<text x="28" y="239" font-size="11" font-weight="700">P4 · Passenger, rear seat, game</text>
+<text x="28" y="253" font-size="9.5" opacity="0.92">best-effort, bị throttle đầu tiên</text>
+</g>
+<text x="16" y="282" font-size="10" font-style="italic" fill="#596966">Quá tải: giảm P4 trước, rồi P3; P0–P1 không bị đụng tới.</text>
+<rect x="360" y="56" width="220" height="30" rx="8" fill="#E5EFEB" stroke="#2A6F66"/>
+<rect x="360" y="98" width="220" height="30" rx="8" fill="#E5EFEB" stroke="#2A6F66"/>
+<rect x="360" y="140" width="220" height="30" rx="8" fill="#E5EFEB" stroke="#2A6F66"/>
+<rect x="360" y="182" width="220" height="30" rx="8" fill="#A64E32"/>
+<rect x="360" y="224" width="220" height="30" rx="8" fill="#174C43"/>
+<rect x="360" y="266" width="220" height="30" rx="8" fill="#2A6F66"/>
+<rect x="600" y="170" width="106" height="54" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.3"/>
+<g text-anchor="middle" font-size="10.5">
+<text x="470" y="75" fill="#1c2928">Feature mới / đổi cấu hình</text>
+<text x="470" y="117" fill="#1c2928">Khai báo budget: GPU, BW, plane, MB</text>
+<text x="470" y="159" fill="#1c2928">Đo ở kịch bản đồng thời xấu nhất</text>
+<text x="470" y="201" fill="#fff" font-weight="700">Trong budget + margin?</text>
+<text x="470" y="243" fill="#fff">Review board duyệt · ghi ADR</text>
+<text x="470" y="285" fill="#fff">Merge · regression · monitor</text>
+<text x="653" y="187" font-size="10" font-weight="700" fill="#A93226">Không đạt:</text>
+<text x="653" y="201" font-size="9.5" fill="#1c2928">tối ưu, giảm scope</text>
+<text x="653" y="215" font-size="9.5" fill="#1c2928">hoặc xin budget</text>
+</g>
+<g stroke="#596966" stroke-width="1.3" fill="none" marker-end="url(#c2-ar)">
+<line x1="470" y1="87" x2="470" y2="97"/><line x1="470" y1="129" x2="470" y2="139"/><line x1="470" y1="171" x2="470" y2="181"/><line x1="470" y1="213" x2="470" y2="223"/><line x1="470" y1="255" x2="470" y2="265"/>
+<line x1="581" y1="197" x2="598" y2="197"/>
+<path d="M653 169 V113 H582"/>
+</g>
+<text x="477" y="221" font-size="9.5" font-weight="700" fill="#174C43">có</text>
+</svg>
+<figcaption>Trái: ai bị hy sinh trước khi quá tải. Phải: không thay đổi nào vào build mà chưa chứng minh nằm trong budget ở kịch bản xấu nhất.</figcaption>
+</figure>
+
+<h4>a) Bảy thành phần của governance</h4>
+<ul>
+<li><b>Owner và allocation <span class="term-gloss">(sự phân bổ)</span></b>: ai sở hữu GPU scheduler <span class="term-gloss">(bộ lập lịch)</span>, DPU/plane <span class="term-gloss">(khối hiển thị DPU và các lớp ảnh nó ghép)</span>, carve-out, QoS interconnect (thường là platform team <span class="term-gloss">(nhóm platform)</span>).</li>
+<li><b>Budget</b>: GPU ms/frame, DRAM GB/s <span class="term-gloss">(Gigabytes per second – đơn vị băng thông bộ nhớ)</span>, plane, MB buffer, fps tối thiểu mỗi domain; margin chung.</li>
+<li><b>Priority và preemption</b>: thứ tự ưu tiên; worst-case chờ GPU của domain cao nhất đã đo.</li>
+<li><b>Admission control <span class="term-gloss">(kiểm soát chấp nhận tải mới theo budget)</span></b>: feature <span class="term-gloss">(tính năng)</span> mới chứng minh nằm trong budget ở kịch bản xấu nhất trước khi merge <span class="term-gloss">(gộp nhánh code)</span>.</li>
+<li><b>Isolation</b>: VM crash, GPU reset không kéo domain khác; SMMU chặn đọc chéo.</li>
+<li><b>Monitoring <span class="term-gloss">(giám sát liên tục)</span>, enforcement <span class="term-gloss">(cơ chế cưỡng chế không cho dùng vượt budget)</span></b>: counter theo domain, watchdog, tự throttle theo bậc.</li>
+<li><b>Change control <span class="term-gloss">(kiểm soát thay đổi)</span></b>: review <span class="term-gloss">(rà soát, xem xét)</span> đủ các bên (cluster, IVI, safety, platform <span class="term-gloss">(nền tảng dùng chung)</span>), ADR <span class="term-gloss">(Architecture Decision Record – biên bản quyết định kiến trúc)</span>, regression đồng thời.</li>
+</ul>
+
+<h4>b) Budget sheet mẫu</h4>
+<pre><code>Resource budget — CDC display platform  v1.3   (giả định minh họa, 60 Hz)
+Domain       GPU ms/frame   DRAM GB/s   Plane   Buffer MB   fps min   Khi quá tải
+Cluster VM   4,0 (giữ chỗ)  1,0         0–1     40          60        không throttle
+HUD          1,5            0,3         4       15          60        nội dung về cluster
+IVI center   7,0            4,0         2–3     120         30        giảm hiệu ứng → 30 fps
+Passenger    2,0 best-eff.  1,5         5       60          0         throttle đầu tiên
+Margin       2,2 (13 %)     ≥ 20 %      1 dự phòng
+Owner: platform team · Duyệt: architecture board + safety · Đo lại: mỗi release</code></pre>
+
+<h4>c) Quy trình khi có thay đổi</h4>
+<ol class="steps">
+<li><b>Khai báo</b> tác động lên từng dòng budget và display.</li>
+<li><b>Đo</b> ở kịch bản xấu nhất sau thermal soak; kèm trace, p99/max của cluster.</li>
+<li><b>Quyết định</b>: vượt budget thì tối ưu, giảm scope <span class="term-gloss">(phạm vi)</span> hoặc xin cấp lại; cấp lại là quyền của board <span class="term-gloss">(bo mạch phần cứng; hoặc hội đồng)</span>, không của team feature.</li>
+<li><b>Ghi lại</b>: ADR, budget sheet mới, regression mỗi build, monitoring ngoài hiện trường.</li>
+</ol>
+
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Cần bộ luật có owner: <b>allocation</b>, <b>budget</b>, <b>priority</b>, <b>admission control</b>, <b>isolation</b>, <b>monitoring</b>, <b>change control</b>. Thiếu nó, xung đột chỉ lộ ra khi tích hợp.</p>
+</div>
+
+<div class="next-prev"><a href="../23_Review_QA_B7.html">← 23 · Review &amp; Q&amp;A (Unit B)</a><a href="26_Research_Audio_System_Architecture.html">26 · Audio System Architecture →</a></div>
+</article>
+  <footer class="article-footer"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></footer>
+  </main>
+</div>
+</body>
+</html>

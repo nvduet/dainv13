@@ -1,0 +1,12 @@
+/* Dark-theme fix-ups (only under html[data-theme="dark"]). */
+html[data-theme="dark"]{--paper:#182120;--surface:#1e2826;--ink:#ccd6d2;--muted:#8e9c97;--line:#313d3a;
+--forest:#8cc6b5;--forest-soft:#233330;--copper:#dc9a7e;--code:#222c2a;--focus:#e3906f;
+--teal:#5cc4c4;--teal-soft:#1d2d2d;--violet:#a690ee;--violet-soft:#26223a;--green:#6cc792;--green-soft:#1c2d23;
+--amber:#e5b25a;--amber-soft:#2f2a1c;--red:#ef8a80;--red-soft:#342422}html[data-theme="dark"] .reader-header{background:#1b3d36}html[data-theme="dark"] .brand-mark{color:#1b3d36}html[data-theme="dark"] tr:nth-child(even) td{background:#1b2422}html[data-theme="dark"] .reader-header .nav-btn:hover,
+html[data-theme="dark"] .reader-header .nav-btn--primary,
+html[data-theme="dark"] .reader-header .nav-btn--primary:hover{color:#1b3d36}html[data-theme="dark"] .article-footer .nav-btn:hover,
+html[data-theme="dark"] .article-footer .nav-btn--primary{background:#24584d;border-color:#24584d;color:#fff}html[data-theme="dark"] .bai-nav a.cur,
+html[data-theme="dark"] .act-btn,
+html[data-theme="dark"] .steps>li::before{background:#24584d;color:#fff}html[data-theme="dark"] .remember{background:#1f3d37;color:#d6e4df}html[data-theme="dark"] .remember b,
+html[data-theme="dark"] .remember strong{color:#fff}html[data-theme="dark"] .fig{background:#dce1da;border-color:#2b3a36}html[data-theme="dark"] .fig figcaption{color:#3f4f4b}html[data-theme="dark"] svg[viewBox]:not([viewBox="0 0 24 24"]):not(.nav-ico){background:#dce1da;border-radius:10px}html[data-theme="dark"] .tg-pop{background:#202b29!important;color:#d8e3df!important;border-color:#33463f!important;border-top-color:#7cc8b2!important;box-shadow:0 10px 28px rgba(0,0,0,.6)!important}html[data-theme="dark"] .tg-pop .tg-h{color:#9fdcc9!important}html[data-theme="dark"] .tg-pop .tg-full{color:#e3906f!important}html[data-theme="dark"] .tg-pop .tg-vi{color:#cfdcd7!important}html[data-theme="dark"] .tg-pop .tg-x{color:#93a59f!important}html[data-theme="dark"] .tg-pop .tg-x:hover{background:#22332e!important;color:#fff!important}html[data-theme="dark"] button.tg-term:hover,
+html[data-theme="dark"] button.tg-term[aria-expanded="true"]{background:rgba(226,189,105,.22)!important}

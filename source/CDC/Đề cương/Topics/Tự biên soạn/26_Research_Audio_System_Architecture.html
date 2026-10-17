@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="../assets/site-ui.js" data-site-ui></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đề cương · Audio System Architecture</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f3f0e8;
+  --surface: #f9f7f1;
+  --ink: #2a3431;
+  --muted: #62706b;
+  --line: #dbd7cb;
+  --forest: #174c43;
+  --forest-soft: #e3ece6;
+  --copper: #a64e32;
+  --gold: #e2bd69;
+  --code: #ebe7dd;
+  --focus: #b34d31;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--copper); }
+a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.reader-header {
+  min-height: 74px;
+  padding: 12px clamp(20px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--forest);
+  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.reader-header a { color: white; text-decoration: none; }
+.reader-header nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; font-size: 0.9rem; }
+
+/* Navigation buttons: same shape/order as the AI library (secondary links | ← Quay lại | ⌂ Trang chủ) */
+.nav-link { padding: 6px 4px; color: #d4e4de; font-weight: 500; white-space: nowrap; }
+.reader-header a.nav-link:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+.nav-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(255, 255, 255, 0.3); }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.nav-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.nav-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.nav-ico { flex: none; width: 16px; height: 16px; }
+.reader-header .nav-btn { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+.reader-header .nav-btn:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.reader-header .nav-btn--primary { color: var(--forest); border-color: var(--gold); background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); }
+.reader-header .nav-btn--primary:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.article-footer .nav-btn { color: var(--forest); border-color: var(--forest); background: transparent; }
+.article-footer .nav-btn:hover { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary:hover { border-color: var(--copper); background: var(--copper); }
+.reader-header nav a:hover { color: var(--gold); }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; line-height: 1.12; }
+.brand small { color: #d4e4de; font-size: 0.75rem; font-weight: 400; }
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  border-radius: 2px;
+}
+
+.reader-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+
+.contents-panel {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 32px 20px 28px clamp(20px, 4vw, 48px);
+  border-right: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--copper);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contents-panel ul { margin: 0; padding: 0; list-style: none; }
+.contents-panel li { margin: 0; padding: 0; }
+.contents-panel a {
+  display: block;
+  padding: 7px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.contents-panel a:hover { color: var(--forest); text-decoration: underline; }
+.contents-panel .toc-level-3 { padding-left: 14px; border-left: 1px solid var(--line); }
+
+.article {
+  min-width: 0;
+  padding: 26px clamp(22px, 5vw, 76px) 70px;
+}
+
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+article { max-width: 900px; }
+article h1, article h2, article h3, .library-intro h1 {
+  color: light-dark(#26403d, #c5e8e4);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  line-height: 1.18;
+}
+article h1 { margin: 0 0 28px; font-size: 2.35rem; }
+article h2 {
+  margin: 48px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+}
+article h3 { margin: 32px 0 12px; color: var(--forest); font-size: 1.24rem; }
+article p { margin: 0 0 18px; }
+article li { margin: 6px 0; padding-left: 4px; }
+article ul, article ol { margin: 0 0 22px; padding-left: 26px; }
+article strong { color: light-dark(#26403c, #c3e9e3); }
+
+blockquote {
+  margin: 22px 0;
+  padding: 15px 20px;
+  border-left: 4px solid var(--copper);
+  background: light-dark(#f8eee8, #31231a);
+  color: light-dark(#543e35, #d4c2bb);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+.table-scroll { width: 100%; margin: 22px 0 26px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.92rem; }
+th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--forest-soft); color: light-dark(#26403c, #c3e9e3); font-weight: 700; }
+tr:nth-child(even) td { background: light-dark(#f9f7f2, #2c2918); }
+
+code, pre { font-family: Consolas, "Courier New", monospace; }
+code { padding: 0.1em 0.28em; background: var(--code); color: light-dark(#24433e, #c3dfda); font-size: 0.9em; }
+pre {
+  max-width: 100%;
+  margin: 20px 0 26px;
+  padding: 18px 20px;
+  overflow: auto;
+  border-left: 3px solid var(--forest);
+  background: light-dark(#e9eeea, #222c25);
+  color: light-dark(#26403d, #d0e6e4);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; color: inherit; }
+hr { margin: 36px 0; border: 0; border-top: 1px solid var(--line); }
+
+.audit-item { margin: 14px 0; }
+
+.audit-item details {
+  margin-top: 9px;
+  border-left: 3px solid #86a99e;
+  background: var(--forest-soft);
+}
+.audit-item summary {
+  padding: 9px 13px;
+  color: var(--forest);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.answer-body { padding: 0 14px 10px; }
+.answer-body p { margin: 4px 0 10px; }
+.answer-body ul { margin: -4px 0 12px; padding-left: 22px; }
+.answer-body li { margin: 3px 0; line-height: 1.55; }
+/* Key questions: map 1-1 to the Learning Plan "Unit Detail" requirements of the topic */
+details.audit-reveal { margin: 8px 0 18px; border-left: 3px solid #86a99e; background: var(--forest-soft); }
+details.audit-reveal > summary { padding: 9px 13px; color: var(--forest); cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.audit-key-intro { margin: 18px 0 28px; padding: 16px 20px 14px; border: 1px solid light-dark(#e6cf95, #62542f); border-left: 6px solid var(--gold); background: light-dark(#fff7e0, #312b1a); }
+.audit-key-intro p { margin: 0 0 8px; }
+.audit-key-intro ol { margin: 0; padding-left: 22px; }
+.audit-key-intro li { margin: 4px 0; }
+.audit-key-intro .req-tag { color: var(--muted); font-size: 0.8rem; }
+.audit-question-heading.audit-key { padding: 10px 14px; border-left: 6px solid var(--copper); background: light-dark(#fbeee4, #31251a); }
+.audit-question-heading.audit-key::after {
+  content: "Tr\1ECDng t\00E2m";
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--copper);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+details.audit-key-reveal, .audit-item details.audit-key-reveal { border-left: 6px solid var(--copper); background: light-dark(#f9f7f2, #2c2317); }
+details.audit-key-reveal > summary, .audit-item details.audit-key-reveal summary { color: var(--copper); }
+
+.article-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 54px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.library-main { width: min(1120px, 100%); margin: 0 auto; padding: 50px clamp(20px, 5vw, 72px) 76px; }
+.library-intro { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+.library-intro h1 { margin: 0; font-size: 3rem; }
+.library-intro h1 span { color: var(--copper); }
+
+.search-label { display: block; margin: 0 0 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#topic-search {
+  width: min(520px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-intro { max-width: 740px; color: var(--muted); }
+.qa-filter { margin: 26px 0 34px; }
+.qa-filter label { display: block; margin-bottom: 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#qa-search {
+  width: min(640px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-filter p { margin: 7px 0 0; color: var(--muted); font-size: 0.82rem; }
+.qa-topic { margin-top: 40px; }
+.qa-topic-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.qa-topic-heading h2 { flex: 1; }
+.qa-topic-heading a { flex: none; font-size: 0.86rem; }
+.qa-question[hidden], .qa-topic[hidden] { display: none; }
+.search-status { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.topic-list { margin-top: 8px; border-top: 1px solid var(--line); }
+.topic-link {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 15px;
+  min-height: 72px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topic-link:hover { background: light-dark(#e8eee9, #222d23); color: var(--forest); }
+.topic-number { color: var(--copper); font-family: Georgia, serif; font-size: 1.1rem; }
+.topic-title { font-weight: 650; }
+.topic-arrow { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.source-note { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.87rem; }
+
+@media (max-width: 860px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .contents-panel {
+    position: static;
+    max-height: none;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contents-panel nav { max-height: 210px; overflow: auto; }
+  .article { padding-top: 22px; }
+}
+
+@media (max-width: 560px) {
+  .reader-header { align-items: flex-start; padding: 12px 17px; }
+  .reader-header { flex-wrap: wrap; }
+  .reader-header nav { gap: 6px 8px; }
+  .nav-sep { display: none; }
+  .nav-btn { min-height: 34px; padding: 6px 12px; }
+  .library-intro h1 { font-size: 2.25rem; }
+  article h1 { font-size: 1.9rem; }
+  article h2 { font-size: 1.4rem; }
+  .topic-link { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .topic-arrow { display: none; }
+  .qa-topic-heading { align-items: flex-start; flex-direction: column; gap: 0; }
+  th, td { min-width: 130px; padding: 9px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* Highlight non-AI (CDC/SDV) topics in the library index */
+.topic-link.topic-core { background: var(--forest-soft); box-shadow: inset 5px 0 0 var(--forest); }
+.topic-link.topic-core .topic-title { color: var(--forest); }
+.topic-link.topic-core .topic-number { color: var(--forest); font-weight: 700; }
+.topic-link.topic-core:hover { background: light-dark(#d4e5de, #233930); }
+.topic-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 18px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.legend-swatch { display: inline-block; width: 18px; height: 14px; margin-right: -10px; border: 1px solid var(--line); vertical-align: -2px; }
+.legend-swatch.legend-core { background: var(--forest-soft); box-shadow: inset 4px 0 0 var(--forest); }
+
+/* Non-learning items (assignment / review / OJT) among CDC/SDV topics: red text */
+.topic-link.topic-task .topic-title, .topic-link.topic-task .topic-number { color: light-dark(#b3261e, #e9847e); }
+.topic-link.topic-task:hover .topic-title { color: light-dark(#8c1d18, #ed9794); }
+.legend-task { color: light-dark(#b3261e, #e9847e); font-weight: 600; }
+/* Study-time note per topic (from Fast_Track_CDC_Weekly_Checklist.xlsx) */
+.topic-time { display: block; margin-top: 3px; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.topic-link.topic-task .topic-time { color: light-dark(#b3261e, #e9847e); opacity: 0.85; }
+.legend-time { flex-basis: 100%; color: var(--muted); }
+
+/* ---- Thuật ngữ: bấm để xem giải nghĩa ---- */
+.gl {
+  border-bottom: 1.5px dotted #6f9a8e;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color .12s;
+}
+.gl:hover { background: var(--forest-soft); }
+.gl:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.gl.is-open { background: var(--forest-soft); border-bottom-style: solid; border-bottom-color: var(--forest); }
+.gl-pop {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(28, 41, 40, .16);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gl-term { display: block; margin-bottom: 2px; color: var(--forest); font-weight: 700; font-size: .82rem; }
+.gl-hint { color: var(--muted); font-size: .85rem; }
+.gl-hint .gl-demo { border-bottom: 1.5px dotted #6f9a8e; }
+
+/* ---- Checklist đầu ra (tick được, lưu trên trình duyệt) ---- */
+.checklist { margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 16px 14px; }
+.checklist > h3 { margin-top: 18px; }
+.cl-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--muted); font-size: .9rem; }
+.cl-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 99px; background: var(--forest-soft); overflow: hidden; }
+.cl-bar > i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s; }
+.cl-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.cl-item { padding: 9px 0 10px; border-top: 1px dashed var(--line); }
+.cl-item:first-child { border-top: 0; }
+.cl-item > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.cl-item input[type="checkbox"] { margin-top: .35em; width: 17px; height: 17px; accent-color: var(--forest); flex: none; }
+.cl-item.is-done > label > span { color: var(--muted); text-decoration: line-through; text-decoration-color: light-dark(#9fb3ad, #495c56); }
+.cl-pass, .cl-src { margin: 4px 0 0 27px; font-size: .9rem; }
+.cl-pass { color: var(--ink); }
+.cl-src { color: var(--muted); font-size: .82rem; }
+.cl-reset { margin-left: auto; border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 2px 9px; color: var(--muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.cl-reset:hover { color: var(--copper); border-color: var(--copper); }
+
+/* Lesson style for CDC/SDV topics — mirrors the teaching layout of the AI library
+   (bài đọc: hook → giải thích → ví dụ → vì sao quan trọng → nghiền ngẫm → thực hành → tự kiểm)
+   while keeping the CDC palette of reader.css. Load AFTER reader.css. */
+:root {
+  --teal: #2A8C8C; --teal-soft: #EEF7F6;
+  --violet: #6A4FC0; --violet-soft: #F5F2FD;
+  --green: #2E7D4F; --green-soft: #EFF8F2;
+  --amber: #B7791F; --amber-soft: #FFF7E8;
+  --red: #A93226; --red-soft: #FCEFEC;
+}
+
+body.lesson-page article { max-width: 800px; }
+body.lesson-page article p, body.lesson-page article li { line-height: 1.75; }
+body.lesson-page article h2 { margin-top: 44px; }
+body.lesson-page article h2 .sec-no { color: var(--copper); font-weight: 700; margin-right: 6px; }
+
+/* Bài nav (pill row, like .tapnav in the AI library) */
+.bai-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+.bai-nav a { font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--surface); }
+.bai-nav a:hover { border-color: var(--forest); color: var(--forest); }
+.bai-nav a.cur { background: var(--forest); border-color: var(--forest); color: #fff; }
+.bai-nav .grp { font-size: 0.7rem; font-weight: 700; color: var(--copper); align-self: center; margin: 0 2px 0 6px; letter-spacing: .06em; }
+
+.lesson-kicker { margin: 0 0 6px; color: var(--copper); font-size: 0.78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+body.lesson-page article h1 { margin-bottom: 10px; }
+.lesson-meta { margin: 0 0 18px; font-weight: 600; color: light-dark(#2c4b46, #bfdad5); font-size: 0.95rem; }
+
+/* Bản đồ bài — chuỗi khái niệm */
+.roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 24px; font-size: 0.86rem; }
+.roadmap span { background: var(--forest-soft); color: var(--forest); border: 1px solid light-dark(#c9ddd5, #314e42); border-radius: 8px; padding: 5px 10px; font-weight: 600; }
+.roadmap i { color: var(--muted); font-style: normal; }
+
+/* Figure card for SVG diagrams */
+.fig { margin: 24px 0; background: light-dark(#f9f7f2, #202819); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 12px; box-shadow: 0 1px 3px rgba(23,76,67,.06); overflow-x: auto; }
+.fig svg { width: 100%; height: auto; display: block; min-width: 560px; }
+.fig figcaption, .fig .cap { margin-top: 8px; color: var(--muted); font-size: 0.84rem; text-align: center; font-style: italic; }
+
+/* Opening question of a section */
+.hook { font-size: 1.04rem; color: light-dark(#26403c, #c6e2de); border-left: 3px solid var(--copper); padding: 4px 0 4px 14px; margin: 6px 0 18px; }
+
+/* Plain-language explanation */
+.plain { background: var(--forest-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0 18px; }
+.plain .ttl { color: var(--forest); }
+
+/* Generic box header */
+.box { border-radius: 12px; padding: 14px 18px; margin: 20px 0; }
+.box > .ttl, .plain > .ttl { margin: 0 0 7px; font-weight: 700; font-size: 0.86rem; }
+.box p { margin: 6px 0; }
+.box ul, .box ol { margin: 6px 0; padding-left: 22px; }
+.box li { margin: 4px 0; }
+
+.ex { background: var(--teal-soft); border: 1px solid var(--teal); }
+.ex > .ttl { color: light-dark(#1d6b6b, #a8e7e7); }
+.case { background: light-dark(#f9f7f2, #2c2117); border: 1px solid light-dark(#EBB28F, #63432f); border-left: 4px solid var(--copper); }
+.case > .ttl { color: var(--copper); font-size: 0.74rem; text-transform: uppercase; letter-spacing: .05em; }
+.pitfall { background: var(--amber-soft); border: 1px solid light-dark(#EBC77A, #695833); }
+.pitfall > .ttl { color: light-dark(#8A5A00, #ffd88f); }
+.why { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--forest); }
+.why > .ttl { color: var(--forest); }
+
+.practice { background: var(--green-soft); border: 1px solid var(--green); }
+.practice > .ttl { color: light-dark(#1F6340, #ade5c9); }
+.remember { background: var(--forest); color: #E4EFEB; }
+.remember > .ttl { color: var(--gold); }
+.remember b, .remember strong { color: #fff; }
+
+/* Sai vs đúng */
+.contrast { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.contrast > div { border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; }
+.contrast .bad { background: var(--red-soft); border: 1px solid light-dark(#E3A79F, #60342e); }
+.contrast .good { background: var(--green-soft); border: 1px solid light-dark(#9CCFB0, #326747); }
+.contrast .ttl { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
+.contrast .bad .ttl { color: var(--red); }
+.contrast .good .ttl { color: var(--green); }
+.contrast p { margin: 4px 0; }
+
+/* Step-by-step anatomy */
+.steps { list-style: none; counter-reset: st; padding-left: 0 !important; }
+.steps > li { counter-increment: st; position: relative; padding: 2px 0 2px 42px !important; margin: 12px 0 !important; }
+.steps > li::before { content: counter(st); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+
+/* Small term chips inline */
+.term { font-weight: 650; color: light-dark(#26403c, #c3e9e3); }
+.term-gloss { color: var(--muted); font-size: 0.92em; }
+
+/* Lesson prev/next */
+.next-prev { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .contrast { grid-template-columns: 1fr; }
+  .fig svg { min-width: 520px; }
+}
+
+/* ---------- Learning reflection + Unit assessment (assets/assessment.js) ---------- */
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.refl-intro { color: light-dark(#2c4b46, #bfdad5); }
+.refl-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--violet); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.refl-label { margin: 0 0 4px !important; font-weight: 700; color: light-dark(#3f2c86, #a99ade); }
+.refl-hint { color: light-dark(#41506B, #aeb9ce); font-size: 0.93rem; margin-bottom: 8px; }
+.refl-hint ul { margin: 4px 0 0; padding-left: 20px; }
+.refl-hint li { margin: 2px 0; }
+#reflection-app textarea, #quiz-app textarea, #workshop-app textarea { width: 100%; font: inherit; font-size: 0.95rem; line-height: 1.55; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); color: var(--ink); resize: vertical; }
+#reflection-app textarea:focus, #quiz-app textarea:focus, #workshop-app textarea:focus { outline: 2px solid var(--gold); border-color: var(--forest); }
+.refl-sample { margin-top: 8px; }
+.refl-sample summary { cursor: pointer; color: var(--forest); font-size: 0.86rem; font-weight: 600; }
+.refl-sample-body { margin: 6px 0; padding: 8px 12px; background: var(--forest-soft); border-radius: 6px; font-size: 0.92rem; }
+.refl-sample-body ul { margin: 4px 0; padding-left: 20px; }
+.refl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 6px; }
+.refl-tools p { flex-basis: 100%; margin: 2px 0 0; }
+.tool-msg { color: var(--green); font-size: 0.86rem; }
+.act-btn, .mini-btn { font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1.5px solid var(--forest); }
+.act-btn { background: var(--forest); color: #fff; }
+.act-btn:hover { background: var(--copper); border-color: var(--copper); }
+.mini-btn { background: transparent; color: var(--forest); padding: 5px 12px; font-size: 0.82rem; }
+.mini-btn:hover { background: var(--forest-soft); }
+.mini-btn.danger { color: var(--red); border-color: light-dark(#E3A79F, #60342e); }
+.assess-note { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; }
+.assess-note.small { background: transparent; padding: 0; }
+
+table.rubric select { font: inherit; font-size: 0.86rem; padding: 4px 6px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ws-col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.ws-h { margin: 0 0 4px !important; font-weight: 700; color: var(--forest); font-size: 0.9rem; }
+.ws-col ol, .ws-col ul { margin: 0 !important; padding-left: 20px !important; font-size: 0.93rem; }
+table.rubric td.num { text-align: center; font-weight: 700; color: var(--copper); }
+table.rubric td { font-size: 0.9rem; }
+table.rubric textarea { min-width: 180px; }
+.rub-pts { font-size: 0.82rem; color: var(--forest); font-weight: 600; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.dash-card.pass { border-color: light-dark(#9CCFB0, #326747); background: var(--green-soft); }
+.dash-card.fail { border-color: light-dark(#E3A79F, #60342e); background: var(--red-soft); }
+.dash-h { margin: 0 !important; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-v { margin: 2px 0 !important; font-size: 1.6rem; font-weight: 700; color: var(--forest); }
+.dash-sub { margin: 0 !important; font-size: 0.84rem; color: var(--muted); }
+
+/* ---------- Knowledge questions (open questions, self-rated) ---------- */
+.kq-howto { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kq-toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.kq-filter { font-size: 0.88rem; color: var(--forest); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.kq-progress { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; }
+.kq-track { flex: 1; height: 8px; border-radius: 99px; background: light-dark(#E3E8E2, #272f25); overflow: hidden; display: flex; }
+.kq-track .seg { height: 100%; }
+.seg-yes { background: var(--green); } .seg-part { background: light-dark(#D9A441, #665027); } .seg-no { background: light-dark(#C0504D, #6a2a28); }
+.kq-count { font-size: 0.84rem; color: var(--muted); white-space: nowrap; }
+.kq-group { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; border-bottom: 1px dashed var(--line); }
+.kq-group-title { margin: 0 0 6px !important; font-size: 1.08rem !important; }
+.kq-back { font-size: 0.82rem; white-space: nowrap; }
+.kq-list { padding-left: 26px !important; margin-top: 8px !important; }
+.kq-item { margin: 12px 0 !important; padding: 10px 14px !important; border: 1px solid var(--line); border-left: 4px solid light-dark(#C9D3CF, #3b4843); border-radius: 10px; background: var(--surface); }
+.kq-item[data-rate="yes"] { border-left-color: var(--green); }
+.kq-item[data-rate="part"] { border-left-color: #D9A441; }
+.kq-item[data-rate="no"] { border-left-color: #C0504D; }
+.only-weak .kq-item[data-rate="yes"] { display: none; }
+.kq-q { margin: 0 0 6px !important; font-weight: 600; line-height: 1.6 !important; }
+.kq-type { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 4px; background: var(--forest-soft); color: var(--forest); font-size: 0.72rem; font-weight: 700; letter-spacing: .03em; vertical-align: 2px; text-transform: uppercase; }
+.kq-mine, .kq-answer { margin: 6px 0; }
+.kq-mine summary, .kq-answer summary { cursor: pointer; font-size: 0.86rem; font-weight: 600; color: var(--forest); }
+.kq-mine textarea { margin-top: 6px; width: 100%; font: inherit; font-size: 0.95rem; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; resize: vertical; }
+.kq-answer-body { margin-top: 6px; padding: 10px 14px; background: light-dark(#F4F8F6, #1b2a22); border: 1px solid light-dark(#D5E3DD, #2f473d); border-radius: 8px; font-size: 0.95rem; }
+.kq-answer-body p { margin: 4px 0 8px !important; }
+.kq-answer-body ul, .kq-answer-body ol { margin: 4px 0 8px !important; padding-left: 20px !important; }
+.kq-answer-body li { margin: 2px 0 !important; }
+.kq-refs { font-size: 0.84rem; color: var(--muted); border-top: 1px dashed light-dark(#D5E3DD, #2f473d); padding-top: 6px; margin-top: 8px !important; }
+.kq-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.kq-rate-l { font-size: 0.8rem; color: var(--muted); }
+.kq-rbtn { font: inherit; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid light-dark(#C9D3CF, #3b4843); background: light-dark(#f9f7f2, #192320); color: var(--muted); cursor: pointer; }
+.kq-rbtn[aria-pressed="true"].r-yes { background: var(--green); border-color: var(--green); color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-part { background: light-dark(#D9A441, #665027); border-color: #D9A441; color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-no { background: light-dark(#C0504D, #6a2a28); border-color: #C0504D; color: #fff; }
+
+
+  </style>
+  <style>
+    article h4 { margin: 22px 0 8px; color: var(--forest); font-size: 1.02rem; }
+    td.c, th.c { text-align: center; }
+    tr.total td { font-weight: 700; background: var(--forest-soft) !important; }
+    .fig svg .hit:hover { opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="../assets/dark.css">
+</head>
+<body class="topic-page lesson-page">
+<header class="reader-header">
+    <a class="brand" href="../../dainv13.html"><span class="brand-mark">Đ</span><span>Đề cương<br><small>Audio System Architecture</small></span></a>
+    <nav aria-label="Page actions"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></nav>
+</header>
+<div class="reader-layout">
+  <aside class="contents-panel">
+    <p class="eyebrow">Nội dung trang</p>
+    <nav aria-label="Topic contents"><ul>
+<li class="toc-level-2"><a href="#p1">Phần 1 · Giải thích chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-2">1.2 Tổng quan về chủ đề</a></li>
+<li class="toc-level-2"><a href="#p2">Phần 2 · Nội dung chi tiết</a></li>
+<li class="toc-level-3"><a href="#p2-1">2.1 Kiến trúc hệ thống âm thanh trong xe</a></li>
+<li class="toc-level-3"><a href="#p2-2">2.2 Source, routing, mixing, processing, amp, speaker</a></li>
+<li class="toc-level-3"><a href="#p2-3">2.3 Real-time, latency, synchronization, quality</a></li>
+<li class="toc-level-3"><a href="#p2-4">2.4 Focus, priority, concurrency, interruption</a></li>
+<li class="toc-level-3"><a href="#p2-5">2.5 Networked audio, diagnostics, degraded mode</a></li>
+<li class="toc-level-3"><a href="#p2-6">2.6 UX, safety notification và system resource</a></li>
+</ul></nav>
+  </aside>
+  <main class="article">
+    <article>
+<p class="lesson-kicker">Đề cương tự biên soạn · Research Topic 2</p>
+<h1 id="top">Audio System Architecture</h1>
+<p class="lesson-meta">Kiến trúc âm thanh trong xe · đọc ~20 phút</p>
+
+<h2 id="p1"><span class="sec-no">1 ·</span> Giải thích chủ đề</h2>
+<h3 id="p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</h3>
+<ul>
+<li><b>Audio</b>: mọi âm thanh trong xe, từ nhạc, cuộc gọi, chỉ dẫn navigation đến tiếng chuông cảnh báo và âm thanh mô phỏng động cơ.</li>
+<li><b>System</b>: toàn bộ chuỗi phần mềm và phần cứng tham gia, gồm app, audio framework, DSP, bộ khuếch đại, loa, micro và mạng xe.</li>
+<li><b>Architecture</b>: cách phân chia khối, chọn nơi xử lý và quy tắc ưu tiên để nhiều nguồn âm cùng tồn tại mà không xung đột.</li>
+</ul>
+<h3 id="p1-2">1.2 Tổng quan về chủ đề</h3>
+<p>Trong CDC, âm thanh không chỉ là giải trí. Cùng một bộ loa phải phát nhạc, cuộc gọi rảnh tay, giọng navigation và cảnh báo an toàn như chưa thắt dây hay va chạm phía sau. Kiến trúc audio quyết định âm nào được nghe, ở loa nào, với độ trễ bao nhiêu, và điều gì xảy ra khi một phần hệ thống hỏng.</p>
+<p>Audio cũng có chiều vào. Micro trong cabin thu giọng cho cuộc gọi và voice assistant, có khi còn thu tiếng ồn để khử ồn chủ động. Vì vậy kiến trúc audio phải lo cả hai chiều cùng lúc, ví dụ khi đang gọi thì loa phát giọng đầu bên kia còn micro phải loại được chính tiếng loa đó. Chủ đề này đi qua cấu trúc tổng thể, chuỗi xử lý từ nguồn tới loa, ràng buộc thời gian thực, luật ưu tiên giữa các nguồn, audio qua mạng cùng chẩn đoán, và mối quan hệ giữa trải nghiệm, an toàn với tài nguyên.</p>
+<h2 id="p2"><span class="sec-no">2 ·</span> Nội dung chi tiết</h2>
+<h3 id="p2-1">2.1 Kiến trúc hệ thống âm thanh trong xe</h3>
+<p>Có thể nhìn kiến trúc theo bốn tầng:</p>
+<ol>
+<li><b>Nguồn</b>: app media, telephony, navigation, voice assistant, chime của cluster.</li>
+<li><b>Framework</b>: trên Android Automotive là AudioFlinger, CarAudioService và audio HAL; trên Linux có thể là PipeWire.</li>
+<li><b>Xử lý</b>: DSP trong SoC hoặc trong external amplifier thực hiện EQ, mixing, echo cancellation.</li>
+<li><b>Đầu ra</b>: amplifier và loa, nối với SoC qua I2S/TDM hoặc qua mạng như A2B.</li>
+</ol>
+<p>Trong CDC có hypervisor, âm cảnh báo của cluster thường có đường riêng không đi qua Android, để vẫn phát được khi IVI đang khởi động lại.</p>
+<figure class="fig"><svg viewBox="0 0 720 296" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Bốn tầng audio từ nguồn tới loa, cùng một đường riêng cho chime cảnh báo của cluster không đi qua Android"><defs><marker id="s26-f1m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker><marker id="s26-f1m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Bốn tầng audio và đường riêng cho cảnh báo</text><rect x="20" y="44" width="450" height="46" rx="8" fill="#2A6F66"/><text x="245.0" y="64.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Nguồn</text><text x="245.0" y="78.0" font-size="10.5" fill="#fff" text-anchor="middle">media, telephony, navigation, voice assistant</text><rect x="20" y="106" width="450" height="46" rx="8" fill="#174C43"/><text x="245.0" y="126.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Framework</text><text x="245.0" y="140.0" font-size="10.5" fill="#fff" text-anchor="middle">AudioFlinger, CarAudioService, audio HAL · PipeWire trên Linux</text><rect x="20" y="168" width="450" height="46" rx="8" fill="#2A8C8C"/><text x="245.0" y="188.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Xử lý (DSP)</text><text x="245.0" y="202.0" font-size="10.5" fill="#fff" text-anchor="middle">EQ, mixing, echo cancellation, trong SoC hoặc amplifier</text><rect x="20" y="230" width="450" height="46" rx="8" fill="#A64E32"/><text x="245.0" y="250.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Đầu ra</text><text x="245.0" y="264.0" font-size="10.5" fill="#fff" text-anchor="middle">amplifier và loa, nối qua I2S/TDM hoặc mạng A2B</text><line x1="245" y1="91" x2="245" y2="104" stroke="#596966" stroke-width="1.6" marker-end="url(#s26-f1m1)"/><line x1="245" y1="153" x2="245" y2="166" stroke="#596966" stroke-width="1.6" marker-end="url(#s26-f1m1)"/><line x1="245" y1="215" x2="245" y2="228" stroke="#596966" stroke-width="1.6" marker-end="url(#s26-f1m1)"/><rect x="12" y="38" width="466" height="120" rx="10" fill="none" stroke="#596966" stroke-width="1" stroke-dasharray="5 4"/><rect x="510" y="44" width="190" height="46" rx="8" fill="#A93226"/><text x="605.0" y="64.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Chime cluster</text><text x="605.0" y="78.0" font-size="10" fill="#fff" text-anchor="middle">chưa thắt dây, va chạm</text><path d="M605,91 L605,191 L473,191" stroke="#A93226" stroke-width="2" fill="none" marker-end="url(#s26-f1m2)"/><text x="597" y="116" font-size="10" fill="#A93226" text-anchor="end">đường riêng, không</text><text x="597" y="130" font-size="10" fill="#A93226" text-anchor="end">qua Android: vẫn phát</text><text x="597" y="144" font-size="10" fill="#A93226" text-anchor="end">khi IVI khởi động lại</text><text x="616" y="128" font-size="10" fill="#596966">khung nét đứt =</text><text x="616" y="142" font-size="10" fill="#596966">phần Android</text></svg><figcaption>Âm giải trí đi đủ bốn tầng, còn chime an toàn đi tắt vào DSP và loa nên không phụ thuộc Android.</figcaption></figure>
+<p>Chiều vào đi ngược lại: micro, thường là một dãy micro trên trần xe, gửi tín hiệu về DSP. DSP chạy echo cancellation, noise reduction và beamforming để tách giọng người nói, rồi mới giao cho telephony hoặc voice assistant. Echo cancellation cần biết chính xác tín hiệu đang phát ra loa, nên chiều vào và chiều ra phải dùng chung đồng hồ và được đặt gần nhau trong chuỗi xử lý.</p>
+<p>Một quyết định kiến trúc lớn là đặt DSP ở đâu:</p>
+<div class="table-scroll"><table>
+<tr><th>Phương án</th><th>Mô tả</th><th>Được</th><th>Mất</th></tr>
+<tr><td>Xử lý trong SoC</td><td>DSP hoặc CPU của CDC làm mixing và hiệu ứng; amplifier chỉ khuếch đại.</td><td>Một nơi cấu hình, dễ cập nhật qua OTA, rẻ hơn.</td><td>CDC gánh thêm tải thời gian thực; CDC khởi động lại thì mất tiếng.</td></tr>
+<tr><td>Smart amplifier</td><td>Amplifier ngoài có DSP riêng làm EQ, crossover, tuning cabin.</td><td>Tuning âm thanh tách khỏi phần mềm CDC; có thể phát chime khi CDC chưa sẵn sàng.</td><td>Thêm một phần mềm phải quản lý version và chẩn đoán.</td></tr>
+<tr><td>Kết hợp</td><td>SoC trộn và quyết định ưu tiên; amplifier làm tuning theo loa.</td><td>Cân bằng giữa linh hoạt và độc lập.</td><td>Ranh giới trách nhiệm phải được viết rõ.</td></tr>
+</table></div>
+<p>Khi CDC chạy nhiều VM, phải chọn VM nào sở hữu phần cứng audio. Cách thường gặp là một VM hoặc một dịch vụ tin cậy giữ driver và DSP, các VM khác gửi stream qua audio ảo như virtio-snd. Như vậy luật ưu tiên được cưỡng chế ở một nơi, và Android có treo thì nơi đó vẫn còn phát được cảnh báo.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Âm thanh đi từ nguồn qua framework, DSP đến loa, còn giọng nói đi theo chiều ngược từ micro qua xử lý về app. Vị trí DSP và VM sở hữu phần cứng audio quyết định âm an toàn có đường đi độc lập với phần giải trí hay không.</p></div>
+<h3 id="p2-2">2.2 Audio source, routing, mixing, processing, amplifier và speaker</h3>
+<div class="table-scroll"><table>
+<tr><th>Khối</th><th>Vai trò</th></tr>
+<tr><td>Source</td><td>Tạo stream PCM, mỗi stream gắn một usage như media, call, navigation, alarm.</td></tr>
+<tr><td>Routing</td><td>Chọn stream đi tới thiết bị nào; Android Automotive gom loa theo audio zone và bus.</td></tr>
+<tr><td>Mixing</td><td>Cộng nhiều stream thành một, có điều chỉnh mức để giọng chỉ đường nổi trên nhạc.</td></tr>
+<tr><td>Processing</td><td>EQ theo cabin, bù tiếng ồn theo tốc độ, echo cancellation cho micro.</td></tr>
+<tr><td>Amplifier</td><td>Khuếch đại tín hiệu nhỏ thành công suất đủ đẩy loa; thường có DSP và chẩn đoán riêng.</td></tr>
+<tr><td>Speaker</td><td>Đổi tín hiệu điện thành âm; mỗi loa phụ trách một dải tần và một vị trí trong cabin.</td></tr>
+</table></div>
+<p>Ví dụ: hàng ghế sau xem phim qua tai nghe là một zone riêng, trong khi hàng trước nghe nhạc ở loa chính.</p>
+<figure class="fig"><svg viewBox="0 0 720 268" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Source có usage đi vào routing, rồi tới mixing, processing, amplifier và speaker của zone ghế trước và zone ghế sau"><defs><marker id="s26-f2m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Sáu khối từ nguồn âm tới loa của từng zone</text><text x="80" y="50" font-size="10.5" fill="#B7791F" font-weight="bold" text-anchor="middle">1 Source</text><text x="205" y="50" font-size="10.5" fill="#B7791F" font-weight="bold" text-anchor="middle">2 Routing</text><text x="320" y="50" font-size="10.5" fill="#B7791F" font-weight="bold" text-anchor="middle">3 Mixing</text><text x="437" y="50" font-size="10.5" fill="#B7791F" font-weight="bold" text-anchor="middle">4 Processing</text><text x="552" y="50" font-size="10.5" fill="#B7791F" font-weight="bold" text-anchor="middle">5 Amplifier</text><text x="657" y="50" font-size="10.5" fill="#B7791F" font-weight="bold" text-anchor="middle">6 Speaker</text><rect x="20" y="62" width="120" height="32" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="80.0" y="82.0" font-size="10.5" fill="#1c2928" text-anchor="middle">usage: media</text><line x1="141" y1="78" x2="158" y2="78" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f2m1)"/><rect x="20" y="104" width="120" height="32" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="80.0" y="124.0" font-size="10.5" fill="#1c2928" text-anchor="middle">usage: call</text><line x1="141" y1="120" x2="158" y2="120" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f2m1)"/><rect x="20" y="146" width="120" height="32" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="80.0" y="166.0" font-size="10.5" fill="#1c2928" text-anchor="middle">usage: navigation</text><line x1="141" y1="162" x2="158" y2="162" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f2m1)"/><rect x="20" y="188" width="120" height="32" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="80.0" y="208.0" font-size="10.5" fill="#1c2928" text-anchor="middle">usage: alarm</text><line x1="141" y1="204" x2="158" y2="204" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f2m1)"/><rect x="160" y="62" width="90" height="158" rx="8" fill="#174C43"/><text x="205.0" y="131.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Routing</text><text x="205.0" y="145.0" font-size="10.5" fill="#fff" text-anchor="middle">chọn zone</text><text x="205.0" y="159.0" font-size="10.5" fill="#fff" text-anchor="middle">và bus</text><text x="270" y="74" font-size="10.5" fill="#174C43" font-weight="bold">Zone ghế trước</text><rect x="270" y="80" width="100" height="56" rx="8" fill="#2A8C8C"/><text x="320.0" y="105.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Mixing</text><text x="320.0" y="119.0" font-size="10" fill="#fff" text-anchor="middle">gain, duck</text><rect x="385" y="80" width="105" height="56" rx="8" fill="#2A6F66"/><text x="437.5" y="105.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Processing</text><text x="437.5" y="119.0" font-size="10" fill="#fff" text-anchor="middle">EQ, delay, DRC</text><rect x="505" y="80" width="95" height="56" rx="8" fill="#A64E32"/><text x="552.5" y="105.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Amplifier</text><text x="552.5" y="119.0" font-size="10" fill="#fff" text-anchor="middle">kênh loa chính</text><rect x="615" y="80" width="85" height="56" rx="8" fill="#1c2928"/><text x="657.5" y="105.0" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Loa cabin</text><text x="657.5" y="119.0" font-size="9.5" fill="#fff" text-anchor="middle">cửa, taplo, sub</text><line x1="251" y1="108" x2="268" y2="108" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f2m1)"/><line x1="371" y1="108" x2="383" y2="108" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f2m1)"/><line x1="491" y1="108" x2="503" y2="108" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f2m1)"/><line x1="601" y1="108" x2="613" y2="108" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f2m1)"/><text x="270" y="162" font-size="10.5" fill="#174C43" font-weight="bold">Zone ghế sau</text><rect x="270" y="168" width="100" height="56" rx="8" fill="#2A8C8C"/><text x="320.0" y="193.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Mixing</text><text x="320.0" y="207.0" font-size="10" fill="#fff" text-anchor="middle">gain, duck</text><rect x="385" y="168" width="105" height="56" rx="8" fill="#2A6F66"/><text x="437.5" y="193.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Processing</text><text x="437.5" y="207.0" font-size="10" fill="#fff" text-anchor="middle">EQ, delay, DRC</text><rect x="505" y="168" width="95" height="56" rx="8" fill="#A64E32"/><text x="552.5" y="193.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Amplifier</text><text x="552.5" y="207.0" font-size="10" fill="#fff" text-anchor="middle">kênh riêng</text><rect x="615" y="168" width="85" height="56" rx="8" fill="#1c2928"/><text x="657.5" y="193.0" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Tai nghe</text><text x="657.5" y="207.0" font-size="9.5" fill="#fff" text-anchor="middle">hoặc loa tựa đầu</text><line x1="251" y1="196" x2="268" y2="196" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f2m1)"/><line x1="371" y1="196" x2="383" y2="196" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f2m1)"/><line x1="491" y1="196" x2="503" y2="196" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f2m1)"/><line x1="601" y1="196" x2="613" y2="196" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f2m1)"/><text x="20" y="252" font-size="10.5" fill="#1c2928">Ví dụ: ghế sau xem phim qua tai nghe là một zone riêng, ghế trước vẫn nghe nhạc và navigation ở loa cabin.</text></svg><figcaption>Routing tách stream theo zone; mỗi zone có chuỗi mixing, processing, amplifier và speaker của riêng nó.</figcaption></figure>
+<h4>a) Audio source</h4>
+<p>Source là bất cứ thứ gì tạo ra âm: app nhạc, radio, Bluetooth từ điện thoại, cuộc gọi, giọng navigation, voice assistant, chime cảnh báo, âm phản hồi khi chạm màn hình. Mỗi source xuất ra stream PCM với sample rate, số kênh và định dạng mẫu riêng, ví dụ 48 kHz, stereo, 16 bit. Trên Android, app gắn cho stream một <code>AudioAttributes</code> với usage như <code>USAGE_MEDIA</code> hay <code>USAGE_ASSISTANCE_NAVIGATION_GUIDANCE</code>. Usage là thông tin quan trọng nhất, vì routing và focus đều dựa vào nó. Source khác sample rate với hệ thống phải được resample, việc này tốn CPU và có thể giảm chất lượng.</p>
+<h4>b) Routing</h4>
+<p>Routing trả lời câu hỏi stream này đi ra đâu. Android Automotive gom các thiết bị đầu ra thành audio zone, ví dụ zone chính cho cả cabin và zone phụ cho ghế sau. Trong mỗi zone, các usage được gán vào nhóm âm lượng và vào một bus đầu ra theo file cấu hình của OEM. Routing có phần tĩnh, đặt sẵn lúc thiết kế, và phần động, như chuyển cuộc gọi sang tai nghe khi người dùng chọn. Routing tốt còn tính tới vị trí: cảnh báo điểm mù bên trái nên phát ở loa bên trái.</p>
+<h4>c) Mixing</h4>
+<p>Mixing cộng nhiều stream thành một tín hiệu cho mỗi kênh loa. Có hai việc phải làm đúng. Thứ nhất là gain staging: tổng nhiều stream có thể vượt mức tối đa và bị cắt đỉnh, nên mỗi stream được giảm mức trước khi cộng và có limiter ở cuối. Thứ hai là chuyển mức mượt: khi duck nhạc, mức phải giảm dần trong vài chục mili giây chứ không nhảy, nếu không sẽ nghe tiếng tách. Mixing có thể làm trong framework, ví dụ AudioFlinger, hoặc trong DSP; làm trong DSP thì trễ ổn định hơn và chime không phụ thuộc OS.</p>
+<h4>d) Processing</h4>
+<ul>
+<li><b>EQ và crossover</b>: chỉnh đáp tuyến theo cabin và chia dải tần cho từng loa.</li>
+<li><b>Time alignment</b>: trễ tín hiệu của loa gần để âm từ mọi loa tới tai người lái cùng lúc.</li>
+<li><b>Dynamic range control</b>: nén và giới hạn mức để không méo, không quá to.</li>
+<li><b>Speed-dependent volume</b>: tăng âm lượng hoặc chỉnh EQ khi xe chạy nhanh, tiếng gió và lốp lớn hơn.</li>
+<li><b>Xử lý micro</b>: echo cancellation, noise reduction, beamforming cho cuộc gọi và voice.</li>
+<li><b>Hiệu ứng</b>: âm vòm, mở rộng không gian, khử ồn chủ động nếu có.</li>
+</ul>
+<h4>e) Amplifier</h4>
+<p>Amplifier nhận tín hiệu số qua I2S/TDM hoặc A2B, đổi sang tín hiệu công suất. Trong xe chủ yếu dùng amplifier class D vì hiệu suất cao và ít tỏa nhiệt. Một hệ thống cơ bản có 4 đến 6 kênh, hệ thống cao cấp có thể trên 20 kênh (giả định minh họa). Amplifier có thể nằm trong head unit hoặc là hộp riêng gần cốp. Ngoài khuếch đại, nó còn bảo vệ quá nhiệt, quá dòng, phát hiện cắt đỉnh và kiểm tra tình trạng loa, rồi báo lên hệ thống.</p>
+<h4>f) Speaker</h4>
+<p>Loa được chia theo dải tần: tweeter cho tần cao, loa mid, woofer và subwoofer cho tần thấp. Vị trí cũng chia vai trò: loa cửa, loa taplo, loa trung tâm, loa tựa đầu cho âm riêng tư của người lái. Loa xe thường có trở kháng thấp, khoảng 2 đến 4 ohm, để lấy đủ công suất từ nguồn 12 V. Mỗi mẫu xe cần tuning riêng vì cabin, vật liệu và vị trí loa khác nhau; cùng một bộ loa đặt trong hai xe khác nhau sẽ nghe khác nhau.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Mỗi stream được gắn mục đích, định tuyến tới zone, trộn, xử lý rồi mới tới amplifier và loa. Usage quyết định routing, mixing phải giữ mức không cắt đỉnh, processing chỉnh âm theo cabin, còn amplifier và loa đưa tín hiệu ra đúng vị trí, đúng dải tần.</p></div>
+<h3 id="p2-3">2.3 Real-time constraint, latency, synchronization và quality</h3>
+<h4>a) Real-time constraint</h4>
+<p>Audio là luồng thời gian thực cứng hơn đồ họa: thiếu một buffer là nghe tiếng lụp bụp ngay, gọi là underrun. Vì vậy thread audio cần ưu tiên cao và buffer có kích thước phù hợp.</p>
+<p>Phần cứng audio đọc mẫu với tốc độ cố định và không chờ ai. Mỗi chu kỳ, phần mềm phải nạp xong buffer kế tiếp trước khi phần cứng đọc tới. Đồ họa lỡ một frame thì hình chỉ đứng thêm một nhịp; audio lỡ một chu kỳ thì tai nghe ngay. Các quy tắc thường gặp cho đường audio:</p>
+<ul>
+<li>Thread audio chạy ưu tiên thời gian thực, ví dụ <code>SCHED_FIFO</code> trên Linux, và được ghim vào lõi ít bị chen.</li>
+<li>Trong callback audio không cấp phát bộ nhớ, không chờ khóa, không đọc file, không gọi IPC đồng bộ.</li>
+<li>Thời gian xử lý mỗi chu kỳ phải đo ở trường hợp xấu nhất, có tính khi CPU đang bận vẽ bản đồ.</li>
+</ul>
+<h4>b) Latency</h4>
+<pre><code>Độ trễ của một buffer = số frame / sample rate
+480 frame / 48 kHz = 10 ms</code></pre>
+<p>Buffer nhỏ giảm trễ nhưng dễ underrun. Buffer lớn an toàn hơn nhưng trễ cao. Cuộc gọi và cảnh báo cần trễ thấp, nhạc thì chịu được trễ lớn hơn.</p>
+<figure class="fig"><svg viewBox="0 0 720 232" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Thang kích thước buffer ở 48 kHz từ 120 đến 1920 frame: buffer nhỏ trễ thấp dễ underrun, buffer lớn an toàn nhưng trễ cao"><defs><marker id="s26-f3m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Kích thước buffer: đổi độ trễ lấy độ an toàn</text><text x="40" y="54" font-size="10.5" fill="#A93226" font-weight="bold">Trễ thấp nhưng dễ underrun (tiếng lụp bụp)</text><text x="680" y="54" font-size="10.5" fill="#2A6F66" font-weight="bold" text-anchor="end">Ít underrun nhưng trễ cao</text><line x1="40" y1="78" x2="680" y2="78" stroke="#596966" stroke-width="2" marker-start="url(#s26-f3m1)" marker-end="url(#s26-f3m1)"/><circle cx="100" cy="78" r="5" fill="#2A6F66" stroke="#fff" stroke-width="1.5"/><text x="100" y="102" font-size="10.5" fill="#1c2928" text-anchor="middle">120 frame</text><text x="100" y="117" font-size="10.5" fill="#596966" text-anchor="middle">≈ 2,5 ms</text><circle cx="230" cy="78" r="5" fill="#2A6F66" stroke="#fff" stroke-width="1.5"/><text x="230" y="102" font-size="10.5" fill="#1c2928" text-anchor="middle">240 frame</text><text x="230" y="117" font-size="10.5" fill="#596966" text-anchor="middle">≈ 5 ms</text><circle cx="360" cy="78" r="7" fill="#B7791F" stroke="#fff" stroke-width="1.5"/><text x="360" y="102" font-size="10.5" fill="#1c2928" font-weight="bold" text-anchor="middle">480 frame</text><text x="360" y="117" font-size="10.5" fill="#B7791F" font-weight="bold" text-anchor="middle">≈ 10 ms</text><circle cx="490" cy="78" r="5" fill="#2A6F66" stroke="#fff" stroke-width="1.5"/><text x="490" y="102" font-size="10.5" fill="#1c2928" text-anchor="middle">960 frame</text><text x="490" y="117" font-size="10.5" fill="#596966" text-anchor="middle">≈ 20 ms</text><circle cx="620" cy="78" r="5" fill="#2A6F66" stroke="#fff" stroke-width="1.5"/><text x="620" y="102" font-size="10.5" fill="#1c2928" text-anchor="middle">1920 frame</text><text x="620" y="117" font-size="10.5" fill="#596966" text-anchor="middle">≈ 40 ms</text><rect x="40" y="136" width="300" height="50" rx="8" fill="#A64E32"/><text x="190.0" y="158.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Cuộc gọi, cảnh báo</text><text x="190.0" y="172.0" font-size="10.5" fill="#fff" text-anchor="middle">cần trễ thấp: buffer nhỏ, thread ưu tiên cao</text><rect x="380" y="136" width="300" height="50" rx="8" fill="#2A6F66"/><text x="530.0" y="158.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Nhạc, media</text><text x="530.0" y="172.0" font-size="10.5" fill="#fff" text-anchor="middle">chịu được trễ: buffer lớn, an toàn hơn</text><text x="360" y="212" font-size="10.5" fill="#596966" text-anchor="middle">Độ trễ một buffer = số frame / sample rate (ở đây 48 kHz)</text></svg><figcaption>Mỗi lần nhân đôi buffer là nhân đôi độ trễ nhưng bớt rủi ro underrun, nên mỗi loại âm cần một điểm chọn riêng.</figcaption></figure>
+<p>Độ trễ end-to-end là tổng của nhiều buffer nối tiếp: buffer của app, của framework, của HAL, của DSP và của đường truyền tới amplifier. Mỗi tầng giữ một ít để an toàn, cộng lại có thể thành vài chục mili giây.</p>
+<figure class="fig"><svg viewBox="0 0 720 236" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Chuỗi app, framework, HAL, DSP, đường truyền, amplifier và loa với độ trễ giả định cộng lại khoảng 32 ms"><defs><marker id="s26-f5m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Độ trễ cộng dồn qua các tầng buffer</text><rect x="20" y="46" width="104" height="48" rx="8" fill="#2A8C8C"/><text x="72.0" y="67.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">App</text><text x="72.0" y="81.0" font-size="10.5" fill="#fff" text-anchor="middle">10 ms</text><line x1="125" y1="70" x2="134" y2="70" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f5m1)"/><rect x="136" y="46" width="104" height="48" rx="8" fill="#174C43"/><text x="188.0" y="67.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Framework</text><text x="188.0" y="81.0" font-size="10.5" fill="#fff" text-anchor="middle">10 ms</text><line x1="241" y1="70" x2="250" y2="70" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f5m1)"/><rect x="252" y="46" width="104" height="48" rx="8" fill="#2A6F66"/><text x="304.0" y="67.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">HAL, driver</text><text x="304.0" y="81.0" font-size="10.5" fill="#fff" text-anchor="middle">5 ms</text><line x1="357" y1="70" x2="366" y2="70" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f5m1)"/><rect x="368" y="46" width="104" height="48" rx="8" fill="#A64E32"/><text x="420.0" y="67.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">DSP</text><text x="420.0" y="81.0" font-size="10.5" fill="#fff" text-anchor="middle">5 ms</text><line x1="473" y1="70" x2="482" y2="70" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f5m1)"/><rect x="484" y="46" width="104" height="48" rx="8" fill="#B7791F"/><text x="536.0" y="67.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Đường truyền</text><text x="536.0" y="81.0" font-size="10.5" fill="#fff" text-anchor="middle">1 ms</text><line x1="589" y1="70" x2="598" y2="70" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f5m1)"/><rect x="600" y="46" width="104" height="48" rx="8" fill="#1c2928"/><text x="652.0" y="67.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Amp, loa</text><text x="652.0" y="81.0" font-size="10.5" fill="#fff" text-anchor="middle">1 ms</text><text x="20" y="124" font-size="11" fill="#174C43" font-weight="bold">Tổng trên một thang thời gian (giả định minh họa):</text><rect x="20" y="134" width="200" height="26" rx="3" fill="#2A8C8C"/><rect x="220" y="134" width="200" height="26" rx="3" fill="#174C43"/><rect x="420" y="134" width="100" height="26" rx="3" fill="#2A6F66"/><rect x="520" y="134" width="100" height="26" rx="3" fill="#A64E32"/><rect x="620" y="134" width="20" height="26" rx="3" fill="#B7791F"/><rect x="640" y="134" width="20" height="26" rx="3" fill="#1c2928"/><text x="668" y="152" font-size="11.5" fill="#1c2928" font-weight="bold">≈ 32 ms</text><text x="20" y="184" font-size="10.5" fill="#1c2928">Muốn giảm trễ: thu nhỏ buffer ở tầng lớn nhất trước, thường là app và framework,</text><text x="20" y="200" font-size="10.5" fill="#1c2928">hoặc cho âm cần trễ thấp đi đường ngắn hơn, ví dụ chime trộn thẳng trong DSP.</text><text x="20" y="220" font-size="10.5" fill="#596966">Mỗi tầng buffer càng nhỏ thì càng phải chạy đúng hạn, nên rủi ro underrun tăng.</text></svg><figcaption>Trễ end-to-end là tổng buffer của mọi tầng; tầng giữ buffer lớn nhất là nơi đáng cắt trước.</figcaption></figure>
+<p>Mỗi loại âm có ngưỡng chấp nhận khác nhau. Cuộc gọi cần trễ một chiều thấp; khuyến nghị ITU-T G.114 coi dưới 150 ms là tốt cho hội thoại, và phần trong xe chỉ là một đoạn nhỏ của ngân sách đó. Âm phản hồi khi chạm nút cần đến gần như cùng lúc với hình. Chime cảnh báo cần phát nhanh sau sự kiện. Nhạc thì gần như không bị ảnh hưởng bởi trễ, miễn là không gián đoạn.</p>
+<h4>c) Synchronization</h4>
+<p>Synchronization gồm khớp tiếng với hình khi xem video, và giữ đồng hồ thống nhất giữa SoC và amplifier để không trôi mẫu. Có ba lớp đồng bộ:</p>
+<ul>
+<li><b>Tiếng với hình</b>: video ở ghế sau phải khớp môi. Người xem thường dễ nhận ra khi tiếng đến sớm hơn hình hơn là khi tiếng đến muộn, nên player thường lấy đồng hồ audio làm chuẩn và điều chỉnh hình theo.</li>
+<li><b>Giữa các thiết bị</b>: nếu SoC và amplifier chạy hai đồng hồ lệch nhau một chút, sau vài phút sẽ thừa hoặc thiếu mẫu. Cách giải là dùng chung một đồng hồ master, hoặc dùng asynchronous sample rate converter để bù.</li>
+<li><b>Giữa các kênh</b>: các loa phải phát đúng pha với nhau; lệch vài mẫu giữa hai loa đã làm thay đổi hình ảnh âm thanh.</li>
+</ul>
+<h4>d) Quality</h4>
+<p>Quality có phần đo được và phần phải nghe. Phần đo được gồm độ méo THD+N, tỷ số tín hiệu trên nhiễu, nền nhiễu khi im lặng, đáp tuyến tần số tại vị trí ghế, và với cuộc gọi thì mức khử vọng. Phần phải nghe là tuning bởi kỹ sư âm thanh trong xe thật. Chất lượng còn phụ thuộc vào thứ không nằm trong phần mềm: tiếng ù do nối đất kém, nhiễu từ bộ biến đổi điện của xe điện, rung của tấm cửa.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Kích thước buffer là phép đổi giữa độ trễ và rủi ro underrun, chọn theo từng loại âm. Đường audio phải chạy theo luật thời gian thực, giữ chung đồng hồ giữa các thiết bị, và chất lượng được kiểm bằng cả đo đạc lẫn nghe trong cabin.</p></div>
+<h3 id="p2-4">2.4 Audio focus, priority, concurrency và interruption</h3>
+<p>Audio focus là cơ chế để các app thỏa thuận ai được phát. Trên Android Automotive, CarAudioService dùng bảng tương tác giữa các usage để quyết định:</p>
+<ul>
+<li><b>Ducking</b>: nhạc nhỏ lại khi navigation nói.</li>
+<li><b>Pause</b>: podcast dừng khi có cuộc gọi đến.</li>
+<li><b>Từ chối</b>: app mới không được phát khi đang có cảnh báo khẩn.</li>
+<li><b>Song song</b>: hai zone phát hai nội dung khác nhau.</li>
+</ul>
+<h4>a) Audio focus</h4>
+<p>App xin focus trước khi phát và nói rõ kiểu xin. Trên Android có các kiểu chính: <code>AUDIOFOCUS_GAIN</code> khi muốn phát lâu dài như nhạc, <code>AUDIOFOCUS_GAIN_TRANSIENT</code> khi chỉ cần một lúc, <code>AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK</code> khi bên kia chỉ cần nhỏ lại, và <code>AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE</code> khi cần im lặng hoàn toàn, ví dụ lúc ghi âm giọng nói. App đang giữ focus nhận thông báo mất focus vĩnh viễn hay tạm thời và phải tự dừng, tự nhỏ lại. Trong Android Automotive, focus được quản lý riêng cho từng audio zone.</p>
+<h4>b) Priority</h4>
+<p>Priority phải rõ: cảnh báo an toàn cao nhất, rồi cuộc gọi, navigation, media. Android Automotive có các usage hệ thống như <code>USAGE_EMERGENCY</code>, <code>USAGE_SAFETY</code>, <code>USAGE_VEHICLE_STATUS</code> và <code>USAGE_ANNOUNCEMENT</code>; chỉ app hệ thống mới được dùng. Âm an toàn quan trọng nhất thường không dựa vào focus của Android, mà được phát ở đường riêng như đã nói ở 2.1, vì focus chỉ là thỏa thuận giữa các app và một app lỗi có thể không tuân thủ.</p>
+<h4>c) Concurrency</h4>
+<p>Concurrency là câu hỏi những âm nào được phép kêu cùng lúc. Trong một zone, nhạc và navigation có thể cùng phát nếu nhạc được duck. Cuộc gọi và voice assistant thì không nên chồng nhau. Giữa các zone, ghế sau xem phim trong khi ghế trước nghe navigation là hợp lệ. Các luật này được viết thành bảng tương tác giữa từng cặp usage:</p>
+<div class="table-scroll"><table>
+<tr><th>Đang phát \ Mới đến</th><th>Navigation</th><th>Cuộc gọi</th><th>Cảnh báo an toàn</th></tr>
+<tr><td>Media</td><td>Media duck</td><td>Media pause</td><td>Media tắt tiếng hoặc duck sâu</td></tr>
+<tr><td>Navigation</td><td>Câu mới thay câu cũ</td><td>Navigation chờ hoặc duck</td><td>Navigation dừng</td></tr>
+<tr><td>Cuộc gọi</td><td>Navigation duck theo cấu hình hoặc bị chờ</td><td>Cuộc gọi thứ hai chờ</td><td>Chime phát chồng, cuộc gọi duck</td></tr>
+</table></div>
+<p>Bảng trên chỉ là ví dụ (giả định minh họa); mỗi OEM tự định bảng của mình.</p>
+<h4>d) Interruption</h4>
+<p>Interruption cần có đường quay lại: hết cuộc gọi thì nhạc tiếp tục đúng chỗ. Một số trường hợp cần định trước:</p>
+<ul>
+<li><b>Ngắt lồng nhau</b>: đang gọi thì có navigation, rồi có cảnh báo. Khi từng âm kết thúc, hệ thống phải trả focus theo đúng thứ tự.</li>
+<li><b>Focus trì hoãn</b>: app xin focus lúc đang có cuộc gọi có thể được hẹn nhận sau, qua <code>AUDIOFOCUS_REQUEST_DELAYED</code>, thay vì bị từ chối hẳn.</li>
+<li><b>Người dùng chủ động</b>: nếu người dùng tự bấm dừng nhạc trong lúc gọi, hết cuộc gọi nhạc không được tự phát lại.</li>
+<li><b>Ngắt do hệ thống</b>: IVI khởi động lại hoặc chuyển trạng thái nguồn thì nhớ nguồn đang phát để khôi phục sau.</li>
+</ul>
+<figure class="fig"><svg viewBox="0 0 720 252" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Bậc ưu tiên từ cảnh báo an toàn tới media, và bốn luật xử lý: ducking, pause, từ chối, song song"><defs><marker id="s26-f4m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Bậc ưu tiên và luật xử lý khi nhiều app tranh loa</text><text x="20" y="44" font-size="10" fill="#596966">Ưu tiên cao</text><rect x="20" y="52" width="190" height="36" rx="8" fill="#A93226"/><text x="115.0" y="74.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">1. Cảnh báo an toàn</text><rect x="20" y="96" width="190" height="36" rx="8" fill="#A64E32"/><text x="115.0" y="118.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">2. Cuộc gọi</text><rect x="20" y="140" width="190" height="36" rx="8" fill="#2A8C8C"/><text x="115.0" y="162.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">3. Navigation</text><rect x="20" y="184" width="190" height="36" rx="8" fill="#2A6F66"/><text x="115.0" y="206.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">4. Media</text><text x="20" y="240" font-size="10" fill="#596966">Ưu tiên thấp</text><line x1="222" y1="56" x2="222" y2="222" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f4m1)"/><text x="250" y="44" font-size="10" fill="#596966">Tình huống</text><text x="486" y="44" font-size="10" fill="#596966">Kết quả</text><rect x="250" y="52" width="210" height="36" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="355.0" y="74.0" font-size="10.5" fill="#1c2928" text-anchor="middle">Navigation nói khi nhạc đang phát</text><line x1="461" y1="70" x2="482" y2="70" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f4m1)"/><rect x="484" y="52" width="216" height="36" rx="8" fill="#174C43"/><text x="496" y="74" font-size="11" fill="#fff"><tspan font-weight="bold">Ducking</tspan>: nhạc nhỏ lại</text><rect x="250" y="96" width="210" height="36" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="355.0" y="118.0" font-size="10.5" fill="#1c2928" text-anchor="middle">Cuộc gọi đến khi nghe podcast</text><line x1="461" y1="114" x2="482" y2="114" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f4m1)"/><rect x="484" y="96" width="216" height="36" rx="8" fill="#174C43"/><text x="496" y="118" font-size="11" fill="#fff"><tspan font-weight="bold">Pause</tspan>: hết gọi thì phát tiếp</text><rect x="250" y="140" width="210" height="36" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="355.0" y="162.0" font-size="10.5" fill="#1c2928" text-anchor="middle">App mới xin phát lúc có cảnh báo</text><line x1="461" y1="158" x2="482" y2="158" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f4m1)"/><rect x="484" y="140" width="216" height="36" rx="8" fill="#174C43"/><text x="496" y="162" font-size="11" fill="#fff"><tspan font-weight="bold">Từ chối</tspan>: cảnh báo không bị chen</text><rect x="250" y="184" width="210" height="36" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="355.0" y="206.0" font-size="10.5" fill="#1c2928" text-anchor="middle">Hai zone, hai nội dung khác nhau</text><line x1="461" y1="202" x2="482" y2="202" stroke="#596966" stroke-width="1.4" marker-end="url(#s26-f4m1)"/><rect x="484" y="184" width="216" height="36" rx="8" fill="#174C43"/><text x="496" y="206" font-size="11" fill="#fff"><tspan font-weight="bold">Song song</tspan>: mỗi zone phát riêng</text></svg><figcaption>Bậc ưu tiên cố định quyết định ai thắng, còn luật duck, pause, từ chối hay song song quyết định bên thua phải làm gì.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Focus và priority biến nhiều app tranh loa thành các luật duck, pause, từ chối hoặc phát song song. Bảng concurrency định âm nào được chồng nhau, còn luật interruption bảo đảm mỗi âm bị ngắt được trả lại đúng thứ tự và đúng ý người dùng.</p></div>
+<h3 id="p2-5">2.5 Networked audio, diagnostics và degraded mode</h3>
+<h4>a) Networked audio</h4>
+<p>Khi loa và micro nằm rải khắp xe, audio đi qua mạng. A2B truyền audio số và điều khiển trên một đôi dây xoắn với trễ thấp, cố định. AVB/TSN trên Ethernet dùng gPTP để đồng bộ đồng hồ và dành băng thông cho stream.</p>
+<p>A2B là công nghệ của Analog Devices. Các node nối thành chuỗi, một node chủ cấp đồng hồ cho cả chuỗi, nên mọi micro và loa trên chuỗi cùng nhịp mẫu. Dây có thể cấp cả nguồn cho micro. Với AVB/TSN, IEEE 802.1AS lo đồng bộ thời gian, credit-based shaper theo IEEE 802.1Qav dành băng thông cho stream audio, còn IEEE 1722 đóng gói mẫu audio kèm thời điểm phát. Nhờ thời điểm phát này, nhiều amplifier ở các vị trí khác nhau phát cùng một mẫu cùng lúc.</p>
+<div class="table-scroll"><table>
+<tr><th>Cách nối</th><th>Ưu điểm</th><th>Hạn chế</th></tr>
+<tr><td>Dây analog tới từng loa</td><td>Đơn giản, không cần phần mềm mạng.</td><td>Nhiều dây nặng, dễ nhiễm nhiễu, khó mở rộng.</td></tr>
+<tr><td>I2S/TDM trên bo mạch</td><td>Trễ rất thấp, dùng giữa SoC và amplifier gần nhau.</td><td>Chỉ đi được khoảng cách ngắn.</td></tr>
+<tr><td>A2B</td><td>Dây nhẹ, trễ cố định, đồng bộ sẵn, hợp với dãy micro.</td><td>Mạng riêng cho audio, băng thông có giới hạn.</td></tr>
+<tr><td>AVB/TSN trên Ethernet</td><td>Dùng chung hạ tầng Ethernet của kiến trúc zonal, mở rộng tốt.</td><td>Cấu hình phức tạp, cần switch hỗ trợ TSN.</td></tr>
+</table></div>
+<figure class="fig"><svg viewBox="0 0 720 262" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="A2B nối các node micro và loa thành chuỗi có đồng hồ từ node chủ; AVB/TSN dùng switch Ethernet, gPTP và thời điểm phát"><defs></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Hai cách đưa audio qua mạng trong xe</text><rect x="12" y="38" width="344" height="214" rx="10" fill="#E5EFEB"/><text x="26" y="58" font-size="11.5" fill="#174C43" font-weight="bold">A2B: các node nối thành chuỗi</text><rect x="22" y="72" width="72" height="46" rx="8" fill="#174C43"/><text x="58.0" y="92.5" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Node chủ</text><text x="58.0" y="105.5" font-size="9.5" fill="#fff" text-anchor="middle">cạnh amp</text><line x1="95" y1="95" x2="105" y2="95" stroke="#1c2928" stroke-width="2"/><rect x="106" y="72" width="72" height="46" rx="8" fill="#2A6F66"/><text x="142.0" y="92.5" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Micro 1</text><text x="142.0" y="105.5" font-size="9.5" fill="#fff" text-anchor="middle">trần trước</text><line x1="179" y1="95" x2="189" y2="95" stroke="#1c2928" stroke-width="2"/><rect x="190" y="72" width="72" height="46" rx="8" fill="#2A6F66"/><text x="226.0" y="92.5" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Micro 2</text><text x="226.0" y="105.5" font-size="9.5" fill="#fff" text-anchor="middle">trần sau</text><line x1="263" y1="95" x2="273" y2="95" stroke="#1c2928" stroke-width="2"/><rect x="274" y="72" width="72" height="46" rx="8" fill="#2A6F66"/><text x="310.0" y="92.5" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Loa phụ</text><text x="310.0" y="105.5" font-size="9.5" fill="#fff" text-anchor="middle">tựa đầu</text><text x="26" y="144" font-size="10.5" fill="#1c2928">• một đôi dây xoắn mang audio, điều khiển</text><text x="26" y="160" font-size="10.5" fill="#1c2928">• và có thể cả nguồn cho micro</text><text x="26" y="176" font-size="10.5" fill="#1c2928">• node chủ cấp đồng hồ: cả chuỗi cùng nhịp mẫu</text><text x="26" y="192" font-size="10.5" fill="#1c2928">• trễ cố định, biết trước</text><rect x="26" y="214" width="316" height="28" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="184.0" y="232.0" font-size="10.5" fill="#1c2928" text-anchor="middle">Hợp với: dãy micro, loa phụ, xe ít dây</text><rect x="366" y="38" width="344" height="214" rx="10" fill="#E5EFEB"/><text x="380" y="58" font-size="11.5" fill="#174C43" font-weight="bold">AVB/TSN: qua switch Ethernet</text><rect x="468" y="68" width="140" height="36" rx="8" fill="#174C43"/><text x="538.0" y="83.5" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">CDC</text><text x="538.0" y="96.5" font-size="9.5" fill="#fff" text-anchor="middle">gPTP grandmaster</text><rect x="468" y="124" width="140" height="30" rx="8" fill="#A64E32"/><text x="538.0" y="143.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Switch TSN</text><rect x="382" y="174" width="140" height="36" rx="8" fill="#2A6F66"/><text x="452.0" y="189.5" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Amp zone trước</text><text x="452.0" y="202.5" font-size="9.5" fill="#fff" text-anchor="middle">phát theo thời điểm</text><rect x="556" y="174" width="140" height="36" rx="8" fill="#2A6F66"/><text x="626.0" y="189.5" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Amp zone sau</text><text x="626.0" y="202.5" font-size="9.5" fill="#fff" text-anchor="middle">phát theo thời điểm</text><line x1="538" y1="105" x2="538" y2="123" stroke="#1c2928" stroke-width="2"/><path d="M500,155 L452,173" stroke="#1c2928" stroke-width="2" fill="none"/><path d="M576,155 L626,173" stroke="#1c2928" stroke-width="2" fill="none"/><text x="538" y="228" font-size="10" fill="#1c2928" text-anchor="middle">802.1AS đồng bộ · 802.1Qav dành băng thông</text><text x="538" y="243" font-size="10" fill="#1c2928" text-anchor="middle">1722 đóng gói mẫu kèm thời điểm phát</text></svg><figcaption>A2B có đồng hồ chung theo chuỗi dây; AVB/TSN đạt cùng mục tiêu bằng đồng bộ gPTP và thời điểm phát trên Ethernet dùng chung.</figcaption></figure>
+<h4>b) Diagnostics</h4>
+<p>Diagnostics kiểm tra loa hở mạch, chập, quá nhiệt amplifier, mất kết nối micro, và lưu lỗi dưới dạng DTC cho xưởng dịch vụ.</p>
+<ul>
+<li><b>Chẩn đoán tải lúc khởi động</b>: amplifier đo trở kháng từng kênh để phát hiện loa hở, chập xuống mass hoặc chập nguồn.</li>
+<li><b>Giám sát lúc chạy</b>: nhiệt độ, dòng, cắt đỉnh; amplifier tự giảm công suất trước khi phải tắt.</li>
+<li><b>Micro</b>: kiểm tra phân cực, tín hiệu bị kẹt ở một mức, nhiễu bất thường.</li>
+<li><b>Đường truyền</b>: mất node A2B, mất khóa đồng hồ, mất stream AVB.</li>
+<li><b>Kiểm tra cuối dây chuyền</b>: phát tín hiệu quét tần số và đo bằng micro để phát hiện loa lắp sai cực hoặc sai vị trí.</li>
+</ul>
+<p>Lỗi được báo về CDC, lưu thành DTC và đọc qua UDS tại xưởng. Lỗi ảnh hưởng tới cảnh báo an toàn còn cần báo cho người lái, ví dụ hiện thông báo trên cluster.</p>
+<h4>c) Degraded mode</h4>
+<p>Degraded mode định nghĩa hành vi khi hỏng:</p>
+<ul>
+<li>Một loa hỏng thì chuyển chime sang loa khác.</li>
+<li>IVI khởi động lại thì cluster vẫn phát được cảnh báo.</li>
+<li>Mất mạng tới amplifier thì dùng buzzer dự phòng nếu có.</li>
+<li>Amplifier quá nhiệt thì giảm âm lượng giải trí trước, giữ lại mức cho chime.</li>
+<li>Mất micro trong cuộc gọi thì chuyển sang micro còn lại của dãy, chất lượng giảm nhưng cuộc gọi tiếp tục.</li>
+</ul>
+<p>Mỗi chế độ suy giảm phải có điều kiện vào, điều kiện ra và thông báo cho người dùng khi cần. Trong lúc khởi động xe cũng là một dạng suy giảm: Android chưa lên nhưng chime chưa thắt dây an toàn đã phải phát được.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Audio qua mạng cần đồng bộ đồng hồ, cần chẩn đoán từng loa, và cần đường dự phòng cho cảnh báo. A2B hợp với chuỗi micro và loa trễ cố định, AVB/TSN hợp với hạ tầng Ethernet zonal; chẩn đoán và chế độ suy giảm phải ưu tiên giữ âm cảnh báo.</p></div>
+<h3 id="p2-6">2.6 Mối liên hệ giữa user experience, safety notification và system resource</h3>
+<p>Ba yếu tố này kéo nhau. UX muốn âm hay, nhiều hiệu ứng, nhiều zone. Safety muốn cảnh báo luôn nghe rõ và kịp lúc. Resource là DSP, CPU, băng thông có hạn.</p>
+<figure class="fig"><svg viewBox="0 0 720 262" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Tam giác user experience, safety notification và system resource với luật cho từng cặp"><defs></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Ba lực kéo nhau trong hệ thống audio</text><path d="M360,92 L170,186" stroke="#596966" stroke-width="1.6" fill="none"/><path d="M360,92 L550,186" stroke="#596966" stroke-width="1.6" fill="none"/><path d="M260,210 L460,210" stroke="#596966" stroke-width="1.6" fill="none"/><rect x="260" y="44" width="200" height="48" rx="8" fill="#A93226"/><text x="360.0" y="65.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Safety notification</text><text x="360.0" y="79.0" font-size="10.5" fill="#fff" text-anchor="middle">chime, cảnh báo va chạm</text><rect x="70" y="186" width="190" height="48" rx="8" fill="#2A8C8C"/><text x="165.0" y="207.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">User experience</text><text x="165.0" y="221.0" font-size="10.5" fill="#fff" text-anchor="middle">âm hay, nhiều zone, hiệu ứng</text><rect x="460" y="186" width="190" height="48" rx="8" fill="#174C43"/><text x="555.0" y="207.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">System resource</text><text x="555.0" y="221.0" font-size="10.5" fill="#fff" text-anchor="middle">DSP, CPU, băng thông, điện</text><text x="232" y="128" font-size="10.5" fill="#1c2928" font-weight="bold" text-anchor="end">rõ nhưng</text><text x="232" y="143" font-size="10.5" fill="#1c2928" text-anchor="end">không gây khó chịu</text><text x="488" y="128" font-size="10.5" fill="#1c2928" font-weight="bold">giữ chỗ trước,</text><text x="488" y="143" font-size="10.5" fill="#1c2928">đường phát độc lập</text><text x="360" y="228" font-size="10.5" fill="#1c2928" font-weight="bold" text-anchor="middle">cắt giảm theo</text><text x="360" y="243" font-size="10.5" fill="#1c2928" text-anchor="middle">thứ tự định trước</text></svg><figcaption>Mỗi cạnh của tam giác cần một luật riêng, và cạnh nối với safety luôn được giải quyết trước.</figcaption></figure>
+<div class="table-scroll"><table>
+<tr><th>Cặp quan hệ</th><th>Mâu thuẫn</th><th>Cách xử lý thường gặp</th></tr>
+<tr><td>UX và safety notification</td><td>Cảnh báo phải nghe rõ, nhưng kêu quá to, quá nhiều sẽ làm người lái khó chịu và tắt tính năng.</td><td>Thiết kế âm cảnh báo theo mức khẩn cấp; duck nhạc thay vì tắt hẳn; phát từ hướng của mối nguy.</td></tr>
+<tr><td>Safety notification và resource</td><td>Cảnh báo cần tài nguyên ngay cả lúc hệ thống bận nhất hoặc đang khởi động.</td><td>Giữ chỗ DSP và thời gian xử lý cho chime; đường phát độc lập với Android; chime sẵn sàng sớm sau khi bật xe.</td></tr>
+<tr><td>UX và resource</td><td>Nhiều zone, âm vòm, sample rate cao đều tốn DSP, CPU, bộ nhớ và điện.</td><td>Thứ tự cắt giảm định trước: tắt hiệu ứng trước, giảm zone phụ sau, không đụng tới cuộc gọi và cảnh báo.</td></tr>
+</table></div>
+<p>Một số âm cảnh báo còn có yêu cầu pháp lý, như nhắc thắt dây an toàn theo UN R16 hoặc âm cảnh báo người đi đường của xe điện chạy chậm theo UN R138. Những âm này không được để trải nghiệm hay tải hệ thống làm mất.</p>
+<p>Ví dụ: hiệu ứng âm thanh vòm chiếm phần lớn DSP. Khi có cảnh báo va chạm, hệ thống phải bảo đảm chime vẫn được mix và phát trong ngân sách thời gian, kể cả khi cần tắt bớt hiệu ứng.</p>
+<p>Cách cân bằng: dành trước tài nguyên cho đường cảnh báo, đặt chime ở mức ưu tiên không thể bị app chặn, và kiểm tra tải xấu nhất bằng test đồng thời nhạc, cuộc gọi, navigation và cảnh báo.</p>
+<figure class="fig"><svg viewBox="0 0 720 232" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Ngân sách DSP: phần cho chime được giữ chỗ trước; khi có cảnh báo, chime dùng phần đó và hiệu ứng âm vòm bị tắt bớt"><defs></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Giữ chỗ cho cảnh báo trước, UX dùng phần còn lại</text><text x="150" y="50" font-size="10.5" fill="#596966">Ngân sách DSP</text><text x="690" y="50" font-size="10.5" fill="#596966" text-anchor="end">100%</text><text x="20" y="80" font-size="11.5" fill="#174C43" font-weight="bold">Bình thường</text><rect x="150" y="60" width="100" height="34" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.2" stroke-dasharray="5 4"/><text x="200.0" y="81.0" font-size="10.5" fill="#A93226" font-weight="bold" text-anchor="middle">chime: giữ chỗ</text><rect x="254" y="60" width="128" height="34" rx="8" fill="#2A6F66"/><text x="318.0" y="81.0" font-size="10.5" fill="#fff" font-weight="bold" text-anchor="middle">mix nhạc, call, nav</text><rect x="386" y="60" width="304" height="34" rx="8" fill="#2A8C8C"/><text x="538.0" y="81.0" font-size="10.5" fill="#fff" font-weight="bold" text-anchor="middle">hiệu ứng âm vòm</text><text x="20" y="132" font-size="11.5" fill="#A93226" font-weight="bold">Có cảnh báo</text><text x="20" y="146" font-size="10.5" fill="#596966">va chạm</text><rect x="150" y="116" width="100" height="34" rx="8" fill="#A93226"/><text x="200.0" y="137.0" font-size="10.5" fill="#fff" font-weight="bold" text-anchor="middle">chime đang phát</text><rect x="254" y="116" width="128" height="34" rx="8" fill="#2A6F66"/><text x="318.0" y="137.0" font-size="10.5" fill="#fff" font-weight="bold" text-anchor="middle">mix nhạc, call, nav</text><rect x="386" y="116" width="170" height="34" rx="8" fill="#2A8C8C"/><text x="471.0" y="137.0" font-size="10.5" fill="#fff" font-weight="bold" text-anchor="middle">âm vòm còn lại</text><rect x="560" y="116" width="130" height="34" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><text x="625.0" y="137.0" font-size="10.5" fill="#596966" font-weight="bold" text-anchor="middle">hiệu ứng tắt bớt</text><text x="20" y="188" font-size="10.5" fill="#1c2928">Phần đỏ được dành trước và không app nào chặn được.</text><text x="20" y="206" font-size="10.5" fill="#1c2928">Kiểm tra bằng test tải xấu nhất: nhạc, cuộc gọi, navigation và cảnh báo cùng lúc.</text></svg><figcaption>Đường cảnh báo được giữ chỗ trong ngân sách DSP trước, nên khi cần thì hiệu ứng giải trí phải nhường.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Trải nghiệm chỉ được dùng phần tài nguyên còn lại sau khi cảnh báo an toàn đã được giữ chỗ. Mỗi cặp UX, safety, resource cần một luật rõ, và thứ tự cắt giảm phải được định trước và kiểm bằng test tải xấu nhất.</p></div>
+<div class="next-prev"><a href="25_Research_Graphics_Display_Architecture.html">← 25 · Graphics &amp; Display Architecture</a><a href="28_Research_Cross-domain_Runtime_Architecture.html">28 · Cross-domain Runtime Architecture →</a></div>
+</article>
+  <footer class="article-footer"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></footer>
+  </main>
+</div>
+<script src="../assets/glossary-data.js"></script>
+<script src="../assets/term-glossary.js" data-unit="C.3"></script>
+</body>
+</html>

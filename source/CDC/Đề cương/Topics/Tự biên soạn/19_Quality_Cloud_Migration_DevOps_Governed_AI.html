@@ -1,0 +1,1158 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="../assets/site-ui.js" data-site-ui></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đề cương · Quality, Cloud/Migration, DevOps &amp; Governed AI</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f3f0e8;
+  --surface: #f9f7f1;
+  --ink: #2a3431;
+  --muted: #62706b;
+  --line: #dbd7cb;
+  --forest: #174c43;
+  --forest-soft: #e3ece6;
+  --copper: #a64e32;
+  --gold: #e2bd69;
+  --code: #ebe7dd;
+  --focus: #b34d31;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--copper); }
+a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.reader-header {
+  min-height: 74px;
+  padding: 12px clamp(20px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--forest);
+  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.reader-header a { color: white; text-decoration: none; }
+.reader-header nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; font-size: 0.9rem; }
+
+/* Navigation buttons: same shape/order as the AI library (secondary links | ← Quay lại | ⌂ Trang chủ) */
+.nav-link { padding: 6px 4px; color: #d4e4de; font-weight: 500; white-space: nowrap; }
+.reader-header a.nav-link:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+.nav-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(255, 255, 255, 0.3); }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.nav-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.nav-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.nav-ico { flex: none; width: 16px; height: 16px; }
+.reader-header .nav-btn { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+.reader-header .nav-btn:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.reader-header .nav-btn--primary { color: var(--forest); border-color: var(--gold); background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); }
+.reader-header .nav-btn--primary:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.article-footer .nav-btn { color: var(--forest); border-color: var(--forest); background: transparent; }
+.article-footer .nav-btn:hover { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary:hover { border-color: var(--copper); background: var(--copper); }
+.reader-header nav a:hover { color: var(--gold); }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; line-height: 1.12; }
+.brand small { color: #d4e4de; font-size: 0.75rem; font-weight: 400; }
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  border-radius: 2px;
+}
+
+.reader-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+
+.contents-panel {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 32px 20px 28px clamp(20px, 4vw, 48px);
+  border-right: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--copper);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contents-panel ul { margin: 0; padding: 0; list-style: none; }
+.contents-panel li { margin: 0; padding: 0; }
+.contents-panel a {
+  display: block;
+  padding: 7px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.contents-panel a:hover { color: var(--forest); text-decoration: underline; }
+.contents-panel .toc-level-3 { padding-left: 14px; border-left: 1px solid var(--line); }
+
+.article {
+  min-width: 0;
+  padding: 26px clamp(22px, 5vw, 76px) 70px;
+}
+
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+article { max-width: 900px; }
+article h1, article h2, article h3, .library-intro h1 {
+  color: light-dark(#26403d, #c5e8e4);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  line-height: 1.18;
+}
+article h1 { margin: 0 0 28px; font-size: 2.35rem; }
+article h2 {
+  margin: 48px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+}
+article h3 { margin: 32px 0 12px; color: var(--forest); font-size: 1.24rem; }
+article p { margin: 0 0 18px; }
+article li { margin: 6px 0; padding-left: 4px; }
+article ul, article ol { margin: 0 0 22px; padding-left: 26px; }
+article strong { color: light-dark(#26403c, #c3e9e3); }
+
+blockquote {
+  margin: 22px 0;
+  padding: 15px 20px;
+  border-left: 4px solid var(--copper);
+  background: light-dark(#f8eee8, #31231a);
+  color: light-dark(#543e35, #d4c2bb);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+.table-scroll { width: 100%; margin: 22px 0 26px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.92rem; }
+th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--forest-soft); color: light-dark(#26403c, #c3e9e3); font-weight: 700; }
+tr:nth-child(even) td { background: light-dark(#f9f7f2, #2c2918); }
+
+code, pre { font-family: Consolas, "Courier New", monospace; }
+code { padding: 0.1em 0.28em; background: var(--code); color: light-dark(#24433e, #c3dfda); font-size: 0.9em; }
+pre {
+  max-width: 100%;
+  margin: 20px 0 26px;
+  padding: 18px 20px;
+  overflow: auto;
+  border-left: 3px solid var(--forest);
+  background: light-dark(#e9eeea, #222c25);
+  color: light-dark(#26403d, #d0e6e4);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; color: inherit; }
+hr { margin: 36px 0; border: 0; border-top: 1px solid var(--line); }
+
+.audit-item { margin: 14px 0; }
+
+.audit-item details {
+  margin-top: 9px;
+  border-left: 3px solid #86a99e;
+  background: var(--forest-soft);
+}
+.audit-item summary {
+  padding: 9px 13px;
+  color: var(--forest);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.answer-body { padding: 0 14px 10px; }
+.answer-body p { margin: 4px 0 10px; }
+.answer-body ul { margin: -4px 0 12px; padding-left: 22px; }
+.answer-body li { margin: 3px 0; line-height: 1.55; }
+/* Key questions: map 1-1 to the Learning Plan "Unit Detail" requirements of the topic */
+details.audit-reveal { margin: 8px 0 18px; border-left: 3px solid #86a99e; background: var(--forest-soft); }
+details.audit-reveal > summary { padding: 9px 13px; color: var(--forest); cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.audit-key-intro { margin: 18px 0 28px; padding: 16px 20px 14px; border: 1px solid light-dark(#e6cf95, #62542f); border-left: 6px solid var(--gold); background: light-dark(#fff7e0, #312b1a); }
+.audit-key-intro p { margin: 0 0 8px; }
+.audit-key-intro ol { margin: 0; padding-left: 22px; }
+.audit-key-intro li { margin: 4px 0; }
+.audit-key-intro .req-tag { color: var(--muted); font-size: 0.8rem; }
+.audit-question-heading.audit-key { padding: 10px 14px; border-left: 6px solid var(--copper); background: light-dark(#fbeee4, #31251a); }
+.audit-question-heading.audit-key::after {
+  content: "Tr\1ECDng t\00E2m";
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--copper);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+details.audit-key-reveal, .audit-item details.audit-key-reveal { border-left: 6px solid var(--copper); background: light-dark(#f9f7f2, #2c2317); }
+details.audit-key-reveal > summary, .audit-item details.audit-key-reveal summary { color: var(--copper); }
+
+.article-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 54px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.library-main { width: min(1120px, 100%); margin: 0 auto; padding: 50px clamp(20px, 5vw, 72px) 76px; }
+.library-intro { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+.library-intro h1 { margin: 0; font-size: 3rem; }
+.library-intro h1 span { color: var(--copper); }
+
+.search-label { display: block; margin: 0 0 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#topic-search {
+  width: min(520px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-intro { max-width: 740px; color: var(--muted); }
+.qa-filter { margin: 26px 0 34px; }
+.qa-filter label { display: block; margin-bottom: 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#qa-search {
+  width: min(640px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-filter p { margin: 7px 0 0; color: var(--muted); font-size: 0.82rem; }
+.qa-topic { margin-top: 40px; }
+.qa-topic-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.qa-topic-heading h2 { flex: 1; }
+.qa-topic-heading a { flex: none; font-size: 0.86rem; }
+.qa-question[hidden], .qa-topic[hidden] { display: none; }
+.search-status { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.topic-list { margin-top: 8px; border-top: 1px solid var(--line); }
+.topic-link {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 15px;
+  min-height: 72px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topic-link:hover { background: light-dark(#e8eee9, #222d23); color: var(--forest); }
+.topic-number { color: var(--copper); font-family: Georgia, serif; font-size: 1.1rem; }
+.topic-title { font-weight: 650; }
+.topic-arrow { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.source-note { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.87rem; }
+
+@media (max-width: 860px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .contents-panel {
+    position: static;
+    max-height: none;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contents-panel nav { max-height: 210px; overflow: auto; }
+  .article { padding-top: 22px; }
+}
+
+@media (max-width: 560px) {
+  .reader-header { align-items: flex-start; padding: 12px 17px; }
+  .reader-header { flex-wrap: wrap; }
+  .reader-header nav { gap: 6px 8px; }
+  .nav-sep { display: none; }
+  .nav-btn { min-height: 34px; padding: 6px 12px; }
+  .library-intro h1 { font-size: 2.25rem; }
+  article h1 { font-size: 1.9rem; }
+  article h2 { font-size: 1.4rem; }
+  .topic-link { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .topic-arrow { display: none; }
+  .qa-topic-heading { align-items: flex-start; flex-direction: column; gap: 0; }
+  th, td { min-width: 130px; padding: 9px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* Highlight non-AI (CDC/SDV) topics in the library index */
+.topic-link.topic-core { background: var(--forest-soft); box-shadow: inset 5px 0 0 var(--forest); }
+.topic-link.topic-core .topic-title { color: var(--forest); }
+.topic-link.topic-core .topic-number { color: var(--forest); font-weight: 700; }
+.topic-link.topic-core:hover { background: light-dark(#d4e5de, #233930); }
+.topic-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 18px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.legend-swatch { display: inline-block; width: 18px; height: 14px; margin-right: -10px; border: 1px solid var(--line); vertical-align: -2px; }
+.legend-swatch.legend-core { background: var(--forest-soft); box-shadow: inset 4px 0 0 var(--forest); }
+
+/* Non-learning items (assignment / review / OJT) among CDC/SDV topics: red text */
+.topic-link.topic-task .topic-title, .topic-link.topic-task .topic-number { color: light-dark(#b3261e, #e9847e); }
+.topic-link.topic-task:hover .topic-title { color: light-dark(#8c1d18, #ed9794); }
+.legend-task { color: light-dark(#b3261e, #e9847e); font-weight: 600; }
+/* Study-time note per topic (from Fast_Track_CDC_Weekly_Checklist.xlsx) */
+.topic-time { display: block; margin-top: 3px; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.topic-link.topic-task .topic-time { color: light-dark(#b3261e, #e9847e); opacity: 0.85; }
+.legend-time { flex-basis: 100%; color: var(--muted); }
+
+/* ---- Thuật ngữ: bấm để xem giải nghĩa ---- */
+.gl {
+  border-bottom: 1.5px dotted #6f9a8e;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color .12s;
+}
+.gl:hover { background: var(--forest-soft); }
+.gl:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.gl.is-open { background: var(--forest-soft); border-bottom-style: solid; border-bottom-color: var(--forest); }
+.gl-pop {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(28, 41, 40, .16);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gl-term { display: block; margin-bottom: 2px; color: var(--forest); font-weight: 700; font-size: .82rem; }
+.gl-hint { color: var(--muted); font-size: .85rem; }
+.gl-hint .gl-demo { border-bottom: 1.5px dotted #6f9a8e; }
+
+/* ---- Checklist đầu ra (tick được, lưu trên trình duyệt) ---- */
+.checklist { margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 16px 14px; }
+.checklist > h3 { margin-top: 18px; }
+.cl-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--muted); font-size: .9rem; }
+.cl-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 99px; background: var(--forest-soft); overflow: hidden; }
+.cl-bar > i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s; }
+.cl-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.cl-item { padding: 9px 0 10px; border-top: 1px dashed var(--line); }
+.cl-item:first-child { border-top: 0; }
+.cl-item > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.cl-item input[type="checkbox"] { margin-top: .35em; width: 17px; height: 17px; accent-color: var(--forest); flex: none; }
+.cl-item.is-done > label > span { color: var(--muted); text-decoration: line-through; text-decoration-color: light-dark(#9fb3ad, #495c56); }
+.cl-pass, .cl-src { margin: 4px 0 0 27px; font-size: .9rem; }
+.cl-pass { color: var(--ink); }
+.cl-src { color: var(--muted); font-size: .82rem; }
+.cl-reset { margin-left: auto; border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 2px 9px; color: var(--muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.cl-reset:hover { color: var(--copper); border-color: var(--copper); }
+
+/* Lesson style for CDC/SDV topics — mirrors the teaching layout of the AI library
+   (bài đọc: hook → giải thích → ví dụ → vì sao quan trọng → nghiền ngẫm → thực hành → tự kiểm)
+   while keeping the CDC palette of reader.css. Load AFTER reader.css. */
+:root {
+  --teal: #2A8C8C; --teal-soft: #EEF7F6;
+  --violet: #6A4FC0; --violet-soft: #F5F2FD;
+  --green: #2E7D4F; --green-soft: #EFF8F2;
+  --amber: #B7791F; --amber-soft: #FFF7E8;
+  --red: #A93226; --red-soft: #FCEFEC;
+}
+
+body.lesson-page article { max-width: 800px; }
+body.lesson-page article p, body.lesson-page article li { line-height: 1.75; }
+body.lesson-page article h2 { margin-top: 44px; }
+body.lesson-page article h2 .sec-no { color: var(--copper); font-weight: 700; margin-right: 6px; }
+
+/* Bài nav (pill row, like .tapnav in the AI library) */
+.bai-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+.bai-nav a { font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--surface); }
+.bai-nav a:hover { border-color: var(--forest); color: var(--forest); }
+.bai-nav a.cur { background: var(--forest); border-color: var(--forest); color: #fff; }
+.bai-nav .grp { font-size: 0.7rem; font-weight: 700; color: var(--copper); align-self: center; margin: 0 2px 0 6px; letter-spacing: .06em; }
+
+.lesson-kicker { margin: 0 0 6px; color: var(--copper); font-size: 0.78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+body.lesson-page article h1 { margin-bottom: 10px; }
+.lesson-meta { margin: 0 0 18px; font-weight: 600; color: light-dark(#2c4b46, #bfdad5); font-size: 0.95rem; }
+
+/* Bản đồ bài — chuỗi khái niệm */
+.roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 24px; font-size: 0.86rem; }
+.roadmap span { background: var(--forest-soft); color: var(--forest); border: 1px solid light-dark(#c9ddd5, #314e42); border-radius: 8px; padding: 5px 10px; font-weight: 600; }
+.roadmap i { color: var(--muted); font-style: normal; }
+
+/* Figure card for SVG diagrams */
+.fig { margin: 24px 0; background: light-dark(#f9f7f2, #202819); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 12px; box-shadow: 0 1px 3px rgba(23,76,67,.06); overflow-x: auto; }
+.fig svg { width: 100%; height: auto; display: block; min-width: 560px; }
+.fig figcaption, .fig .cap { margin-top: 8px; color: var(--muted); font-size: 0.84rem; text-align: center; font-style: italic; }
+
+/* Opening question of a section */
+.hook { font-size: 1.04rem; color: light-dark(#26403c, #c6e2de); border-left: 3px solid var(--copper); padding: 4px 0 4px 14px; margin: 6px 0 18px; }
+
+/* Plain-language explanation */
+.plain { background: var(--forest-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0 18px; }
+.plain .ttl { color: var(--forest); }
+
+/* Generic box header */
+.box { border-radius: 12px; padding: 14px 18px; margin: 20px 0; }
+.box > .ttl, .plain > .ttl { margin: 0 0 7px; font-weight: 700; font-size: 0.86rem; }
+.box p { margin: 6px 0; }
+.box ul, .box ol { margin: 6px 0; padding-left: 22px; }
+.box li { margin: 4px 0; }
+
+.ex { background: var(--teal-soft); border: 1px solid var(--teal); }
+.ex > .ttl { color: light-dark(#1d6b6b, #a8e7e7); }
+.case { background: light-dark(#f9f7f2, #2c2117); border: 1px solid light-dark(#EBB28F, #63432f); border-left: 4px solid var(--copper); }
+.case > .ttl { color: var(--copper); font-size: 0.74rem; text-transform: uppercase; letter-spacing: .05em; }
+.pitfall { background: var(--amber-soft); border: 1px solid light-dark(#EBC77A, #695833); }
+.pitfall > .ttl { color: light-dark(#8A5A00, #ffd88f); }
+.why { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--forest); }
+.why > .ttl { color: var(--forest); }
+
+.practice { background: var(--green-soft); border: 1px solid var(--green); }
+.practice > .ttl { color: light-dark(#1F6340, #ade5c9); }
+.remember { background: var(--forest); color: #E4EFEB; }
+.remember > .ttl { color: var(--gold); }
+.remember b, .remember strong { color: #fff; }
+
+/* Sai vs đúng */
+.contrast { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.contrast > div { border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; }
+.contrast .bad { background: var(--red-soft); border: 1px solid light-dark(#E3A79F, #60342e); }
+.contrast .good { background: var(--green-soft); border: 1px solid light-dark(#9CCFB0, #326747); }
+.contrast .ttl { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
+.contrast .bad .ttl { color: var(--red); }
+.contrast .good .ttl { color: var(--green); }
+.contrast p { margin: 4px 0; }
+
+/* Step-by-step anatomy */
+.steps { list-style: none; counter-reset: st; padding-left: 0 !important; }
+.steps > li { counter-increment: st; position: relative; padding: 2px 0 2px 42px !important; margin: 12px 0 !important; }
+.steps > li::before { content: counter(st); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+
+/* Small term chips inline */
+.term { font-weight: 650; color: light-dark(#26403c, #c3e9e3); }
+.term-gloss { color: var(--muted); font-size: 0.92em; }
+
+/* Lesson prev/next */
+.next-prev { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .contrast { grid-template-columns: 1fr; }
+  .fig svg { min-width: 520px; }
+}
+
+/* ---------- Learning reflection + Unit assessment (assets/assessment.js) ---------- */
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.refl-intro { color: light-dark(#2c4b46, #bfdad5); }
+.refl-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--violet); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.refl-label { margin: 0 0 4px !important; font-weight: 700; color: light-dark(#3f2c86, #a99ade); }
+.refl-hint { color: light-dark(#41506B, #aeb9ce); font-size: 0.93rem; margin-bottom: 8px; }
+.refl-hint ul { margin: 4px 0 0; padding-left: 20px; }
+.refl-hint li { margin: 2px 0; }
+#reflection-app textarea, #quiz-app textarea, #workshop-app textarea { width: 100%; font: inherit; font-size: 0.95rem; line-height: 1.55; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); color: var(--ink); resize: vertical; }
+#reflection-app textarea:focus, #quiz-app textarea:focus, #workshop-app textarea:focus { outline: 2px solid var(--gold); border-color: var(--forest); }
+.refl-sample { margin-top: 8px; }
+.refl-sample summary { cursor: pointer; color: var(--forest); font-size: 0.86rem; font-weight: 600; }
+.refl-sample-body { margin: 6px 0; padding: 8px 12px; background: var(--forest-soft); border-radius: 6px; font-size: 0.92rem; }
+.refl-sample-body ul { margin: 4px 0; padding-left: 20px; }
+.refl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 6px; }
+.refl-tools p { flex-basis: 100%; margin: 2px 0 0; }
+.tool-msg { color: var(--green); font-size: 0.86rem; }
+.act-btn, .mini-btn { font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1.5px solid var(--forest); }
+.act-btn { background: var(--forest); color: #fff; }
+.act-btn:hover { background: var(--copper); border-color: var(--copper); }
+.mini-btn { background: transparent; color: var(--forest); padding: 5px 12px; font-size: 0.82rem; }
+.mini-btn:hover { background: var(--forest-soft); }
+.mini-btn.danger { color: var(--red); border-color: light-dark(#E3A79F, #60342e); }
+.assess-note { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; }
+.assess-note.small { background: transparent; padding: 0; }
+
+table.rubric select { font: inherit; font-size: 0.86rem; padding: 4px 6px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ws-col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.ws-h { margin: 0 0 4px !important; font-weight: 700; color: var(--forest); font-size: 0.9rem; }
+.ws-col ol, .ws-col ul { margin: 0 !important; padding-left: 20px !important; font-size: 0.93rem; }
+table.rubric td.num { text-align: center; font-weight: 700; color: var(--copper); }
+table.rubric td { font-size: 0.9rem; }
+table.rubric textarea { min-width: 180px; }
+.rub-pts { font-size: 0.82rem; color: var(--forest); font-weight: 600; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.dash-card.pass { border-color: light-dark(#9CCFB0, #326747); background: var(--green-soft); }
+.dash-card.fail { border-color: light-dark(#E3A79F, #60342e); background: var(--red-soft); }
+.dash-h { margin: 0 !important; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-v { margin: 2px 0 !important; font-size: 1.6rem; font-weight: 700; color: var(--forest); }
+.dash-sub { margin: 0 !important; font-size: 0.84rem; color: var(--muted); }
+
+/* ---------- Knowledge questions (open questions, self-rated) ---------- */
+.kq-howto { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kq-toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.kq-filter { font-size: 0.88rem; color: var(--forest); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.kq-progress { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; }
+.kq-track { flex: 1; height: 8px; border-radius: 99px; background: light-dark(#E3E8E2, #272f25); overflow: hidden; display: flex; }
+.kq-track .seg { height: 100%; }
+.seg-yes { background: var(--green); } .seg-part { background: light-dark(#D9A441, #665027); } .seg-no { background: light-dark(#C0504D, #6a2a28); }
+.kq-count { font-size: 0.84rem; color: var(--muted); white-space: nowrap; }
+.kq-group { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; border-bottom: 1px dashed var(--line); }
+.kq-group-title { margin: 0 0 6px !important; font-size: 1.08rem !important; }
+.kq-back { font-size: 0.82rem; white-space: nowrap; }
+.kq-list { padding-left: 26px !important; margin-top: 8px !important; }
+.kq-item { margin: 12px 0 !important; padding: 10px 14px !important; border: 1px solid var(--line); border-left: 4px solid light-dark(#C9D3CF, #3b4843); border-radius: 10px; background: var(--surface); }
+.kq-item[data-rate="yes"] { border-left-color: var(--green); }
+.kq-item[data-rate="part"] { border-left-color: #D9A441; }
+.kq-item[data-rate="no"] { border-left-color: #C0504D; }
+.only-weak .kq-item[data-rate="yes"] { display: none; }
+.kq-q { margin: 0 0 6px !important; font-weight: 600; line-height: 1.6 !important; }
+.kq-type { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 4px; background: var(--forest-soft); color: var(--forest); font-size: 0.72rem; font-weight: 700; letter-spacing: .03em; vertical-align: 2px; text-transform: uppercase; }
+.kq-mine, .kq-answer { margin: 6px 0; }
+.kq-mine summary, .kq-answer summary { cursor: pointer; font-size: 0.86rem; font-weight: 600; color: var(--forest); }
+.kq-mine textarea { margin-top: 6px; width: 100%; font: inherit; font-size: 0.95rem; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; resize: vertical; }
+.kq-answer-body { margin-top: 6px; padding: 10px 14px; background: light-dark(#F4F8F6, #1b2a22); border: 1px solid light-dark(#D5E3DD, #2f473d); border-radius: 8px; font-size: 0.95rem; }
+.kq-answer-body p { margin: 4px 0 8px !important; }
+.kq-answer-body ul, .kq-answer-body ol { margin: 4px 0 8px !important; padding-left: 20px !important; }
+.kq-answer-body li { margin: 2px 0 !important; }
+.kq-refs { font-size: 0.84rem; color: var(--muted); border-top: 1px dashed light-dark(#D5E3DD, #2f473d); padding-top: 6px; margin-top: 8px !important; }
+.kq-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.kq-rate-l { font-size: 0.8rem; color: var(--muted); }
+.kq-rbtn { font: inherit; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid light-dark(#C9D3CF, #3b4843); background: light-dark(#f9f7f2, #192320); color: var(--muted); cursor: pointer; }
+.kq-rbtn[aria-pressed="true"].r-yes { background: var(--green); border-color: var(--green); color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-part { background: light-dark(#D9A441, #665027); border-color: #D9A441; color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-no { background: light-dark(#C0504D, #6a2a28); border-color: #C0504D; color: #fff; }
+
+
+  </style>
+  <style>
+    article h4 { margin: 22px 0 8px; color: var(--forest); font-size: 1.02rem; }
+    td.c, th.c { text-align: center; }
+    tr.total td { font-weight: 700; background: var(--forest-soft) !important; }
+    .fig svg .hit:hover { opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="../assets/dark.css">
+</head>
+<body class="topic-page lesson-page">
+<header class="reader-header">
+    <a class="brand" href="../../dainv13.html"><span class="brand-mark">Đ</span><span>Đề cương<br><small>Quality, Cloud/Migration, DevOps &amp; Governed AI</small></span></a>
+    <nav aria-label="Page actions"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></nav>
+</header>
+<div class="reader-layout">
+  <aside class="contents-panel">
+    <p class="eyebrow">Nội dung trang</p>
+    <nav aria-label="Topic contents"><ul>
+<li class="toc-level-2"><a href="#p1">Phần 1 · Giải thích chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-2">1.2 Tổng quan về chủ đề</a></li>
+<li class="toc-level-2"><a href="#p2">Phần 2 · Nội dung chi tiết</a></li>
+<li class="toc-level-3"><a href="#p2-1">2.1 Chất lượng khi có cloud, migration, DevOps, AI</a></li>
+<li class="toc-level-3"><a href="#p2-2">2.2 Quality attributes và quality engineering</a></li>
+<li class="toc-level-3"><a href="#p2-3">2.3 Migration strategy</a></li>
+<li class="toc-level-3"><a href="#p2-4">2.4 CI/CD, test, deployment gate, observability</a></li>
+<li class="toc-level-3"><a href="#p2-5">2.5 Cloud dependency, resilience, cost, data governance</a></li>
+<li class="toc-level-3"><a href="#p2-6">2.6 AI use case, human oversight, approval gate</a></li>
+</ul></nav>
+  </aside>
+  <main class="article">
+    <article>
+<p class="lesson-kicker">Đề cương tự biên soạn</p>
+<h1 id="top">Quality, Cloud/Migration, DevOps &amp; Governed AI</h1>
+<p class="lesson-meta">Chất lượng, cloud, migration, DevOps và AI có quản trị · đọc ~20 phút</p>
+
+<h2 id="p1"><span class="sec-no">1 ·</span> Giải thích chủ đề</h2>
+<h3 id="p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</h3>
+<ul>
+<li><b>Quality</b>: Mức độ sản phẩm đáp ứng yêu cầu và kỳ vọng, gồm cả chức năng lẫn các thuộc tính như hiệu năng, độ tin cậy, bảo mật. Chất lượng phải đo được chứ không chỉ cảm nhận.</li>
+<li><b>Cloud/Migration</b>: Cloud là hạ tầng và dịch vụ từ xa mà xe hoặc nhóm phát triển dùng. Migration là việc chuyển hệ thống, dữ liệu hoặc nền tảng từ cách cũ sang cách mới. Với CDC, cloud gồm backend OTA, telemetry, dịch vụ kết nối như bản đồ và voice, cùng hạ tầng build và test của nhóm phát triển.</li>
+<li><b>DevOps</b>: Cách làm việc gắn phát triển với vận hành qua tự động hóa build, test, triển khai và theo dõi. Mục tiêu là thay đổi nhỏ, thường xuyên và an toàn.</li>
+<li><b>Governed AI</b>: Dùng AI trong quy trình có kiểm soát: rõ phạm vi, rõ dữ liệu được phép dùng, có người chịu trách nhiệm duyệt kết quả. Ở cấp tổ chức, các khung như ISO/IEC 42001 (hệ thống quản lý AI) và NIST AI RMF mô tả cách đặt chính sách, vai trò và kiểm soát rủi ro cho AI.</li>
+</ul>
+<h3 id="p1-2">1.2 Tổng quan về chủ đề</h3>
+<p>Một chương trình CDC hiện đại không chỉ có code chạy trên xe. Nó có pipeline build trên server, dịch vụ cloud cho OTA và telemetry, dự án chuyển đổi từ nền tảng cũ và ngày càng nhiều công cụ AI hỗ trợ kỹ sư.</p>
+<p>Mỗi yếu tố đó đều có thể làm tăng hoặc làm giảm chất lượng. Chủ đề này xem cách giữ chất lượng khi các yếu tố đó cùng thay đổi.</p>
+<p>Ngành ô tô có thêm ràng buộc riêng. Cập nhật phần mềm phải nằm trong hệ thống quản lý cập nhật theo UN R156, an ninh mạng theo UN R155 và ISO/SAE 21434, safety theo ISO 26262. Tốc độ của DevOps phải sống chung với yêu cầu bằng chứng của các chuẩn đó. Phần 2 đi lần lượt: chất lượng thay đổi thế nào khi có bốn yếu tố trên (2.1), cách định nghĩa và làm chất lượng (2.2), cách chuyển đổi hệ thống (2.3), pipeline và gate (2.4), phụ thuộc cloud (2.5) và dùng AI có kiểm soát (2.6).</p>
+<h2 id="p2"><span class="sec-no">2 ·</span> Nội dung chi tiết</h2>
+<h3 id="p2-1">2.1 Chất lượng trong hệ thống có cloud, migration, DevOps và AI</h3>
+<p>Khi hệ thống chỉ có phần mềm nhúng, chất lượng chủ yếu được kiểm ở bản release. Khi có cloud, migration, DevOps và AI, chất lượng phải được giữ liên tục, vì hệ thống thay đổi hằng ngày và có nhiều điểm phụ thuộc bên ngoài.</p>
+<figure class="fig"><svg viewBox="0 0 720 216" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="So sánh kiểm chất lượng ở bản release với đo chất lượng liên tục">
+<defs>
+<marker id="s19-m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Từ kiểm một lần ở cuối sang đo liên tục</text>
+<text x="16" y="70" font-size="11" font-weight="700" fill="#1c2928">Chỉ phần mềm nhúng</text>
+<rect x="180" y="58" width="464" height="18" rx="6" fill="#E5EFEB" stroke="#596966"/>
+<text x="412" y="71" text-anchor="middle" font-size="10" fill="#596966">phát triển</text>
+<rect x="652" y="46" width="52" height="42" rx="8" fill="#A64E32"/>
+<text x="678" y="64" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">Gate</text>
+<text x="678" y="78" text-anchor="middle" font-size="10" fill="#fff">release</text>
+<text x="180" y="98" font-size="10.5" fill="#596966">Lỗi tích tụ, chỉ lộ ra ở cuối dự án</text>
+<line x1="16" y1="110" x2="704" y2="110" stroke="#E5EFEB" stroke-width="1.5"/>
+<text x="16" y="160" font-size="11" font-weight="700" fill="#1c2928">Có cloud, migration,</text>
+<text x="16" y="175" font-size="11" font-weight="700" fill="#1c2928">DevOps và AI</text>
+<rect x="190" y="118" width="110" height="22" rx="6" fill="#fff" stroke="#2A8C8C"/>
+<text x="245" y="133" text-anchor="middle" font-size="10" fill="#1c2928">Dịch vụ cloud đổi</text>
+<rect x="320" y="118" width="110" height="22" rx="6" fill="#fff" stroke="#2A8C8C"/>
+<text x="375" y="133" text-anchor="middle" font-size="10" fill="#1c2928">Hệ cũ + hệ mới</text>
+<rect x="450" y="118" width="110" height="22" rx="6" fill="#fff" stroke="#2A8C8C"/>
+<text x="505" y="133" text-anchor="middle" font-size="10" fill="#1c2928">Commit hằng ngày</text>
+<rect x="580" y="118" width="110" height="22" rx="6" fill="#fff" stroke="#2A8C8C"/>
+<text x="635" y="133" text-anchor="middle" font-size="10" fill="#1c2928">Kết quả do AI tạo</text>
+<line x1="245" y1="141" x2="245" y2="152" stroke="#2A8C8C" stroke-width="1.5" marker-end="url(#s19-m1)"/>
+<line x1="375" y1="141" x2="375" y2="152" stroke="#2A8C8C" stroke-width="1.5" marker-end="url(#s19-m1)"/>
+<line x1="505" y1="141" x2="505" y2="152" stroke="#2A8C8C" stroke-width="1.5" marker-end="url(#s19-m1)"/>
+<line x1="635" y1="141" x2="635" y2="152" stroke="#2A8C8C" stroke-width="1.5" marker-end="url(#s19-m1)"/>
+<rect x="180" y="158" width="524" height="18" rx="6" fill="#E5EFEB" stroke="#596966"/>
+<rect x="196" y="154" width="8" height="26" rx="2" fill="#2A6F66"/>
+<rect x="238" y="154" width="8" height="26" rx="2" fill="#2A6F66"/>
+<rect x="280" y="154" width="8" height="26" rx="2" fill="#2A6F66"/>
+<rect x="322" y="154" width="8" height="26" rx="2" fill="#2A6F66"/>
+<rect x="364" y="154" width="8" height="26" rx="2" fill="#2A6F66"/>
+<rect x="406" y="154" width="8" height="26" rx="2" fill="#2A6F66"/>
+<rect x="448" y="154" width="8" height="26" rx="2" fill="#2A6F66"/>
+<rect x="490" y="154" width="8" height="26" rx="2" fill="#2A6F66"/>
+<rect x="532" y="154" width="8" height="26" rx="2" fill="#2A6F66"/>
+<rect x="574" y="154" width="8" height="26" rx="2" fill="#2A6F66"/>
+<rect x="616" y="154" width="8" height="26" rx="2" fill="#2A6F66"/>
+<rect x="658" y="154" width="8" height="26" rx="2" fill="#2A6F66"/>
+<text x="180" y="198" font-size="10.5" fill="#596966">Mỗi thay đổi qua một gate tự động, chất lượng được đo hằng ngày</text>
+</svg><figcaption>Khi nhiều phần cùng thay đổi mỗi ngày, một gate duy nhất ở cuối không còn đủ; chất lượng phải được đo ở từng thay đổi.</figcaption></figure>
+<ul>
+<li><b>Cloud</b>: xe phụ thuộc dịch vụ từ xa, nên cần xử lý khi mạng yếu hoặc dịch vụ ngừng.</li>
+<li><b>Migration</b>: hai hệ cũ và mới chạy cùng lúc, dễ lệch hành vi.</li>
+<li><b>DevOps</b>: tốc độ thay đổi cao, cần gate tự động để chặn lỗi.</li>
+<li><b>AI</b>: kết quả có thể sai mà trông hợp lý, cần người duyệt.</li>
+</ul>
+<p>Ví dụ CDC: nhóm chuyển dịch vụ bản đồ của IVI từ server riêng lên cloud, dùng AI sinh test case, và triển khai qua pipeline. Nếu không có tiêu chí chất lượng chung, mỗi nhóm sẽ dùng thước đo khác nhau và lỗi lọt qua khe giữa các nhóm.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Yếu tố</th><th>Rủi ro chất lượng mới</th><th>Kiểm soát chính</th><th>Bằng chứng</th></tr></thead>
+<tbody>
+<tr><td>Cloud</td><td>Dịch vụ từ xa chậm, ngừng, hoặc đổi API mà xe không biết</td><td>Thiết kế offline và degraded mode, contract test với backend, theo dõi độ sẵn sàng</td><td>Test mất mạng trên bench, dashboard độ sẵn sàng</td></tr>
+<tr><td>Migration</td><td>Hệ mới chạy lệch hệ cũ, mất hoặc sai dữ liệu khi chuyển</td><td>Tiêu chí tương đương, chạy song song để so sánh, kế hoạch rollback</td><td>Báo cáo so sánh, log đối soát dữ liệu</td></tr>
+<tr><td>DevOps</td><td>Thay đổi nhiều và nhanh, lỗi lọt qua khi gate yếu</td><td>Gate tự động, test tự động nhiều tầng, rollout theo đợt</td><td>Kết quả pipeline lưu theo từng build</td></tr>
+<tr><td>AI</td><td>Kết quả sai mà trông hợp lý, rò rỉ dữ liệu ra ngoài</td><td>Giới hạn use case, người duyệt, data boundary</td><td>Bản ghi review, nhật ký dùng công cụ</td></tr>
+</tbody></table></div>
+<p>Hai điểm thường bị quên. Thứ nhất, chất lượng phải được nhìn end-to-end. Nhiều tính năng CDC đi qua xe, mạng di động, backend và app điện thoại. Từng đoạn đạt chuẩn riêng chưa bảo đảm cả chuỗi, nên cần KPI cho toàn hành trình, ví dụ thời gian từ lúc người dùng đặt lịch sạc trên điện thoại đến khi xe xác nhận.</p>
+<p>Thứ hai, chính pipeline và công cụ cũng thuộc về chất lượng. Build phải tái lập được: cùng source và cấu hình cho ra cùng binary. Cấu hình pipeline được quản lý phiên bản như code. Công cụ có thể đưa lỗi vào sản phẩm safety cần được đánh giá theo phần tool confidence của ISO 26262-8.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Hệ thống càng nhiều phần động thì chất lượng càng phải được đo liên tục và end-to-end. Mỗi yếu tố cloud, migration, DevOps, AI mang một rủi ro riêng và cần một kiểm soát riêng, kể cả với chính pipeline và công cụ.</p></div>
+<h3 id="p2-2">2.2 Quality attributes và quality engineering</h3>
+<p>Quality attribute là đặc tính chất lượng có thể đặt mục tiêu và đo. ISO/IEC 25010 là mô hình hay dùng. Bản 2011 có tám đặc tính: functional suitability, performance efficiency, compatibility, usability, reliability, security, maintainability và portability. Bản 2023 bổ sung safety và đổi tên một số đặc tính, như usability thành interaction capability, portability thành flexibility. Với CDC, không phải đặc tính nào cũng quan trọng như nhau; nhóm cần chọn vài đặc tính chính cho từng chức năng.</p>
+<p>Để một attribute đo được, có thể viết nó thành <b>quality attribute scenario</b> theo cách của SEI: nguồn, kích thích, bối cảnh, phần bị tác động, đáp ứng và thước đo. Câu "Media phải mở nhanh" trở thành một kịch bản cụ thể có thể dựng lại trên bench.</p>
+<figure class="fig"><svg viewBox="0 0 720 262" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Sáu phần của một quality attribute scenario áp vào thời gian mở app Media">
+<defs>
+<marker id="s19-m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Quality attribute scenario: biến "nhanh" thành sáu phần đo được</text>
+<rect x="16" y="42" width="108" height="44" rx="8" fill="#174C43"/>
+<text x="70" y="61" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Source</text>
+<text x="70" y="77" text-anchor="middle" font-size="9.5" fill="#fff">ai gây ra</text>
+<rect x="16" y="92" width="108" height="76" rx="8" fill="#E5EFEB" stroke="#174C43"/>
+<text x="70" y="114" text-anchor="middle" font-size="10.5" fill="#1c2928">Người lái</text>
+<line x1="125" y1="64" x2="131" y2="64" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m2)"/>
+<rect x="132" y="42" width="108" height="44" rx="8" fill="#2A6F66"/>
+<text x="186" y="61" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Stimulus</text>
+<text x="186" y="77" text-anchor="middle" font-size="9.5" fill="#fff">sự kiện</text>
+<rect x="132" y="92" width="108" height="76" rx="8" fill="#E5EFEB" stroke="#2A6F66"/>
+<text x="186" y="114" text-anchor="middle" font-size="10.5" fill="#1c2928">Chạm icon</text>
+<text x="186" y="131" text-anchor="middle" font-size="10.5" fill="#1c2928">Media</text>
+<line x1="241" y1="64" x2="247" y2="64" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m2)"/>
+<rect x="248" y="42" width="108" height="44" rx="8" fill="#2A8C8C"/>
+<text x="302" y="61" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Environment</text>
+<text x="302" y="77" text-anchor="middle" font-size="9.5" fill="#fff">bối cảnh</text>
+<rect x="248" y="92" width="108" height="76" rx="8" fill="#E5EFEB" stroke="#2A8C8C"/>
+<text x="302" y="114" text-anchor="middle" font-size="10.5" fill="#1c2928">Đang dẫn đường,</text>
+<text x="302" y="131" text-anchor="middle" font-size="10.5" fill="#1c2928">phát nhạc</text>
+<text x="302" y="148" text-anchor="middle" font-size="10.5" fill="#1c2928">Bluetooth</text>
+<line x1="357" y1="64" x2="363" y2="64" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m2)"/>
+<rect x="364" y="42" width="108" height="44" rx="8" fill="#2A8C8C"/>
+<text x="418" y="61" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Artifact</text>
+<text x="418" y="77" text-anchor="middle" font-size="9.5" fill="#fff">phần bị tác động</text>
+<rect x="364" y="92" width="108" height="76" rx="8" fill="#E5EFEB" stroke="#2A8C8C"/>
+<text x="418" y="114" text-anchor="middle" font-size="10.5" fill="#1c2928">Media app</text>
+<text x="418" y="131" text-anchor="middle" font-size="10.5" fill="#1c2928">trên IVI</text>
+<line x1="473" y1="64" x2="479" y2="64" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m2)"/>
+<rect x="480" y="42" width="108" height="44" rx="8" fill="#A64E32"/>
+<text x="534" y="61" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Response</text>
+<text x="534" y="77" text-anchor="middle" font-size="9.5" fill="#fff">hệ thống làm gì</text>
+<rect x="480" y="92" width="108" height="76" rx="8" fill="#E5EFEB" stroke="#A64E32"/>
+<text x="534" y="114" text-anchor="middle" font-size="10.5" fill="#1c2928">Màn Media hiện</text>
+<text x="534" y="131" text-anchor="middle" font-size="10.5" fill="#1c2928">và nhận thao tác</text>
+<line x1="589" y1="64" x2="595" y2="64" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m2)"/>
+<rect x="596" y="42" width="108" height="44" rx="8" fill="#E2BD69"/>
+<text x="650" y="61" text-anchor="middle" font-size="11" font-weight="700" fill="#1c2928">Measure</text>
+<text x="650" y="77" text-anchor="middle" font-size="9.5" fill="#1c2928">đo thế nào</text>
+<rect x="596" y="92" width="108" height="76" rx="8" fill="#E5EFEB" stroke="#B7791F"/>
+<text x="650" y="114" text-anchor="middle" font-size="10.5" fill="#1c2928">≤ 1,5 s ở 95%</text>
+<text x="650" y="131" text-anchor="middle" font-size="10.5" fill="#1c2928">số lần đo</text>
+<line x1="360" y1="172" x2="360" y2="186" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m2)"/>
+<rect x="16" y="190" width="688" height="56" rx="9" fill="#fff" stroke="#174C43"/>
+<text x="30" y="211" font-size="11" fill="#1c2928"><tspan font-weight="700" fill="#174C43">Đưa vào pipeline:</tspan> bench dựng đúng Environment, script tạo Stimulus, đo Response sau mỗi build.</text>
+<text x="30" y="232" font-size="11" fill="#1c2928"><tspan font-weight="700" fill="#A64E32">Vượt Measure:</tspan> gate báo đỏ và chỉ ra build nào làm chậm. (số liệu giả định minh họa)</text>
+</svg><figcaption>Một scenario đủ sáu phần thì dựng lại được trên bench và đo được tự động, nên attribute "nhanh" có thể thành một gate trong pipeline.</figcaption></figure>
+<p>Quality engineering là việc biến các attribute đó thành hành động cụ thể trong suốt vòng đời:</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Attribute</th><th>Mục tiêu CDC</th><th>Cách kiểm</th></tr></thead>
+<tbody>
+<tr><td>Performance</td><td>Mở app Media dưới 1,5 s (giả định minh họa)</td><td>Đo tự động trên bench sau mỗi build</td></tr>
+<tr><td>Reliability</td><td>Không reboot ngoài ý muốn trong test chạy dài 72 h (giả định minh họa)</td><td>Endurance test, phân tích crash log</td></tr>
+<tr><td>Security</td><td>Không có lỗ hổng mức critical chưa xử lý</td><td>SAST, quét dependency, pentest</td></tr>
+<tr><td>Maintainability</td><td>Module mới có unit test và review</td><td>Static analysis, coverage report</td></tr>
+<tr><td>Compatibility</td><td>Các mẫu điện thoại phổ biến kết nối được qua Bluetooth, Android Auto, CarPlay</td><td>Ma trận thiết bị, test interop tự động</td></tr>
+<tr><td>Usability / interaction</td><td>Tác vụ thường dùng làm xong trong số bước giới hạn khi xe chạy</td><td>Test với người dùng, đo thời gian liếc</td></tr>
+<tr><td>Safety</td><td>Telltale vẫn hiển thị đúng khi IVI lỗi</td><td>Phân tích safety, fault injection test</td></tr>
+</tbody></table></div>
+<p>Quality engineering chạy qua cả vòng đời, không chỉ ở khâu test:</p>
+<ol>
+<li><b>Định nghĩa</b>: chọn attribute quan trọng, viết scenario và ngưỡng, xếp ưu tiên.</li>
+<li><b>Thiết kế</b>: chọn tactic kiến trúc cho từng attribute, như cache, tách partition, watchdog, dư thừa. Đánh giá trade-off, có thể theo phương pháp ATAM.</li>
+<li><b>Hiện thực</b>: coding guideline như MISRA C/C++ hay AUTOSAR C++14, static analysis, code review.</li>
+<li><b>Verify</b>: test chức năng và test phi chức năng tự động, đo KPI ở mỗi build.</li>
+<li><b>Vận hành</b>: theo dõi KPI trên xe qua telemetry, đưa phát hiện trở lại backlog.</li>
+</ol>
+<p>Các attribute thường kéo nhau. Mã hóa và xác thực tăng security nhưng tốn CPU và thời gian khởi động. Log dày giúp chẩn đoán nhưng tốn flash và băng thông. Việc của quality engineering là làm rõ trade-off và để người có thẩm quyền chốt, thay vì để kết quả tự xảy ra.</p>
+<p>Điểm chính: attribute phải có ngưỡng, có cách đo và có người theo dõi. Một attribute không đo được chỉ là khẩu hiệu.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Chọn attribute theo ISO/IEC 25010, viết thành scenario có ngưỡng và cách đo, rồi đưa phép đo vào mọi giai đoạn từ thiết kế đến vận hành. Trade-off giữa các attribute phải được làm rõ và chốt có chủ đích.</p></div>
+<h3 id="p2-3">2.3 Migration strategy: big bang, incremental, strangler hoặc coexistence</h3>
+<div class="table-scroll"><table>
+<thead><tr><th>Chiến lược</th><th>Cách làm</th><th>Phù hợp khi</th></tr></thead>
+<tbody>
+<tr><td>Big bang</td><td>Thay toàn bộ trong một lần chuyển</td><td>Hệ nhỏ, ít phụ thuộc, có thể quay lại dễ</td></tr>
+<tr><td>Incremental</td><td>Chuyển từng phần theo đợt</td><td>Hệ lớn, cần giảm rủi ro mỗi bước</td></tr>
+<tr><td>Strangler</td><td>Đặt lớp định tuyến, dần dần chuyển từng chức năng sang hệ mới đến khi hệ cũ không còn việc</td><td>Hệ cũ còn chạy tốt nhưng khó sửa</td></tr>
+<tr><td>Coexistence</td><td>Hai hệ chạy song song lâu dài, chia vai trò</td><td>Có ràng buộc phần cứng hoặc chứng nhận chưa đổi được</td></tr>
+</tbody></table></div>
+<figure class="fig"><svg viewBox="0 0 720 330" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Bốn chiến lược migration: big bang, incremental, strangler và coexistence">
+<defs>
+<marker id="s19-m3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A64E32"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Bốn cách chuyển từ hệ cũ sang hệ mới</text>
+<rect x="540" y="13" width="12" height="12" rx="2" fill="#596966"/>
+<text x="558" y="23" font-size="10.5" fill="#1c2928">Hệ cũ</text>
+<rect x="612" y="13" width="12" height="12" rx="2" fill="#2A8C8C"/>
+<text x="630" y="23" font-size="10.5" fill="#1c2928">Hệ mới</text>
+<rect x="16" y="40" width="336" height="134" rx="10" fill="#fff" stroke="#2A6F66"/>
+<text x="30" y="62" font-size="12" font-weight="700" fill="#174C43">Big bang</text>
+<text x="30" y="86" font-size="10" fill="#596966">Phần A</text>
+<text x="30" y="110" font-size="10" fill="#596966">Phần B</text>
+<text x="30" y="134" font-size="10" fill="#596966">Phần C</text>
+<rect x="86" y="76" width="120" height="12" rx="3" fill="#596966"/>
+<rect x="206" y="76" width="130" height="12" rx="3" fill="#2A8C8C"/>
+<rect x="86" y="100" width="120" height="12" rx="3" fill="#596966"/>
+<rect x="206" y="100" width="130" height="12" rx="3" fill="#2A8C8C"/>
+<rect x="86" y="124" width="120" height="12" rx="3" fill="#596966"/>
+<rect x="206" y="124" width="130" height="12" rx="3" fill="#2A8C8C"/>
+<line x1="206" y1="70" x2="206" y2="140" stroke="#A93226" stroke-width="2" stroke-dasharray="4 3"/>
+<text x="30" y="158" font-size="10" fill="#1c2928">Một lần chuyển, rủi ro dồn vào một điểm</text>
+<rect x="368" y="40" width="336" height="134" rx="10" fill="#fff" stroke="#2A6F66"/>
+<text x="382" y="62" font-size="12" font-weight="700" fill="#174C43">Incremental</text>
+<text x="382" y="86" font-size="10" fill="#596966">Phần A</text>
+<text x="382" y="110" font-size="10" fill="#596966">Phần B</text>
+<text x="382" y="134" font-size="10" fill="#596966">Phần C</text>
+<rect x="438" y="76" width="50" height="12" rx="3" fill="#596966"/>
+<rect x="488" y="76" width="200" height="12" rx="3" fill="#2A8C8C"/>
+<rect x="438" y="100" width="120" height="12" rx="3" fill="#596966"/>
+<rect x="558" y="100" width="130" height="12" rx="3" fill="#2A8C8C"/>
+<rect x="438" y="124" width="190" height="12" rx="3" fill="#596966"/>
+<rect x="628" y="124" width="60" height="12" rx="3" fill="#2A8C8C"/>
+<text x="488" y="73" text-anchor="middle" font-size="9.5" fill="#A64E32">đợt 1</text>
+<text x="558" y="97" text-anchor="middle" font-size="9.5" fill="#A64E32">đợt 2</text>
+<text x="628" y="121" text-anchor="middle" font-size="9.5" fill="#A64E32">đợt 3</text>
+<text x="382" y="158" font-size="10" fill="#1c2928">Chuyển theo đợt, rủi ro mỗi bước nhỏ hơn</text>
+<rect x="16" y="184" width="336" height="134" rx="10" fill="#fff" stroke="#2A6F66"/>
+<text x="30" y="206" font-size="12" font-weight="700" fill="#174C43">Strangler</text>
+<rect x="30" y="220" width="86" height="68" rx="8" fill="#A64E32"/>
+<text x="73" y="250" text-anchor="middle" font-size="10.5" fill="#fff">Lớp</text>
+<text x="73" y="265" text-anchor="middle" font-size="10.5" fill="#fff">định tuyến</text>
+<rect x="150" y="218" width="188" height="30" rx="7" fill="#2A8C8C"/>
+<text x="244" y="237" text-anchor="middle" font-size="10.5" fill="#fff">Hệ mới: Settings, Media</text>
+<rect x="150" y="260" width="188" height="30" rx="7" fill="#596966"/>
+<text x="244" y="279" text-anchor="middle" font-size="10.5" fill="#fff">Hệ cũ: cluster (giữ lại)</text>
+<line x1="117" y1="246" x2="147" y2="235" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s19-m3)"/>
+<line x1="117" y1="262" x2="147" y2="273" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s19-m3)"/>
+<text x="30" y="308" font-size="10" fill="#1c2928">Chuyển dần từng chức năng đến khi hệ cũ hết việc</text>
+<rect x="368" y="184" width="336" height="134" rx="10" fill="#fff" stroke="#2A6F66"/>
+<text x="382" y="206" font-size="12" font-weight="700" fill="#174C43">Coexistence</text>
+<rect x="382" y="222" width="308" height="26" rx="6" fill="#596966"/>
+<text x="536" y="239" text-anchor="middle" font-size="10.5" fill="#fff">Hệ cũ: phần cứng, chứng nhận chưa đổi được</text>
+<rect x="382" y="258" width="308" height="26" rx="6" fill="#2A8C8C"/>
+<text x="536" y="275" text-anchor="middle" font-size="10.5" fill="#fff">Hệ mới: vai trò còn lại</text>
+<text x="382" y="308" font-size="10" fill="#1c2928">Hai hệ chạy song song lâu dài, chia vai trò</text>
+</svg><figcaption>Bốn chiến lược khác nhau ở chỗ rủi ro dồn vào một lần chuyển hay được chia ra theo thời gian và theo chức năng.</figcaption></figure>
+<p>Ví dụ CDC: chuyển HMI từ framework cũ sang framework mới. Làm big bang trên toàn bộ cluster và IVI cùng lúc là rủi ro cao. Một hướng hợp lý hơn là strangler: màn hình Settings và Media chuyển trước, còn cluster safety-relevant giữ nguyên cho đến khi hệ mới đủ bằng chứng.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Chiến lược</th><th>Ưu điểm</th><th>Nhược điểm</th><th>Ví dụ CDC</th></tr></thead>
+<tbody>
+<tr><td>Big bang</td><td>Nhanh, không phải duy trì hai hệ, không cần lớp nối tạm</td><td>Rủi ro dồn vào một thời điểm, khó khoanh vùng lỗi, rollback phải lùi cả khối</td><td>Nâng Android Automotive lên bản mới cho IVI: cả image đổi một lần. Giảm rủi ro bằng test kỹ và A/B partition để quay về bản cũ.</td></tr>
+<tr><td>Incremental</td><td>Rủi ro mỗi đợt nhỏ, nhóm học được sau từng đợt</td><td>Kéo dài, phải sống ở trạng thái lai, cần interface tạm giữa phần cũ và mới</td><td>Chuyển backend telemetry sang nền tảng mới theo từng dòng xe hoặc từng thị trường.</td></tr>
+<tr><td>Strangler</td><td>Hệ cũ vẫn phục vụ trong lúc chuyển; mỗi chức năng có thể quay lại hệ cũ qua lớp định tuyến</td><td>Tốn công xây lớp định tuyến; dễ kẹt ở trạng thái nửa vời nếu không có mốc gỡ hệ cũ</td><td>HMI shell định tuyến màn Settings và Media sang framework mới, các màn khác vẫn chạy framework cũ.</td></tr>
+<tr><td>Coexistence</td><td>Giữ được phần đã chứng nhận, không phải làm lại tất cả</td><td>Chi phí duy trì hai nền tảng lâu dài; interface giữa hai bên phải rất ổn định</td><td>Cluster giữ RTOS đã có bằng chứng safety, IVI chạy Linux hoặc Android mới, hai bên nói chuyện qua interface cố định trên hypervisor. Backend phục vụ song song xe đời cũ và đời mới.</td></tr>
+</tbody></table></div>
+<p>Tên strangler lấy từ hình ảnh cây đa bóp cổ (strangler fig) mọc quanh cây chủ, do Martin Fowler dùng để mô tả cách thay hệ cũ từng phần. Điểm mấu chốt là lớp định tuyến: mọi yêu cầu đi qua nó, nên có thể chuyển từng chức năng và quay lại nhanh khi có lỗi.</p>
+<p>Dù chọn cách nào, cần năm việc đi kèm:</p>
+<ul>
+<li><b>Tiêu chí tương đương</b>: danh sách hành vi và KPI mà hệ mới phải bằng hoặc hơn hệ cũ, đo trên cùng bộ test.</li>
+<li><b>Chạy song song hoặc shadow mode</b>: hệ mới nhận cùng đầu vào, kết quả được so với hệ cũ nhưng chưa được dùng thật.</li>
+<li><b>Data migration</b>: chuyển đổi và đối soát dữ liệu như hồ sơ người dùng, cấu hình; có cách xử lý bản ghi lỗi.</li>
+<li><b>Rollback</b>: điều kiện kích hoạt, cách làm, thời gian cần. Trên xe thường dựa vào A/B partition của OTA.</li>
+<li><b>Mốc ngừng hệ cũ</b>: ngày và tiêu chí gỡ hệ cũ, để không phải duy trì hai hệ vô thời hạn.</li>
+</ul>
+<p>Vài câu hỏi giúp chọn chiến lược: Hệ có tách được thành phần độc lập không? Có một điểm chung để đặt lớp định tuyến không? Phần nào có chứng nhận đắt khó làm lại? Rollback mất bao lâu? Đội có đủ người duy trì hai hệ cùng lúc không?</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Big bang nhanh nhưng dồn rủi ro, incremental và strangler chia nhỏ rủi ro theo đợt hoặc theo chức năng, coexistence giữ phần khó đổi chạy song song lâu dài. Chọn theo rủi ro và phụ thuộc, và luôn có tiêu chí tương đương, đối soát dữ liệu, đường lùi và mốc ngừng hệ cũ.</p></div>
+<h3 id="p2-4">2.4 CI/CD, automated test, deployment gate và observability</h3>
+<p>CI/CD là chuỗi tự động từ commit đến bản build có thể phát hành. Mỗi commit được build, test và đánh giá. Deployment gate là điểm chặn: bản build chỉ đi tiếp nếu đạt điều kiện.</p>
+<p>CI (continuous integration) nghĩa là mọi thay đổi được merge thường xuyên vào nhánh chính, mỗi lần merge đều build và test tự động. CD có hai nghĩa. Continuous delivery: bản build luôn ở trạng thái có thể phát hành, việc phát hành do người quyết. Continuous deployment: thay đổi tự động lên môi trường thật. Phần mềm trên xe khách hàng thường dừng ở continuous delivery, vì mỗi đợt cập nhật cần quyết định có thẩm quyền và hồ sơ theo hệ thống quản lý cập nhật (UN R156). Backend cloud có thể dùng continuous deployment.</p>
+<pre><code>commit -> build -> unit test + static analysis
+       -> integration test trên virtual ECU
+       -> HIL test trên bench CDC
+       -> gate: 0 lỗi critical, KPI khởi động đạt ngưỡng
+       -> release candidate -> OTA rollout theo nhóm xe nhỏ</code></pre>
+<p>Automated test nên chia theo tầng. Tầng dưới nhiều test, chạy nhanh, bắt lỗi sớm; tầng trên ít test hơn nhưng gần điều kiện thật. Test chập chờn (flaky) phải được cách ly và sửa, vì gate chỉ có giá trị khi người ta tin kết quả đỏ là lỗi thật.</p>
+<figure class="fig"><svg viewBox="0 0 720 262" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Kim tự tháp test tự động của CDC từ unit test tới test trên xe">
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Test tự động theo tầng: nhiều test nhanh ở dưới, ít test đắt ở trên</text>
+<rect x="163" y="42" width="150" height="32" rx="7" fill="#A64E32"/>
+<text x="238" y="63" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Test trên xe</text>
+<line x1="317" y1="58" x2="462" y2="58" stroke="#E5EFEB" stroke-width="1.5"/>
+<text x="472" y="55" font-size="10.5" font-weight="700" fill="#174C43">theo release · vài ngày</text>
+<text x="472" y="70" font-size="10" fill="#596966">hành vi thật, mạng thật, người lái</text>
+<rect x="128" y="80" width="220" height="32" rx="7" fill="#B7791F"/>
+<text x="238" y="101" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">HIL trên bench CDC</text>
+<line x1="352" y1="96" x2="462" y2="96" stroke="#E5EFEB" stroke-width="1.5"/>
+<text x="472" y="93" font-size="10.5" font-weight="700" fill="#174C43">mỗi đêm · vài giờ</text>
+<text x="472" y="108" font-size="10" fill="#596966">phần cứng thật, KPI khởi động</text>
+<rect x="93" y="118" width="290" height="32" rx="7" fill="#2A8C8C"/>
+<text x="238" y="139" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Integration / SIL</text>
+<line x1="387" y1="134" x2="462" y2="134" stroke="#E5EFEB" stroke-width="1.5"/>
+<text x="472" y="131" font-size="10.5" font-weight="700" fill="#174C43">mỗi merge · ~30 phút</text>
+<text x="472" y="146" font-size="10" fill="#596966">virtual ECU, nhiều service cùng chạy</text>
+<rect x="58" y="156" width="360" height="32" rx="7" fill="#2A6F66"/>
+<text x="238" y="177" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Component test</text>
+<line x1="422" y1="172" x2="462" y2="172" stroke="#E5EFEB" stroke-width="1.5"/>
+<text x="472" y="169" font-size="10.5" font-weight="700" fill="#174C43">mỗi commit · vài phút</text>
+<text x="472" y="184" font-size="10" fill="#596966">một service với interface giả lập</text>
+<rect x="23" y="194" width="430" height="32" rx="7" fill="#174C43"/>
+<text x="238" y="215" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Unit test + static analysis</text>
+<line x1="457" y1="210" x2="462" y2="210" stroke="#E5EFEB" stroke-width="1.5"/>
+<text x="472" y="207" font-size="10.5" font-weight="700" fill="#174C43">mỗi commit · dưới 5 phút</text>
+<text x="472" y="222" font-size="10" fill="#596966">hàm, lớp, quy tắc MISRA</text>
+<rect x="16" y="236" width="688" height="20" rx="6" fill="#E5EFEB"/>
+<text x="360" y="250" text-anchor="middle" font-size="10.5" fill="#1c2928">Lên trên: chậm, đắt, gần xe thật hơn · Xuống dưới: nhanh, rẻ, chạy nhiều hơn · (tần suất và thời gian giả định minh họa)</text>
+</svg><figcaption>Đa số lỗi nên bị bắt ở tầng dưới, nơi test rẻ và chạy mỗi commit; tầng HIL và xe dành cho những gì chỉ phần cứng thật mới lộ ra.</figcaption></figure>
+<div class="table-scroll"><table>
+<thead><tr><th>Gate</th><th>Vị trí</th><th>Điều kiện ví dụ</th></tr></thead>
+<tbody>
+<tr><td>Merge gate</td><td>Trước khi merge vào nhánh chính</td><td>Build xanh, unit test đạt, static analysis không có vi phạm mới mức cao, review đã duyệt</td></tr>
+<tr><td>Integration gate</td><td>Sau build tích hợp hằng đêm</td><td>Integration và SIL đạt; thời gian khởi động không chậm hơn baseline quá 5% (giả định minh họa)</td></tr>
+<tr><td>Release gate</td><td>Trước release candidate</td><td>HIL đạt, không có lỗi critical mở, security scan đạt, traceability đủ, người có thẩm quyền ký</td></tr>
+<tr><td>Rollout gate</td><td>Giữa các đợt OTA</td><td>Tỷ lệ crash và tỷ lệ cập nhật thất bại của đợt trước dưới ngưỡng đã chốt</td></tr>
+</tbody></table></div>
+<p>Observability là khả năng hiểu hệ thống đang chạy qua log, metric và trace. Với CDC, đó là crash report, thời gian khởi động, mức dùng CPU và bộ nhớ, gửi về theo chính sách dữ liệu đã duyệt.</p>
+<ul>
+<li><b>Log</b>: bản ghi sự kiện có thời gian, dùng để biết chuyện gì đã xảy ra.</li>
+<li><b>Metric</b>: số đo theo thời gian như CPU, RAM, thời gian khởi động, số lần crash; rẻ để gửi và dễ đặt ngưỡng cảnh báo.</li>
+<li><b>Trace</b>: đường đi của một yêu cầu qua nhiều thành phần, ví dụ lệnh voice đi từ micro, qua dịch vụ nhận dạng, tới app Navigation. Chuẩn mở OpenTelemetry hỗ trợ cả ba loại.</li>
+</ul>
+<p>Trên xe, observability bị giới hạn bởi băng thông, dung lượng lưu và quyền riêng tư. Cách làm thường gặp là gom và tóm tắt ngay trên xe, chỉ gửi chi tiết khi có sự kiện, ưu tiên gửi khi có Wi-Fi, và tách định danh xe khỏi dữ liệu phân tích. Khi rollout OTA theo đợt, ví dụ 1% rồi 10% rồi toàn bộ đội xe (giả định minh họa), metric của đợt trước là đầu vào cho rollout gate của đợt sau.</p>
+<p>Gate và observability bổ sung cho nhau. Gate chặn lỗi trước khi ra xe. Observability phát hiện lỗi mà test chưa bắt được, giúp dừng rollout sớm.</p>
+<figure class="fig"><svg viewBox="0 0 720 244" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Pipeline CI/CD của CDC với deployment gate và vòng observability">
+<defs>
+<marker id="s19-m4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+<marker id="s19-m4r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker>
+<marker id="s19-m4t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker>
+</defs>
+<text x="16" y="22" font-size="13.5" font-weight="700" fill="#174C43">Gate chặn trước khi ra xe, observability bắt lỗi sau đó</text>
+<path d="M562,48 V38 H51 V57" fill="none" stroke="#A93226" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#s19-m4r)"/>
+<text x="300" y="52" text-anchor="middle" font-size="10" fill="#A93226">không đạt: sửa rồi commit lại</text>
+<rect x="16" y="60" width="70" height="44" rx="8" fill="#174C43"/>
+<text x="51" y="86" text-anchor="middle" font-size="11" fill="#fff">Commit</text>
+<rect x="100" y="60" width="70" height="44" rx="8" fill="#174C43"/>
+<text x="135" y="86" text-anchor="middle" font-size="11" fill="#fff">Build</text>
+<rect x="184" y="60" width="110" height="44" rx="8" fill="#2A6F66"/>
+<text x="239" y="78" text-anchor="middle" font-size="10.5" fill="#fff">Unit test +</text>
+<text x="239" y="94" text-anchor="middle" font-size="10.5" fill="#fff">static analysis</text>
+<rect x="308" y="60" width="110" height="44" rx="8" fill="#2A6F66"/>
+<text x="363" y="78" text-anchor="middle" font-size="10.5" fill="#fff">Integration test</text>
+<text x="363" y="94" text-anchor="middle" font-size="10.5" fill="#fff">virtual ECU</text>
+<rect x="432" y="60" width="90" height="44" rx="8" fill="#2A8C8C"/>
+<text x="477" y="78" text-anchor="middle" font-size="10.5" fill="#fff">HIL test</text>
+<text x="477" y="94" text-anchor="middle" font-size="10.5" fill="#fff">bench CDC</text>
+<polygon points="562,48 596,82 562,116 528,82" fill="#A64E32"/>
+<text x="562" y="86" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Gate</text>
+<rect x="608" y="60" width="96" height="44" rx="8" fill="#174C43"/>
+<text x="656" y="78" text-anchor="middle" font-size="10.5" fill="#fff">RC → OTA</text>
+<text x="656" y="94" text-anchor="middle" font-size="10.5" fill="#fff">nhóm xe nhỏ</text>
+<line x1="87" y1="82" x2="98" y2="82" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m4)"/>
+<line x1="171" y1="82" x2="182" y2="82" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m4)"/>
+<line x1="295" y1="82" x2="306" y2="82" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m4)"/>
+<line x1="419" y1="82" x2="430" y2="82" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m4)"/>
+<line x1="523" y1="82" x2="527" y2="82" stroke="#596966" stroke-width="1.5"/>
+<line x1="597" y1="82" x2="606" y2="82" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m4)"/>
+<text x="562" y="134" text-anchor="middle" font-size="10" fill="#A64E32">0 lỗi critical</text>
+<text x="562" y="148" text-anchor="middle" font-size="10" fill="#A64E32">KPI khởi động đạt</text>
+<line x1="656" y1="105" x2="656" y2="157" stroke="#2A8C8C" stroke-width="1.5" marker-end="url(#s19-m4t)"/>
+<rect x="608" y="160" width="96" height="42" rx="8" fill="#2A6F66"/>
+<text x="656" y="178" text-anchor="middle" font-size="10.5" fill="#fff">Xe đang chạy</text>
+<text x="656" y="193" text-anchor="middle" font-size="10" fill="#fff">log · metric · trace</text>
+<line x1="607" y1="181" x2="554" y2="181" stroke="#2A8C8C" stroke-width="1.5" marker-end="url(#s19-m4t)"/>
+<rect x="290" y="160" width="262" height="42" rx="8" fill="#E5EFEB" stroke="#2A8C8C"/>
+<text x="421" y="178" text-anchor="middle" font-size="10.5" font-weight="700" fill="#174C43">Observability</text>
+<text x="421" y="193" text-anchor="middle" font-size="10" fill="#1c2928">crash report, thời gian khởi động, CPU, RAM</text>
+<line x1="289" y1="181" x2="264" y2="181" stroke="#A93226" stroke-width="1.5" marker-end="url(#s19-m4r)"/>
+<rect x="100" y="160" width="162" height="42" rx="8" fill="#A93226"/>
+<text x="181" y="178" text-anchor="middle" font-size="10.5" fill="#fff">Dừng rollout sớm,</text>
+<text x="181" y="193" text-anchor="middle" font-size="10.5" fill="#fff">mở lỗi để sửa</text>
+<path d="M99,181 H51 V107" fill="none" stroke="#A93226" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#s19-m4r)"/>
+<text x="360" y="230" text-anchor="middle" font-size="10.5" fill="#596966">Dữ liệu gửi về theo chính sách dữ liệu đã duyệt</text>
+</svg><figcaption>Gate đứng trước bản phát hành, observability đứng sau nó, và cả hai cùng đưa lỗi quay về đầu pipeline.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>CI/CD tự động hóa đường đi của thay đổi, automated test chia tầng để bắt lỗi sớm và rẻ. Gate ở từng chặng chặn lỗi trước khi đi tiếp, observability bằng log, metric, trace bắt lỗi sau khi phát hành và điều khiển rollout.</p></div>
+<h3 id="p2-5">2.5 Cloud dependency, resilience, cost và data governance</h3>
+<ul>
+<li><b>Cloud dependency</b>: liệt kê chức năng nào cần cloud và chức năng nào phải chạy offline. Đèn cảnh báo và camera lùi không được phụ thuộc cloud.</li>
+<li><b>Resilience</b>: khi mất kết nối, chức năng phải suy giảm có kiểm soát. Ví dụ, voice assistant chuyển sang bộ lệnh cục bộ, bản đồ dùng dữ liệu đã cache.</li>
+<li><b>Cost</b>: telemetry gửi quá dày làm tăng chi phí dữ liệu di động và lưu trữ. Cần chọn tần suất, lọc và nén hợp lý.</li>
+<li><b>Data governance</b>: xác định dữ liệu nào được thu, mục đích gì, lưu ở vùng nào, giữ bao lâu, ai được truy cập. Vị trí GPS và giọng nói là dữ liệu cá nhân, cần tuân thủ quy định bảo vệ dữ liệu như GDPR ở thị trường áp dụng.</li>
+</ul>
+<h4>a) Cloud dependency</h4>
+<p>Bước đầu là lập bản đồ phụ thuộc: mỗi chức năng gọi dịch vụ nào, của ai, qua đường nào. Phụ thuộc không chỉ là API của OEM mà còn là dịch vụ bên thứ ba (bản đồ, nhận dạng giọng nói, thanh toán), hạ tầng xác thực và thời gian hệ thống. Chứng chỉ TLS hết hạn hay đồng hồ xe sai giờ cũng có thể làm mọi kết nối thất bại cùng lúc.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Mức</th><th>Ví dụ</th><th>Yêu cầu thiết kế</th></tr></thead>
+<tbody>
+<tr><td>Không phụ thuộc</td><td>Telltale, camera lùi, âm cảnh báo</td><td>Chạy hoàn toàn trên xe, không chờ mạng khi khởi động</td></tr>
+<tr><td>Suy giảm được</td><td>Navigation, voice, thời tiết</td><td>Có chế độ cục bộ hoặc cache, báo người dùng khi dữ liệu đã cũ</td></tr>
+<tr><td>Chỉ chạy khi có cloud</td><td>Điều khiển xe từ app, gợi ý điểm sạc theo thời gian thực</td><td>Thông báo rõ khi không khả dụng, không treo giao diện</td></tr>
+</tbody></table></div>
+<figure class="fig"><svg viewBox="0 0 720 252" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Các chức năng CDC suy giảm theo thiết kế khi mất kết nối cloud">
+<defs>
+<marker id="s19-m5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Khi mất kết nối, mỗi chức năng phản ứng theo thiết kế</text>
+<rect x="16" y="112" width="124" height="56" rx="9" fill="#A93226"/>
+<text x="78" y="136" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">Mất kết nối</text>
+<text x="78" y="153" text-anchor="middle" font-size="10" fill="#fff">hoặc cloud ngừng</text>
+<line x1="141" y1="132" x2="177" y2="75" stroke="#A93226" stroke-width="1.6" marker-end="url(#s19-m5)"/>
+<line x1="141" y1="140" x2="177" y2="140" stroke="#A93226" stroke-width="1.6" marker-end="url(#s19-m5)"/>
+<line x1="141" y1="148" x2="177" y2="205" stroke="#A93226" stroke-width="1.6" marker-end="url(#s19-m5)"/>
+<rect x="180" y="44" width="174" height="60" rx="9" fill="#174C43"/>
+<text x="267" y="69" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Phải chạy offline</text>
+<text x="267" y="87" text-anchor="middle" font-size="10" fill="#fff">không phụ thuộc cloud</text>
+<rect x="362" y="44" width="342" height="60" rx="9" fill="#E5EFEB" stroke="#174C43"/>
+<text x="378" y="69" font-size="11" fill="#1c2928">Đèn cảnh báo, camera lùi</text>
+<text x="378" y="87" font-size="10.5" fill="#174C43">→ hoạt động bình thường</text>
+<rect x="180" y="110" width="174" height="60" rx="9" fill="#2A8C8C"/>
+<text x="267" y="135" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Suy giảm có kiểm soát</text>
+<text x="267" y="153" text-anchor="middle" font-size="10" fill="#fff">chạy ở chế độ hạn chế</text>
+<rect x="362" y="110" width="342" height="60" rx="9" fill="#E5EFEB" stroke="#2A8C8C"/>
+<text x="378" y="135" font-size="11" fill="#1c2928">Voice assistant → bộ lệnh cục bộ</text>
+<text x="378" y="153" font-size="11" fill="#1c2928">Bản đồ → dữ liệu đã cache</text>
+<rect x="180" y="176" width="174" height="60" rx="9" fill="#A64E32"/>
+<text x="267" y="201" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Cần cloud</text>
+<text x="267" y="219" text-anchor="middle" font-size="10" fill="#fff">tạm ngừng</text>
+<rect x="362" y="176" width="342" height="60" rx="9" fill="#fff" stroke="#A64E32"/>
+<text x="378" y="201" font-size="11" fill="#1c2928">Gợi ý điểm sạc (cần vị trí và dịch vụ từ xa)</text>
+<text x="378" y="219" font-size="10.5" fill="#A64E32">→ báo người dùng tính năng tạm không khả dụng</text>
+</svg><figcaption>Mỗi chức năng phải được xếp loại trước theo mức phụ thuộc cloud, để khi mất kết nối thì hệ thống suy giảm có kiểm soát.</figcaption></figure>
+<h4>b) Resilience</h4>
+<p>Các mẫu thiết kế hay dùng ở phía xe và phía backend:</p>
+<ul>
+<li><b>Timeout</b> cho mọi lời gọi mạng, để giao diện không treo chờ.</li>
+<li><b>Retry với exponential backoff và jitter</b>: thử lại sau khoảng chờ tăng dần, có thêm độ lệch ngẫu nhiên. Nếu không có jitter, cả đội xe kết nối lại cùng một giây sau sự cố và làm backend sập lần nữa.</li>
+<li><b>Circuit breaker</b>: sau nhiều lỗi liên tiếp, tạm ngừng gọi dịch vụ đó một thời gian và chuyển sang chế độ suy giảm.</li>
+<li><b>Store-and-forward</b>: telemetry được xếp hàng trên xe, gửi khi có mạng, có giới hạn dung lượng để không đầy flash.</li>
+<li><b>Idempotent command</b>: lệnh từ xa như mở khóa mang ID duy nhất, nhận hai lần vẫn chỉ thực hiện một lần.</li>
+<li><b>Backend nhiều vùng</b> và rate limiting để một sự cố không lan ra cả hệ thống.</li>
+</ul>
+<h4>c) Cost</h4>
+<p>Chi phí cloud của CDC đến từ dữ liệu di động, tiếp nhận và lưu trữ dữ liệu, tính toán và băng thông ra. Phép tính thô giúp thấy quy mô: 1 triệu xe, mỗi xe gửi 2 MB telemetry mỗi ngày, là khoảng 2 TB mỗi ngày, tức khoảng 60 TB mỗi tháng trước khi nén (giả định minh họa). Các cách giảm chi phí:</p>
+<ul>
+<li>Tổng hợp trên xe, chỉ gửi giá trị thống kê thay vì dữ liệu thô.</li>
+<li>Gửi theo sự kiện, ví dụ chỉ gửi trace chi tiết khi có crash.</li>
+<li>Nén, và ưu tiên gửi qua Wi-Fi tại nhà cho dữ liệu không gấp.</li>
+<li>Phân tầng lưu trữ: dữ liệu nóng giữ ngắn hạn, dữ liệu cũ chuyển sang lưu trữ rẻ hoặc xóa theo thời hạn.</li>
+</ul>
+<p>Chi phí trên mỗi xe mỗi tháng nên là một KPI được theo dõi như các quality attribute khác, vì nó nhân lên theo số xe và theo số năm xe còn chạy.</p>
+<h4>d) Data governance</h4>
+<p>Governance bắt đầu bằng data inventory: danh sách mọi loại dữ liệu kèm owner, phân loại, mục đích, cơ sở pháp lý, vùng lưu, thời hạn và người được truy cập. Nguyên tắc chính của GDPR như giới hạn mục đích, tối thiểu hóa dữ liệu và giới hạn thời gian lưu áp dụng trực tiếp cho dữ liệu xe gắn với người. Một số thị trường còn yêu cầu dữ liệu thu tại nước đó phải lưu trong nước, nên kiến trúc backend phải hỗ trợ đặt dữ liệu theo vùng.</p>
+<figure class="fig"><svg viewBox="0 0 720 250" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Kiểm soát data governance ở từng chặng dữ liệu từ thu thập tới xóa">
+<defs>
+<marker id="s19-m5b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Data governance đi theo dữ liệu qua năm chặng</text>
+<rect x="16" y="42" width="124" height="46" rx="9" fill="#174C43"/>
+<text x="78" y="62" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">Thu thập</text>
+<text x="78" y="79" text-anchor="middle" font-size="10" fill="#fff">trên xe</text>
+<rect x="16" y="96" width="124" height="74" rx="9" fill="#fff" stroke="#174C43"/>
+<text x="78" y="116" text-anchor="middle" font-size="10.5" fill="#1c2928">Có mục đích rõ</text>
+<text x="78" y="134" text-anchor="middle" font-size="10.5" fill="#1c2928">Có consent khi cần</text>
+<text x="78" y="152" text-anchor="middle" font-size="10.5" fill="#1c2928">Chỉ thu đủ dùng</text>
+<line x1="141" y1="65" x2="154" y2="65" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m5b)"/>
+<rect x="156" y="42" width="124" height="46" rx="9" fill="#2A6F66"/>
+<text x="218" y="62" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">Truyền</text>
+<text x="218" y="79" text-anchor="middle" font-size="10" fill="#fff">xe → cloud</text>
+<rect x="156" y="96" width="124" height="74" rx="9" fill="#fff" stroke="#2A6F66"/>
+<text x="218" y="116" text-anchor="middle" font-size="10.5" fill="#1c2928">TLS, xác thực</text>
+<text x="218" y="134" text-anchor="middle" font-size="10.5" fill="#1c2928">thiết bị</text>
+<text x="218" y="152" text-anchor="middle" font-size="10.5" fill="#1c2928">Gom, nén, lọc</text>
+<line x1="281" y1="65" x2="294" y2="65" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m5b)"/>
+<rect x="296" y="42" width="124" height="46" rx="9" fill="#2A8C8C"/>
+<text x="358" y="62" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">Lưu</text>
+<text x="358" y="79" text-anchor="middle" font-size="10" fill="#fff">backend</text>
+<rect x="296" y="96" width="124" height="74" rx="9" fill="#fff" stroke="#2A8C8C"/>
+<text x="358" y="116" text-anchor="middle" font-size="10.5" fill="#1c2928">Đúng vùng lưu</text>
+<text x="358" y="134" text-anchor="middle" font-size="10.5" fill="#1c2928">Mã hóa</text>
+<text x="358" y="152" text-anchor="middle" font-size="10.5" fill="#1c2928">Phân loại nhãn</text>
+<line x1="421" y1="65" x2="434" y2="65" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m5b)"/>
+<rect x="436" y="42" width="124" height="46" rx="9" fill="#A64E32"/>
+<text x="498" y="62" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">Dùng</text>
+<text x="498" y="79" text-anchor="middle" font-size="10" fill="#fff">phân tích</text>
+<rect x="436" y="96" width="124" height="74" rx="9" fill="#fff" stroke="#A64E32"/>
+<text x="498" y="116" text-anchor="middle" font-size="10.5" fill="#1c2928">Quyền theo vai trò</text>
+<text x="498" y="134" text-anchor="middle" font-size="10.5" fill="#1c2928">Ẩn danh hóa</text>
+<text x="498" y="152" text-anchor="middle" font-size="10.5" fill="#1c2928">Có audit log</text>
+<line x1="561" y1="65" x2="574" y2="65" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m5b)"/>
+<rect x="576" y="42" width="124" height="46" rx="9" fill="#596966"/>
+<text x="638" y="62" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">Xóa</text>
+<text x="638" y="79" text-anchor="middle" font-size="10" fill="#fff">hết hạn</text>
+<rect x="576" y="96" width="124" height="74" rx="9" fill="#fff" stroke="#596966"/>
+<text x="638" y="116" text-anchor="middle" font-size="10.5" fill="#1c2928">Theo thời hạn lưu</text>
+<text x="638" y="134" text-anchor="middle" font-size="10.5" fill="#1c2928">Khi chủ xe yêu cầu</text>
+<text x="638" y="152" text-anchor="middle" font-size="10.5" fill="#1c2928">Khi đổi chủ xe</text>
+<rect x="16" y="182" width="688" height="54" rx="9" fill="#E5EFEB" stroke="#B7791F"/>
+<text x="30" y="203" font-size="11" fill="#1c2928"><tspan font-weight="700" fill="#B7791F">Data inventory chung:</tspan> mỗi loại dữ liệu ghi rõ owner, phân loại, mục đích, vùng lưu, thời hạn.</text>
+<text x="30" y="223" font-size="11" fill="#1c2928">Ví dụ: vị trí GPS = dữ liệu cá nhân, chỉ thu khi bật tính năng, giữ 30 ngày (giả định minh họa).</text>
+</svg><figcaption>Mỗi chặng của dữ liệu có kiểm soát riêng, và data inventory chung là nơi ghi các quyết định đó cho từng loại dữ liệu.</figcaption></figure>
+<p>Ví dụ: một tính năng gợi ý điểm sạc cần vị trí xe. Thiết kế tốt chỉ gửi vị trí khi người dùng bật tính năng, làm mờ độ chính xác khi có thể và xóa dữ liệu sau thời gian đã công bố.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Lập bản đồ phụ thuộc cloud và xếp mức cho từng chức năng, dùng timeout, backoff, circuit breaker để suy giảm an toàn. Theo dõi chi phí trên mỗi xe, và quản lý dữ liệu qua data inventory với kiểm soát ở từng chặng từ thu thập đến xóa.</p></div>
+<h3 id="p2-6">2.6 AI use case, human oversight, data boundary và approval gate</h3>
+<p>Governed AI bắt đầu bằng việc chọn đúng use case. AI phù hợp với việc có người kiểm lại được: gợi ý test case từ requirement, tóm tắt log, rà soát câu chữ requirement. AI không nên tự quyết ở chỗ ảnh hưởng safety mà không có người duyệt.</p>
+<h4>a) Chọn use case theo rủi ro</h4>
+<p>Bốn câu hỏi giúp xếp một use case: lợi ích là gì, đầu ra có kiểm được dễ không, dữ liệu đưa vào nhạy cảm đến đâu, và nếu AI sai thì hậu quả lớn cỡ nào.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Mức rủi ro</th><th>Ví dụ use case</th><th>Kiểm soát tối thiểu</th></tr></thead>
+<tbody>
+<tr><td>Thấp</td><td>Tóm tắt log, gợi ý câu chữ requirement, viết nháp tài liệu</td><td>Người dùng đọc lại trước khi dùng</td></tr>
+<tr><td>Trung bình</td><td>Sinh unit test, sinh code cho phần không liên quan safety, phân loại bug report</td><td>Review như code thường, test đạt, quét license và security</td></tr>
+<tr><td>Cao</td><td>Code có ASIL, phân tích safety, quyết định release</td><td>AI chỉ gợi ý, người làm chính và ký; đánh giá công cụ theo ISO 26262-8 nếu đầu ra không được kiểm độc lập</td></tr>
+</tbody></table></div>
+<h4>b) Human oversight, data boundary và approval gate</h4>
+<ul>
+<li><b>Human oversight</b>: người có chuyên môn đọc, sửa và chịu trách nhiệm kết quả. AI là trợ lý, không phải người ký. Có hai mức: human-in-the-loop, người duyệt từng kết quả; human-on-the-loop, người giám sát dòng kết quả và can thiệp khi cần. Rủi ro lớn nhất là automation bias, tức tin kết quả vì nó trông chuyên nghiệp. Người duyệt phải đủ năng lực về chủ đề, và tổ chức nên kiểm mẫu định kỳ những gì đã được duyệt.</li>
+<li><b>Data boundary</b>: quy định dữ liệu nào được đưa vào công cụ AI. Source code độc quyền, dữ liệu khách hàng hay tài liệu của đối tác chỉ dùng với công cụ đã được tổ chức phê duyệt. Trước khi đưa log vào công cụ, cần xóa hoặc thay thế VIN, vị trí, số điện thoại, và không bao giờ đưa khóa, mật khẩu, chứng chỉ.</li>
+<li><b>Approval gate</b>: đầu ra của AI đi qua cùng quy trình review, test và approval như đầu ra của người. Nên ghi lại phần nào do AI hỗ trợ.</li>
+</ul>
+<div class="table-scroll"><table>
+<thead><tr><th>Loại dữ liệu</th><th>Ví dụ</th><th>Công cụ AI được phép</th></tr></thead>
+<tbody>
+<tr><td>Public</td><td>Tài liệu chuẩn đã công bố, code open source</td><td>Công cụ đã được tổ chức duyệt</td></tr>
+<tr><td>Internal</td><td>Tài liệu quy trình, log đã ẩn danh</td><td>Công cụ doanh nghiệp có cam kết không dùng dữ liệu để huấn luyện</td></tr>
+<tr><td>Confidential</td><td>Source code độc quyền, requirement của OEM theo NDA</td><td>Chỉ công cụ chạy trong hạ tầng nội bộ hoặc được hợp đồng cho phép</td></tr>
+<tr><td>Restricted</td><td>Dữ liệu cá nhân khách hàng, khóa, chứng chỉ</td><td>Không đưa vào công cụ AI</td></tr>
+</tbody></table></div>
+<p>Approval gate cho đầu ra AI kiểm cùng các điểm như sản phẩm do người làm: đúng nội dung, test đạt, không vi phạm license hay sở hữu trí tuệ, qua quét security, và có người ký. Thêm một điểm riêng: ghi nguồn gốc, tức công cụ nào, phiên bản nào, dùng cho phần nào. Khi có lỗi về sau, bản ghi này giúp biết cần rà lại những sản phẩm nào khác cùng nguồn.</p>
+<p>Ví dụ CDC: AI đề xuất 40 test case cho tính năng Bluetooth (giả định minh họa). Kỹ sư test loại bỏ những case trùng hoặc sai, bổ sung case biên, rồi đưa vào test plan qua review bình thường.</p>
+<figure class="fig"><svg viewBox="0 0 720 230" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Luồng governed AI từ đề xuất test case tới test plan qua kỹ sư và approval gate">
+<defs>
+<marker id="s19-m6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Đầu ra của AI đi qua cùng gate như đầu ra của người</text>
+<rect x="16" y="40" width="252" height="148" rx="10" fill="#fff" stroke="#B7791F" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="30" y="58" font-size="10.5" font-weight="700" fill="#B7791F">Data boundary: công cụ đã được duyệt</text>
+<rect x="30" y="72" width="100" height="46" rx="8" fill="#fff" stroke="#174C43"/>
+<text x="80" y="92" text-anchor="middle" font-size="10.5" fill="#1c2928">Requirement</text>
+<text x="80" y="107" text-anchor="middle" font-size="10.5" fill="#1c2928">Bluetooth</text>
+<line x1="131" y1="95" x2="150" y2="95" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m6)"/>
+<rect x="154" y="72" width="100" height="46" rx="8" fill="#2A8C8C"/>
+<text x="204" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">Công cụ AI</text>
+<text x="204" y="107" text-anchor="middle" font-size="10" fill="#fff">đề xuất 40 case</text>
+<text x="30" y="150" font-size="10" fill="#A93226">Code độc quyền, dữ liệu khách hàng:</text>
+<text x="30" y="165" font-size="10" fill="#A93226">không đưa vào công cụ chưa duyệt</text>
+<line x1="255" y1="95" x2="286" y2="95" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m6)"/>
+<rect x="290" y="72" width="130" height="46" rx="8" fill="#174C43"/>
+<text x="355" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">Kỹ sư test</text>
+<text x="355" y="107" text-anchor="middle" font-size="10" fill="#fff">human oversight</text>
+<text x="355" y="138" text-anchor="middle" font-size="10.5" fill="#1c2928">− loại case trùng, sai</text>
+<text x="355" y="154" text-anchor="middle" font-size="10.5" fill="#1c2928">+ bổ sung case biên</text>
+<line x1="421" y1="95" x2="442" y2="95" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m6)"/>
+<rect x="446" y="72" width="122" height="46" rx="8" fill="#A64E32"/>
+<text x="507" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">Approval gate</text>
+<text x="507" y="107" text-anchor="middle" font-size="10" fill="#fff">review · test · duyệt</text>
+<text x="507" y="138" text-anchor="middle" font-size="10.5" fill="#1c2928">cùng quy trình như</text>
+<text x="507" y="154" text-anchor="middle" font-size="10.5" fill="#1c2928">đầu ra của người</text>
+<line x1="569" y1="95" x2="588" y2="95" stroke="#596966" stroke-width="1.5" marker-end="url(#s19-m6)"/>
+<rect x="592" y="72" width="112" height="46" rx="8" fill="#2A6F66"/>
+<text x="648" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">Test plan</text>
+<text x="648" y="107" text-anchor="middle" font-size="10" fill="#fff">ghi phần AI hỗ trợ</text>
+<text x="360" y="214" text-anchor="middle" font-size="10.5" fill="#596966">AI là trợ lý; kỹ sư đọc, sửa và chịu trách nhiệm kết quả</text>
+</svg><figcaption>AI chỉ làm việc trong ranh giới dữ liệu đã duyệt, còn kết quả phải qua kỹ sư và cùng approval gate như mọi sản phẩm khác.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Chọn use case AI theo rủi ro, ưu tiên nơi đầu ra kiểm lại được. Giữ người có năng lực chịu trách nhiệm, giữ dữ liệu trong ranh giới theo phân loại, và cho đầu ra qua cùng approval gate như mọi sản phẩm khác kèm ghi nguồn gốc.</p></div>
+<div class="next-prev"><a href="17_Requirements_Embedded_Architecture_Data_Design.html">← 17 · Requirements, Embedded Architecture &amp; Data Design</a><a href="20_Troubleshooting_RCA_Controlled_Documentation.html">20 · Troubleshooting, RCA &amp; Controlled Documentation →</a></div>
+</article>
+  <footer class="article-footer"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></footer>
+  </main>
+</div>
+<script src="../assets/glossary-data.js"></script>
+<script src="../assets/term-glossary.js" data-unit="B.4"></script>
+</body>
+</html>

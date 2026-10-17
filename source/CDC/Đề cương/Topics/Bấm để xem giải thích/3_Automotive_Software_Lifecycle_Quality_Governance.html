@@ -1,0 +1,1273 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="../assets/site-ui.js" data-site-ui></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đề cương · Automotive Software Lifecycle &amp; Quality Governance</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f3f0e8;
+  --surface: #f9f7f1;
+  --ink: #2a3431;
+  --muted: #62706b;
+  --line: #dbd7cb;
+  --forest: #174c43;
+  --forest-soft: #e3ece6;
+  --copper: #a64e32;
+  --gold: #e2bd69;
+  --code: #ebe7dd;
+  --focus: #b34d31;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--copper); }
+a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.reader-header {
+  min-height: 74px;
+  padding: 12px clamp(20px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--forest);
+  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.reader-header a { color: white; text-decoration: none; }
+.reader-header nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; font-size: 0.9rem; }
+
+/* Navigation buttons: same shape/order as the AI library (secondary links | ← Quay lại | ⌂ Trang chủ) */
+.nav-link { padding: 6px 4px; color: #d4e4de; font-weight: 500; white-space: nowrap; }
+.reader-header a.nav-link:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+.nav-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(255, 255, 255, 0.3); }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.nav-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.nav-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.nav-ico { flex: none; width: 16px; height: 16px; }
+.reader-header .nav-btn { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+.reader-header .nav-btn:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.reader-header .nav-btn--primary { color: var(--forest); border-color: var(--gold); background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); }
+.reader-header .nav-btn--primary:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.article-footer .nav-btn { color: var(--forest); border-color: var(--forest); background: transparent; }
+.article-footer .nav-btn:hover { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary:hover { border-color: var(--copper); background: var(--copper); }
+.reader-header nav a:hover { color: var(--gold); }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; line-height: 1.12; }
+.brand small { color: #d4e4de; font-size: 0.75rem; font-weight: 400; }
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  border-radius: 2px;
+}
+
+.reader-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+
+.contents-panel {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 32px 20px 28px clamp(20px, 4vw, 48px);
+  border-right: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--copper);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contents-panel ul { margin: 0; padding: 0; list-style: none; }
+.contents-panel li { margin: 0; padding: 0; }
+.contents-panel a {
+  display: block;
+  padding: 7px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.contents-panel a:hover { color: var(--forest); text-decoration: underline; }
+.contents-panel .toc-level-3 { padding-left: 14px; border-left: 1px solid var(--line); }
+
+.article {
+  min-width: 0;
+  padding: 26px clamp(22px, 5vw, 76px) 70px;
+}
+
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+article { max-width: 900px; }
+article h1, article h2, article h3, .library-intro h1 {
+  color: light-dark(#26403d, #c5e8e4);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  line-height: 1.18;
+}
+article h1 { margin: 0 0 28px; font-size: 2.35rem; }
+article h2 {
+  margin: 48px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+}
+article h3 { margin: 32px 0 12px; color: var(--forest); font-size: 1.24rem; }
+article p { margin: 0 0 18px; }
+article li { margin: 6px 0; padding-left: 4px; }
+article ul, article ol { margin: 0 0 22px; padding-left: 26px; }
+article strong { color: light-dark(#26403c, #c3e9e3); }
+
+blockquote {
+  margin: 22px 0;
+  padding: 15px 20px;
+  border-left: 4px solid var(--copper);
+  background: light-dark(#f8eee8, #31231a);
+  color: light-dark(#543e35, #d4c2bb);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+.table-scroll { width: 100%; margin: 22px 0 26px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.92rem; }
+th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--forest-soft); color: light-dark(#26403c, #c3e9e3); font-weight: 700; }
+tr:nth-child(even) td { background: light-dark(#f9f7f2, #2c2918); }
+
+code, pre { font-family: Consolas, "Courier New", monospace; }
+code { padding: 0.1em 0.28em; background: var(--code); color: light-dark(#24433e, #c3dfda); font-size: 0.9em; }
+pre {
+  max-width: 100%;
+  margin: 20px 0 26px;
+  padding: 18px 20px;
+  overflow: auto;
+  border-left: 3px solid var(--forest);
+  background: light-dark(#e9eeea, #222c25);
+  color: light-dark(#26403d, #d0e6e4);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; color: inherit; }
+hr { margin: 36px 0; border: 0; border-top: 1px solid var(--line); }
+
+.audit-item { margin: 14px 0; }
+
+.audit-item details {
+  margin-top: 9px;
+  border-left: 3px solid #86a99e;
+  background: var(--forest-soft);
+}
+.audit-item summary {
+  padding: 9px 13px;
+  color: var(--forest);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.answer-body { padding: 0 14px 10px; }
+.answer-body p { margin: 4px 0 10px; }
+.answer-body ul { margin: -4px 0 12px; padding-left: 22px; }
+.answer-body li { margin: 3px 0; line-height: 1.55; }
+/* Key questions: map 1-1 to the Learning Plan "Unit Detail" requirements of the topic */
+details.audit-reveal { margin: 8px 0 18px; border-left: 3px solid #86a99e; background: var(--forest-soft); }
+details.audit-reveal > summary { padding: 9px 13px; color: var(--forest); cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.audit-key-intro { margin: 18px 0 28px; padding: 16px 20px 14px; border: 1px solid light-dark(#e6cf95, #62542f); border-left: 6px solid var(--gold); background: light-dark(#fff7e0, #312b1a); }
+.audit-key-intro p { margin: 0 0 8px; }
+.audit-key-intro ol { margin: 0; padding-left: 22px; }
+.audit-key-intro li { margin: 4px 0; }
+.audit-key-intro .req-tag { color: var(--muted); font-size: 0.8rem; }
+.audit-question-heading.audit-key { padding: 10px 14px; border-left: 6px solid var(--copper); background: light-dark(#fbeee4, #31251a); }
+.audit-question-heading.audit-key::after {
+  content: "Tr\1ECDng t\00E2m";
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--copper);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+details.audit-key-reveal, .audit-item details.audit-key-reveal { border-left: 6px solid var(--copper); background: light-dark(#f9f7f2, #2c2317); }
+details.audit-key-reveal > summary, .audit-item details.audit-key-reveal summary { color: var(--copper); }
+
+.article-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 54px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.library-main { width: min(1120px, 100%); margin: 0 auto; padding: 50px clamp(20px, 5vw, 72px) 76px; }
+.library-intro { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+.library-intro h1 { margin: 0; font-size: 3rem; }
+.library-intro h1 span { color: var(--copper); }
+
+.search-label { display: block; margin: 0 0 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#topic-search {
+  width: min(520px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-intro { max-width: 740px; color: var(--muted); }
+.qa-filter { margin: 26px 0 34px; }
+.qa-filter label { display: block; margin-bottom: 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#qa-search {
+  width: min(640px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-filter p { margin: 7px 0 0; color: var(--muted); font-size: 0.82rem; }
+.qa-topic { margin-top: 40px; }
+.qa-topic-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.qa-topic-heading h2 { flex: 1; }
+.qa-topic-heading a { flex: none; font-size: 0.86rem; }
+.qa-question[hidden], .qa-topic[hidden] { display: none; }
+.search-status { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.topic-list { margin-top: 8px; border-top: 1px solid var(--line); }
+.topic-link {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 15px;
+  min-height: 72px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topic-link:hover { background: light-dark(#e8eee9, #222d23); color: var(--forest); }
+.topic-number { color: var(--copper); font-family: Georgia, serif; font-size: 1.1rem; }
+.topic-title { font-weight: 650; }
+.topic-arrow { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.source-note { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.87rem; }
+
+@media (max-width: 860px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .contents-panel {
+    position: static;
+    max-height: none;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contents-panel nav { max-height: 210px; overflow: auto; }
+  .article { padding-top: 22px; }
+}
+
+@media (max-width: 560px) {
+  .reader-header { align-items: flex-start; padding: 12px 17px; }
+  .reader-header { flex-wrap: wrap; }
+  .reader-header nav { gap: 6px 8px; }
+  .nav-sep { display: none; }
+  .nav-btn { min-height: 34px; padding: 6px 12px; }
+  .library-intro h1 { font-size: 2.25rem; }
+  article h1 { font-size: 1.9rem; }
+  article h2 { font-size: 1.4rem; }
+  .topic-link { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .topic-arrow { display: none; }
+  .qa-topic-heading { align-items: flex-start; flex-direction: column; gap: 0; }
+  th, td { min-width: 130px; padding: 9px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* Highlight non-AI (CDC/SDV) topics in the library index */
+.topic-link.topic-core { background: var(--forest-soft); box-shadow: inset 5px 0 0 var(--forest); }
+.topic-link.topic-core .topic-title { color: var(--forest); }
+.topic-link.topic-core .topic-number { color: var(--forest); font-weight: 700; }
+.topic-link.topic-core:hover { background: light-dark(#d4e5de, #233930); }
+.topic-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 18px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.legend-swatch { display: inline-block; width: 18px; height: 14px; margin-right: -10px; border: 1px solid var(--line); vertical-align: -2px; }
+.legend-swatch.legend-core { background: var(--forest-soft); box-shadow: inset 4px 0 0 var(--forest); }
+
+/* Non-learning items (assignment / review / OJT) among CDC/SDV topics: red text */
+.topic-link.topic-task .topic-title, .topic-link.topic-task .topic-number { color: light-dark(#b3261e, #e9847e); }
+.topic-link.topic-task:hover .topic-title { color: light-dark(#8c1d18, #ed9794); }
+.legend-task { color: light-dark(#b3261e, #e9847e); font-weight: 600; }
+/* Study-time note per topic (from Fast_Track_CDC_Weekly_Checklist.xlsx) */
+.topic-time { display: block; margin-top: 3px; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.topic-link.topic-task .topic-time { color: light-dark(#b3261e, #e9847e); opacity: 0.85; }
+.legend-time { flex-basis: 100%; color: var(--muted); }
+
+/* ---- Thuật ngữ: bấm để xem giải nghĩa ---- */
+.gl {
+  border-bottom: 1.5px dotted #6f9a8e;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color .12s;
+}
+.gl:hover { background: var(--forest-soft); }
+.gl:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.gl.is-open { background: var(--forest-soft); border-bottom-style: solid; border-bottom-color: var(--forest); }
+.gl-pop {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(28, 41, 40, .16);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gl-term { display: block; margin-bottom: 2px; color: var(--forest); font-weight: 700; font-size: .82rem; }
+.gl-hint { color: var(--muted); font-size: .85rem; }
+.gl-hint .gl-demo { border-bottom: 1.5px dotted #6f9a8e; }
+
+/* ---- Checklist đầu ra (tick được, lưu trên trình duyệt) ---- */
+.checklist { margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 16px 14px; }
+.checklist > h3 { margin-top: 18px; }
+.cl-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--muted); font-size: .9rem; }
+.cl-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 99px; background: var(--forest-soft); overflow: hidden; }
+.cl-bar > i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s; }
+.cl-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.cl-item { padding: 9px 0 10px; border-top: 1px dashed var(--line); }
+.cl-item:first-child { border-top: 0; }
+.cl-item > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.cl-item input[type="checkbox"] { margin-top: .35em; width: 17px; height: 17px; accent-color: var(--forest); flex: none; }
+.cl-item.is-done > label > span { color: var(--muted); text-decoration: line-through; text-decoration-color: light-dark(#9fb3ad, #495c56); }
+.cl-pass, .cl-src { margin: 4px 0 0 27px; font-size: .9rem; }
+.cl-pass { color: var(--ink); }
+.cl-src { color: var(--muted); font-size: .82rem; }
+.cl-reset { margin-left: auto; border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 2px 9px; color: var(--muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.cl-reset:hover { color: var(--copper); border-color: var(--copper); }
+
+/* Lesson style for CDC/SDV topics — mirrors the teaching layout of the AI library
+   (bài đọc: hook → giải thích → ví dụ → vì sao quan trọng → nghiền ngẫm → thực hành → tự kiểm)
+   while keeping the CDC palette of reader.css. Load AFTER reader.css. */
+:root {
+  --teal: #2A8C8C; --teal-soft: #EEF7F6;
+  --violet: #6A4FC0; --violet-soft: #F5F2FD;
+  --green: #2E7D4F; --green-soft: #EFF8F2;
+  --amber: #B7791F; --amber-soft: #FFF7E8;
+  --red: #A93226; --red-soft: #FCEFEC;
+}
+
+body.lesson-page article { max-width: 800px; }
+body.lesson-page article p, body.lesson-page article li { line-height: 1.75; }
+body.lesson-page article h2 { margin-top: 44px; }
+body.lesson-page article h2 .sec-no { color: var(--copper); font-weight: 700; margin-right: 6px; }
+
+/* Bài nav (pill row, like .tapnav in the AI library) */
+.bai-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+.bai-nav a { font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--surface); }
+.bai-nav a:hover { border-color: var(--forest); color: var(--forest); }
+.bai-nav a.cur { background: var(--forest); border-color: var(--forest); color: #fff; }
+.bai-nav .grp { font-size: 0.7rem; font-weight: 700; color: var(--copper); align-self: center; margin: 0 2px 0 6px; letter-spacing: .06em; }
+
+.lesson-kicker { margin: 0 0 6px; color: var(--copper); font-size: 0.78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+body.lesson-page article h1 { margin-bottom: 10px; }
+.lesson-meta { margin: 0 0 18px; font-weight: 600; color: light-dark(#2c4b46, #bfdad5); font-size: 0.95rem; }
+
+/* Bản đồ bài — chuỗi khái niệm */
+.roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 24px; font-size: 0.86rem; }
+.roadmap span { background: var(--forest-soft); color: var(--forest); border: 1px solid light-dark(#c9ddd5, #314e42); border-radius: 8px; padding: 5px 10px; font-weight: 600; }
+.roadmap i { color: var(--muted); font-style: normal; }
+
+/* Figure card for SVG diagrams */
+.fig { margin: 24px 0; background: light-dark(#f9f7f2, #202819); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 12px; box-shadow: 0 1px 3px rgba(23,76,67,.06); overflow-x: auto; }
+.fig svg { width: 100%; height: auto; display: block; min-width: 560px; }
+.fig figcaption, .fig .cap { margin-top: 8px; color: var(--muted); font-size: 0.84rem; text-align: center; font-style: italic; }
+
+/* Opening question of a section */
+.hook { font-size: 1.04rem; color: light-dark(#26403c, #c6e2de); border-left: 3px solid var(--copper); padding: 4px 0 4px 14px; margin: 6px 0 18px; }
+
+/* Plain-language explanation */
+.plain { background: var(--forest-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0 18px; }
+.plain .ttl { color: var(--forest); }
+
+/* Generic box header */
+.box { border-radius: 12px; padding: 14px 18px; margin: 20px 0; }
+.box > .ttl, .plain > .ttl { margin: 0 0 7px; font-weight: 700; font-size: 0.86rem; }
+.box p { margin: 6px 0; }
+.box ul, .box ol { margin: 6px 0; padding-left: 22px; }
+.box li { margin: 4px 0; }
+
+.ex { background: var(--teal-soft); border: 1px solid var(--teal); }
+.ex > .ttl { color: light-dark(#1d6b6b, #a8e7e7); }
+.case { background: light-dark(#f9f7f2, #2c2117); border: 1px solid light-dark(#EBB28F, #63432f); border-left: 4px solid var(--copper); }
+.case > .ttl { color: var(--copper); font-size: 0.74rem; text-transform: uppercase; letter-spacing: .05em; }
+.pitfall { background: var(--amber-soft); border: 1px solid light-dark(#EBC77A, #695833); }
+.pitfall > .ttl { color: light-dark(#8A5A00, #ffd88f); }
+.why { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--forest); }
+.why > .ttl { color: var(--forest); }
+
+.practice { background: var(--green-soft); border: 1px solid var(--green); }
+.practice > .ttl { color: light-dark(#1F6340, #ade5c9); }
+.remember { background: var(--forest); color: #E4EFEB; }
+.remember > .ttl { color: var(--gold); }
+.remember b, .remember strong { color: #fff; }
+
+/* Sai vs đúng */
+.contrast { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.contrast > div { border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; }
+.contrast .bad { background: var(--red-soft); border: 1px solid light-dark(#E3A79F, #60342e); }
+.contrast .good { background: var(--green-soft); border: 1px solid light-dark(#9CCFB0, #326747); }
+.contrast .ttl { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
+.contrast .bad .ttl { color: var(--red); }
+.contrast .good .ttl { color: var(--green); }
+.contrast p { margin: 4px 0; }
+
+/* Step-by-step anatomy */
+.steps { list-style: none; counter-reset: st; padding-left: 0 !important; }
+.steps > li { counter-increment: st; position: relative; padding: 2px 0 2px 42px !important; margin: 12px 0 !important; }
+.steps > li::before { content: counter(st); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+
+/* Small term chips inline */
+.term { font-weight: 650; color: light-dark(#26403c, #c3e9e3); }
+.term-gloss { color: var(--muted); font-size: 0.92em; }
+
+/* Lesson prev/next */
+.next-prev { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .contrast { grid-template-columns: 1fr; }
+  .fig svg { min-width: 520px; }
+}
+
+/* ---------- Learning reflection + Unit assessment (assets/assessment.js) ---------- */
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.refl-intro { color: light-dark(#2c4b46, #bfdad5); }
+.refl-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--violet); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.refl-label { margin: 0 0 4px !important; font-weight: 700; color: light-dark(#3f2c86, #a99ade); }
+.refl-hint { color: light-dark(#41506B, #aeb9ce); font-size: 0.93rem; margin-bottom: 8px; }
+.refl-hint ul { margin: 4px 0 0; padding-left: 20px; }
+.refl-hint li { margin: 2px 0; }
+#reflection-app textarea, #quiz-app textarea, #workshop-app textarea { width: 100%; font: inherit; font-size: 0.95rem; line-height: 1.55; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); color: var(--ink); resize: vertical; }
+#reflection-app textarea:focus, #quiz-app textarea:focus, #workshop-app textarea:focus { outline: 2px solid var(--gold); border-color: var(--forest); }
+.refl-sample { margin-top: 8px; }
+.refl-sample summary { cursor: pointer; color: var(--forest); font-size: 0.86rem; font-weight: 600; }
+.refl-sample-body { margin: 6px 0; padding: 8px 12px; background: var(--forest-soft); border-radius: 6px; font-size: 0.92rem; }
+.refl-sample-body ul { margin: 4px 0; padding-left: 20px; }
+.refl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 6px; }
+.refl-tools p { flex-basis: 100%; margin: 2px 0 0; }
+.tool-msg { color: var(--green); font-size: 0.86rem; }
+.act-btn, .mini-btn { font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1.5px solid var(--forest); }
+.act-btn { background: var(--forest); color: #fff; }
+.act-btn:hover { background: var(--copper); border-color: var(--copper); }
+.mini-btn { background: transparent; color: var(--forest); padding: 5px 12px; font-size: 0.82rem; }
+.mini-btn:hover { background: var(--forest-soft); }
+.mini-btn.danger { color: var(--red); border-color: light-dark(#E3A79F, #60342e); }
+.assess-note { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; }
+.assess-note.small { background: transparent; padding: 0; }
+
+table.rubric select { font: inherit; font-size: 0.86rem; padding: 4px 6px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ws-col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.ws-h { margin: 0 0 4px !important; font-weight: 700; color: var(--forest); font-size: 0.9rem; }
+.ws-col ol, .ws-col ul { margin: 0 !important; padding-left: 20px !important; font-size: 0.93rem; }
+table.rubric td.num { text-align: center; font-weight: 700; color: var(--copper); }
+table.rubric td { font-size: 0.9rem; }
+table.rubric textarea { min-width: 180px; }
+.rub-pts { font-size: 0.82rem; color: var(--forest); font-weight: 600; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.dash-card.pass { border-color: light-dark(#9CCFB0, #326747); background: var(--green-soft); }
+.dash-card.fail { border-color: light-dark(#E3A79F, #60342e); background: var(--red-soft); }
+.dash-h { margin: 0 !important; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-v { margin: 2px 0 !important; font-size: 1.6rem; font-weight: 700; color: var(--forest); }
+.dash-sub { margin: 0 !important; font-size: 0.84rem; color: var(--muted); }
+
+/* ---------- Knowledge questions (open questions, self-rated) ---------- */
+.kq-howto { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kq-toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.kq-filter { font-size: 0.88rem; color: var(--forest); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.kq-progress { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; }
+.kq-track { flex: 1; height: 8px; border-radius: 99px; background: light-dark(#E3E8E2, #272f25); overflow: hidden; display: flex; }
+.kq-track .seg { height: 100%; }
+.seg-yes { background: var(--green); } .seg-part { background: light-dark(#D9A441, #665027); } .seg-no { background: light-dark(#C0504D, #6a2a28); }
+.kq-count { font-size: 0.84rem; color: var(--muted); white-space: nowrap; }
+.kq-group { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; border-bottom: 1px dashed var(--line); }
+.kq-group-title { margin: 0 0 6px !important; font-size: 1.08rem !important; }
+.kq-back { font-size: 0.82rem; white-space: nowrap; }
+.kq-list { padding-left: 26px !important; margin-top: 8px !important; }
+.kq-item { margin: 12px 0 !important; padding: 10px 14px !important; border: 1px solid var(--line); border-left: 4px solid light-dark(#C9D3CF, #3b4843); border-radius: 10px; background: var(--surface); }
+.kq-item[data-rate="yes"] { border-left-color: var(--green); }
+.kq-item[data-rate="part"] { border-left-color: #D9A441; }
+.kq-item[data-rate="no"] { border-left-color: #C0504D; }
+.only-weak .kq-item[data-rate="yes"] { display: none; }
+.kq-q { margin: 0 0 6px !important; font-weight: 600; line-height: 1.6 !important; }
+.kq-type { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 4px; background: var(--forest-soft); color: var(--forest); font-size: 0.72rem; font-weight: 700; letter-spacing: .03em; vertical-align: 2px; text-transform: uppercase; }
+.kq-mine, .kq-answer { margin: 6px 0; }
+.kq-mine summary, .kq-answer summary { cursor: pointer; font-size: 0.86rem; font-weight: 600; color: var(--forest); }
+.kq-mine textarea { margin-top: 6px; width: 100%; font: inherit; font-size: 0.95rem; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; resize: vertical; }
+.kq-answer-body { margin-top: 6px; padding: 10px 14px; background: light-dark(#F4F8F6, #1b2a22); border: 1px solid light-dark(#D5E3DD, #2f473d); border-radius: 8px; font-size: 0.95rem; }
+.kq-answer-body p { margin: 4px 0 8px !important; }
+.kq-answer-body ul, .kq-answer-body ol { margin: 4px 0 8px !important; padding-left: 20px !important; }
+.kq-answer-body li { margin: 2px 0 !important; }
+.kq-refs { font-size: 0.84rem; color: var(--muted); border-top: 1px dashed light-dark(#D5E3DD, #2f473d); padding-top: 6px; margin-top: 8px !important; }
+.kq-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.kq-rate-l { font-size: 0.8rem; color: var(--muted); }
+.kq-rbtn { font: inherit; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid light-dark(#C9D3CF, #3b4843); background: light-dark(#f9f7f2, #192320); color: var(--muted); cursor: pointer; }
+.kq-rbtn[aria-pressed="true"].r-yes { background: var(--green); border-color: var(--green); color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-part { background: light-dark(#D9A441, #665027); border-color: #D9A441; color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-no { background: light-dark(#C0504D, #6a2a28); border-color: #C0504D; color: #fff; }
+
+
+  </style>
+  <style>
+    article h4 { margin: 22px 0 8px; color: var(--forest); font-size: 1.02rem; }
+    td.c, th.c { text-align: center; }
+    tr.total td { font-weight: 700; background: var(--forest-soft) !important; }
+    .fig svg .hit:hover { opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="../assets/dark.css">
+</head>
+<body class="topic-page lesson-page">
+<header class="reader-header">
+    <a class="brand" href="../../dainv13.html"><span class="brand-mark">Đ</span><span>Đề cương<br><small>Automotive Software Lifecycle &amp; Quality Governance</small></span></a>
+    <nav aria-label="Page actions"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></nav>
+</header>
+<div class="reader-layout">
+  <aside class="contents-panel">
+    <p class="eyebrow">Nội dung trang</p>
+    <nav aria-label="Topic contents"><ul>
+<li class="toc-level-2"><a href="#p1">Phần 1 · Giải thích chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-2">1.2 Tổng quan về chủ đề</a></li>
+<li class="toc-level-2"><a href="#p2">Phần 2 · Nội dung chi tiết</a></li>
+<li class="toc-level-3"><a href="#p2-1">2.1 Vòng đời và quản trị chất lượng</a></li>
+<li class="toc-level-3"><a href="#p2-2">2.2 Các giai đoạn từ concept đến maintenance</a></li>
+<li class="toc-level-3"><a href="#p2-3">2.3 Traceability đến evidence</a></li>
+<li class="toc-level-3"><a href="#p2-4">2.4 Gate, review, change control, defect</a></li>
+<li class="toc-level-3"><a href="#p2-5">2.5 Verification khác validation</a></li>
+<li class="toc-level-3"><a href="#p2-6">2.6 Governance hỗ trợ engineering</a></li>
+<li class="toc-level-3"><a href="#p2-7">2.7 Evidence để release một feature</a></li>
+<li class="toc-level-3"><a href="#p2-8">2.8 Đánh giá ảnh hưởng khi đổi requirement</a></li>
+<li class="toc-level-3"><a href="#p2-9">2.9 Giữ traceability qua nhiều supplier</a></li>
+</ul></nav>
+  </aside>
+  <main class="article">
+    <article>
+<p class="lesson-kicker">Đề cương chi tiết</p>
+<h1 id="top">Automotive Software Lifecycle &amp; Quality Governance</h1>
+<p class="lesson-meta">Vòng đời phần mềm ô tô &amp; quản trị chất lượng · đọc ~60 phút</p>
+
+<h2 id="p1"><span class="sec-no">1 ·</span> Giải thích chủ đề</h2>
+
+<h3 id="p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</h3>
+<ul>
+<li><b><span class="term">Automotive Software Lifecycle</span></b>: chuỗi giai đoạn concept, requirement, design, implementation, integration, verification/validation, release. Nó <b>không dừng ở SOP</b> mà kéo dài qua nhiều năm maintenance, patch, OTA và vá lỗ hổng.</li>
+<li><b><span class="term">Quality Governance</span></b>: tiêu chí, ownership, review và evidence để quyết định một <span class="term">artifact</span> đã đủ điều kiện chuyển bước hay release chưa, và ai chịu rủi ro còn lại.</li>
+</ul>
+
+<h3 id="p1-2">1.2 Tổng quan về chủ đề</h3>
+<p>Phần mềm ô tô do nhiều team và supplier làm, chạy trên nhiều variant và được cập nhật suốt vòng đời xe. Lifecycle cho biết trình tự công việc; quality governance đặt quality gate, review, change control, defect management và traceability để mỗi bước có bằng chứng và có người quyết định.</p>
+<p>Khung tham chiếu chính là Automotive SPICE, ISO 26262, ISO/SAE 21434 và UNECE R155/R156. Mục tiêu là chứng minh phần mềm trên từng xe đúng yêu cầu và đã được kiểm chứng trên đúng baseline, với governance hỗ trợ engineering chứ không chỉ sinh thủ tục.</p>
+
+<h2 id="p2"><span class="sec-no">2 ·</span> Nội dung chi tiết</h2>
+
+<!-- 2.1 -->
+<h3 id="p2-1">2.1 Vòng đời phần mềm ô tô và cách quản trị chất lượng từ yêu cầu đến vận hành</h3>
+
+<h4>a) Vì sao phần mềm ô tô cần governance chặt hơn phần mềm thông thường</h4>
+<ul>
+<li><b>Hậu quả vật lý</b>: cluster lỗi có thể làm tài xế không thấy tốc độ, cảnh báo → <span class="term">ISO 26262</span>.</li>
+<li><b>Nhiều variant</b>: một thay đổi có thể đúng ở variant này, sai ở variant khác.</li>
+<li><b>Nhiều supplier</b>: OEM, Tier 1, Tier 2 mỗi bên một tool, một cách đánh số.</li>
+<li><b>Vòng đời dài, OTA</b>: 10–15 năm; phải biết xe nào đang chạy gì.</li>
+<li><b>Quy định</b>: cybersecurity và software update là điều kiện type approval theo <span class="term">UNECE R155/R156</span>.</li>
+</ul>
+
+<h4>b) Lifecycle trả lời "làm gì", governance trả lời "đủ chưa, ai quyết"</h4>
+<div class="table-scroll"><table><thead><tr><th>Câu hỏi</th><th>Lifecycle trả lời</th><th>Governance trả lời</th></tr></thead><tbody>
+<tr><td>Bước tiếp theo?</td><td>Requirement xong thì sang design</td><td>Requirement đã đo được, review, baseline chưa?</td></tr>
+<tr><td>Ai làm?</td><td>Team cluster viết code</td><td>Ai sở hữu, ai approve, ai chấp nhận residual risk?</td></tr>
+<tr><td>Xong chưa?</td><td>Đã chạy test</td><td>Test nào, baseline nào, variant nào, kết quả ở đâu?</td></tr>
+<tr><td>Đổi thì sao?</td><td>Sửa code, build lại</td><td>Chạm artifact nào, evidence nào mất hiệu lực, ai duyệt?</td></tr>
+</tbody></table></div>
+
+<h4>c) Các lăng kính chuẩn trên cùng một dự án CDC</h4>
+<div class="table-scroll"><table><thead><tr><th>Chuẩn / quy định</th><th>Đòi hỏi ở governance</th></tr></thead><tbody>
+<tr><td>IATF 16949 (+ APQP/PPAP)</td><td>Mốc chương trình; software version khớp baseline release</td></tr>
+<tr><td><span class="term">Automotive SPICE</span></td><td>Traceability hai chiều; configuration/change/problem management (SUP.8–SUP.10)</td></tr>
+<tr><td>ISO 26262</td><td>Safety requirement có trace, verification theo ASIL, safety case</td></tr>
+<tr><td>ISO/SAE 21434 + UNECE R155</td><td>TARA, cybersecurity case, giám sát lỗ hổng sau SOP</td></tr>
+<tr><td>UNECE R156 + ISO 24089</td><td>Biết version trên xe, đánh giá ảnh hưởng update đến type approval</td></tr>
+</tbody></table></div>
+<p><b>Automotive SPICE chấm quy trình, không chấm sản phẩm</b>, và chấm level 0–5 <b>theo từng process</b>: phải hỏi "level 2 cho process nào". OEM thường yêu cầu <span class="term">VDA scope</span> ở level 2, có khi 3.</p>
+<p>Tránh mỗi chuẩn một silo: xây <b>một hệ evidence</b> (ví dụ <code>REQ-012 → TC-88 → pass @ BL-1.8</code>) cho mọi audit.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Vòng đời đi từ concept đến release rồi tiếp tục maintenance, OTA 10–15 năm. Lifecycle trả lời "làm gì", governance trả lời "đủ chưa, ai quyết" bằng <b>tiêu chí, owner và evidence</b> gắn baseline. Nên xây <b>một hệ evidence</b> dùng chung cho mọi chuẩn.</p>
+</div>
+
+<!-- 2.2 -->
+<h3 id="p2-2">2.2 Các giai đoạn concept, requirement, design, implementation, integration, verification, release và maintenance</h3>
+
+<figure class="fig">
+<svg viewBox="0 0 720 352" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="V-model tám giai đoạn với năm gate G0 đến G4 và vòng maintenance quay lại requirement">
+<defs>
+<filter id="a2-sh1" x="-10%" y="-20%" width="120%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#174C43" flood-opacity="0.15"/></filter>
+<marker id="a2-arr1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">V-model của một feature CDC: tám giai đoạn, năm gate, vòng maintenance</text>
+<g stroke="#8FA5A0" stroke-width="1.2" stroke-dasharray="3 4">
+<line x1="235" y1="124" x2="485" y2="124"/>
+<line x1="270" y1="190" x2="450" y2="190"/>
+</g>
+<g text-anchor="middle" font-size="10" fill="#596966">
+<text x="360" y="118">system test ↔ requirement</text>
+<text x="360" y="184">integration test ↔ design</text>
+</g>
+<g stroke="#596966" stroke-width="1.4" fill="none" marker-end="url(#a2-arr1)">
+<line x1="130" y1="76" x2="130" y2="104"/>
+<line x1="165" y1="142" x2="165" y2="170"/>
+<polyline points="200,208 200,256 268,256"/>
+<polyline points="450,256 520,256 520,210"/>
+<line x1="560" y1="172" x2="560" y2="144"/>
+<line x1="595" y1="106" x2="595" y2="78"/>
+<line x1="520" y1="58" x2="452" y2="58"/>
+</g>
+<path d="M270,68 C 240,70 222,82 218,103" fill="none" stroke="#A64E32" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#a2-arr1)"/>
+<text x="250" y="98" font-size="10" fill="#A64E32">CR · defect · CVE</text>
+<g filter="url(#a2-sh1)">
+<rect x="20" y="40" width="180" height="36" rx="8" fill="#174C43"/>
+<rect x="55" y="106" width="180" height="36" rx="8" fill="#174C43"/>
+<rect x="90" y="172" width="180" height="36" rx="8" fill="#174C43"/>
+<rect x="270" y="238" width="180" height="36" rx="8" fill="#2A6F66"/>
+<rect x="450" y="172" width="180" height="36" rx="8" fill="#2A8C8C"/>
+<rect x="485" y="106" width="180" height="36" rx="8" fill="#2A8C8C"/>
+<rect x="520" y="40" width="180" height="36" rx="8" fill="#A64E32"/>
+<rect x="270" y="40" width="180" height="36" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.4"/>
+</g>
+<g text-anchor="middle" fill="#fff">
+<text x="110" y="55" font-size="12" font-weight="700">Concept</text><text x="110" y="69" font-size="9.5" opacity="0.92">use case · phạm vi · giả định</text>
+<text x="145" y="121" font-size="12" font-weight="700">Requirement</text><text x="145" y="135" font-size="9.5" opacity="0.92">NFR định lượng · acceptance</text>
+<text x="180" y="187" font-size="12" font-weight="700">Design</text><text x="180" y="201" font-size="9.5" opacity="0.92">architecture · interface</text>
+<text x="360" y="253" font-size="12" font-weight="700">Implementation</text><text x="360" y="267" font-size="9.5" opacity="0.92">code · unit test · review</text>
+<text x="540" y="187" font-size="12" font-weight="700">Integration</text><text x="540" y="201" font-size="9.5" opacity="0.92">build ghép · interface test</text>
+<text x="575" y="121" font-size="11.5" font-weight="700">Verification · Validation</text><text x="575" y="135" font-size="9.5" opacity="0.92">system test · scenario/xe</text>
+<text x="610" y="55" font-size="12" font-weight="700">Release</text><text x="610" y="69" font-size="9.5" opacity="0.92">evidence package · rollback</text>
+</g>
+<text x="360" y="55" text-anchor="middle" font-size="12" font-weight="700" fill="#174C43">Maintenance</text>
+<text x="360" y="69" text-anchor="middle" font-size="9.5" fill="#174C43">patch · OTA · CVE · retire</text>
+<g font-size="10" font-weight="700" text-anchor="middle" fill="#1c2928">
+<rect x="140" y="82" width="30" height="16" rx="5" fill="#E2BD69" stroke="#B7791F"/><text x="155" y="94">G0</text>
+<rect x="208" y="224" width="30" height="16" rx="5" fill="#E2BD69" stroke="#B7791F"/><text x="223" y="236">G1</text>
+<rect x="482" y="224" width="30" height="16" rx="5" fill="#E2BD69" stroke="#B7791F"/><text x="497" y="236">G2</text>
+<rect x="568" y="150" width="30" height="16" rx="5" fill="#E2BD69" stroke="#B7791F"/><text x="583" y="162">G3</text>
+<rect x="603" y="84" width="30" height="16" rx="5" fill="#E2BD69" stroke="#B7791F"/><text x="618" y="96">G4</text>
+</g>
+<text x="486" y="52" text-anchor="middle" font-size="9.5" fill="#596966">SOP / OTA</text>
+<rect x="20" y="290" width="680" height="30" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/>
+<text x="360" y="309" text-anchor="middle" font-size="10.5" fill="#174C43"><tspan font-weight="700">Lớp evidence chạy dọc mọi bước:</tspan> trace link · review record · test report @ baseline · SBOM · approval</text>
+<text x="360" y="340" text-anchor="middle" font-size="10" font-style="italic" fill="#596966">G0 khả thi · G1 kiến trúc · G2 hiện thực · G3 tích hợp · G4 phát hành (tên và số gate do từng tổ chức đặt)</text>
+</svg>
+<figcaption>Nhánh trái định nghĩa, nhánh phải kiểm tra cùng mức; nét đứt cho thấy lifecycle quay lại requirement sau release.</figcaption>
+</figure>
+
+<h4>a) Tám giai đoạn: output và câu hỏi trước khi chuyển bước</h4>
+<div class="table-scroll"><table><thead><tr><th>Giai đoạn</th><th>Output chính</th><th>Câu hỏi trước khi chuyển bước</th></tr></thead><tbody>
+<tr><td><b>Concept</b></td><td>Feature definition, phạm vi, giả định, đánh giá sơ bộ safety/security</td><td>Đáng làm? Ranh giới rõ?</td></tr>
+<tr><td><b>Requirement</b></td><td>System/software requirement, <span class="term">NFR</span>, acceptance criteria</td><td>Đo được, có owner, đã review?</td></tr>
+<tr><td><b>Design</b></td><td>Architecture, interface contract, allocation</td><td>Mọi requirement, NFR đã được phân bổ?</td></tr>
+<tr><td><b>Implementation</b></td><td>Code/config, unit test, static analysis, code review</td><td>Trace về design, đạt coding guideline?</td></tr>
+<tr><td><b>Integration</b></td><td>Build tích hợp, interface test</td><td>Ghép đúng contract, đúng baseline?</td></tr>
+<tr><td><b>Verification / validation</b></td><td>Test report, coverage, defect status; validation trên xe</td><td>Đúng spec? Đúng nhu cầu?</td></tr>
+<tr><td><b>Release</b></td><td>Baseline, release note, evidence package, rollback plan</td><td>Đủ evidence, residual risk đã chấp nhận?</td></tr>
+<tr><td><b>Maintenance</b></td><td>Patch, OTA, vulnerability monitoring, retirement plan</td><td>Thay đổi đi qua cùng change control?</td></tr>
+</tbody></table></div>
+
+<h4>b) V-model: mỗi mức định nghĩa đi cặp với một mức kiểm tra</h4>
+<div class="table-scroll"><table><thead><tr><th>Nhánh trái (định nghĩa)</th><th>Nhánh phải (kiểm tra cặp)</th><th>ASPICE</th><th>Ví dụ: hiển thị tốc độ</th></tr></thead><tbody>
+<tr><td>Stakeholder need</td><td>Validation</td><td>VAL.1 (4.0)</td><td>Tài xế đọc đúng tốc độ khi lái thử</td></tr>
+<tr><td>System requirement</td><td>System verification</td><td>SYS.2 ↔ SYS.5</td><td>Latency CAN → màn hình trên HIL</td></tr>
+<tr><td>System architecture</td><td>System integration</td><td>SYS.3 ↔ SYS.4</td><td>CDC trao đổi đúng với ECU phanh</td></tr>
+<tr><td>Software requirement</td><td>Software verification</td><td>SWE.1 ↔ SWE.6</td><td>Đơn vị đúng theo thị trường</td></tr>
+<tr><td>Software architecture</td><td>Software integration</td><td>SWE.2 ↔ SWE.5</td><td>Service và cluster app đúng contract</td></tr>
+<tr><td>Detailed design / unit</td><td>Unit verification</td><td>SWE.3 ↔ SWE.4</td><td>Hàm km/h ↔ mph: giá trị biên</td></tr>
+</tbody></table></div>
+<p>ASPICE 4.0 (2023) đổi tên một số process nhánh phải và tách VAL.1; đọc ID theo phiên bản ghi trong assessment report.</p>
+
+<h4>c) V-model không phải waterfall, release không phải điểm kết thúc</h4>
+<ul>
+<li><b>Iterative vẫn được</b>: V-model chỉ đòi <b>mỗi requirement có design, test và evidence tương ứng</b>.</li>
+<li><b>Gate khớp mốc chương trình</b>: G0–G4 phải khớp APQP/PPAP và sample phase, tránh hai lịch song song.</li>
+<li><b>Sau SOP là lifecycle thu nhỏ</b>: mỗi patch/OTA đi lại requirement → change → verification → release; <span class="term">ISO 24089</span> và R156 đòi update có kiểm soát.</li>
+</ul>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Tám giai đoạn, mỗi giai đoạn giao <b>một output kiểm tra được</b>, từ feature definition đến patch/OTA. Theo V-model, mỗi mức định nghĩa có một mức kiểm tra cặp; làm iterative vẫn được, miễn chỉ chuyển bước khi bước sau không phải đoán.</p>
+</div>
+
+<!-- 2.3 -->
+<h3 id="p2-3">2.3 Traceability giữa requirement, design, code, test và evidence</h3>
+
+<figure class="fig">
+<svg viewBox="0 0 720 240" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Chuỗi traceability sáu mắt xích từ requirement đến release, đi xuôi để tìm impact và đi ngược để tìm gap">
+<defs>
+<filter id="a2-sh2" x="-10%" y="-20%" width="120%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#174C43" flood-opacity="0.15"/></filter>
+<marker id="a2-arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+<marker id="a2-arr2c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A64E32"/></marker>
+<marker id="a2-arr2f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#174C43"/></marker>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Sợi dây trace của feature chime cửa mở (giả định minh họa)</text>
+<text x="20" y="42" font-size="10.5" font-weight="700" fill="#174C43">Đi xuôi → impact analysis · coverage · phạm vi OTA</text>
+<line x1="20" y1="49" x2="698" y2="49" stroke="#174C43" stroke-width="1.6" marker-end="url(#a2-arr2f)"/>
+<g filter="url(#a2-sh2)">
+<rect x="20" y="58" width="100" height="54" rx="8" fill="#174C43"/>
+<rect x="136" y="58" width="100" height="54" rx="8" fill="#174C43"/>
+<rect x="252" y="58" width="100" height="54" rx="8" fill="#2A6F66"/>
+<rect x="368" y="58" width="100" height="54" rx="8" fill="#2A8C8C"/>
+<rect x="484" y="58" width="100" height="54" rx="8" fill="#2A8C8C"/>
+<rect x="600" y="58" width="100" height="54" rx="8" fill="#A64E32"/>
+</g>
+<g text-anchor="middle" fill="#fff">
+<text x="70" y="81" font-size="11.5" font-weight="700">Requirement</text><text x="70" y="98" font-size="10" opacity="0.92">REQ-012 v2</text>
+<text x="186" y="81" font-size="11.5" font-weight="700">Design</text><text x="186" y="98" font-size="10" opacity="0.92">DS-4 · audio</text>
+<text x="302" y="81" font-size="11.5" font-weight="700">Code / config</text><text x="302" y="98" font-size="10" opacity="0.92">audio_policy.c</text>
+<text x="418" y="81" font-size="11.5" font-weight="700">Test case</text><text x="418" y="98" font-size="10" opacity="0.92">TC-88, TC-89</text>
+<text x="534" y="81" font-size="11.5" font-weight="700">Kết quả</text><text x="534" y="98" font-size="10" opacity="0.92">pass @ BL-1.9</text>
+<text x="650" y="81" font-size="11.5" font-weight="700">Release</text><text x="650" y="98" font-size="10" opacity="0.92">R2.1 · EU/US</text>
+</g>
+<g stroke="#596966" stroke-width="1.3">
+<line x1="121" y1="85" x2="135" y2="85"/><line x1="237" y1="85" x2="251" y2="85"/><line x1="353" y1="85" x2="367" y2="85"/><line x1="469" y1="85" x2="483" y2="85"/><line x1="585" y1="85" x2="599" y2="85"/>
+</g>
+<line x1="700" y1="122" x2="22" y2="122" stroke="#A64E32" stroke-width="1.6" marker-end="url(#a2-arr2c)"/>
+<text x="700" y="139" text-anchor="end" font-size="10.5" font-weight="700" fill="#A64E32">← Đi ngược: RCA lỗi trên xe · tìm gap · chứng minh coverage</text>
+<text x="20" y="166" font-size="11" font-weight="700" fill="#A93226">Ba loại gap phải hiện ra rõ, không được để ô trống</text>
+<g fill="#fff" stroke="#A93226" stroke-width="1.3">
+<rect x="20" y="176" width="210" height="50" rx="8"/>
+<rect x="255" y="176" width="210" height="50" rx="8"/>
+<rect x="490" y="176" width="210" height="50" rx="8"/>
+</g>
+<g text-anchor="middle">
+<text x="125" y="196" font-size="11.5" font-weight="700" fill="#A93226">Orphan requirement</text><text x="125" y="214" font-size="10" fill="#596966">requirement chưa có test nào</text>
+<text x="360" y="196" font-size="11.5" font-weight="700" fill="#A93226">Orphan test</text><text x="360" y="214" font-size="10" fill="#596966">test không gắn requirement nào</text>
+<text x="595" y="196" font-size="11.5" font-weight="700" fill="#A93226">Suspect / stale link</text><text x="595" y="214" font-size="10" fill="#596966">link trỏ version cũ sau một CR</text>
+</g>
+</svg>
+<figcaption>Traceability có giá trị vì đi được hai chiều và gắn version; chỗ dây đứt chính là gap cần xử lý.</figcaption>
+</figure>
+
+<h4>a) Traceability là gì và phục vụ câu hỏi nào</h4>
+<div class="table-scroll"><table><thead><tr><th>Link</th><th>Câu hỏi nó trả lời</th></tr></thead><tbody>
+<tr><td>Need → system requirement</td><td>Requirement đến từ nhu cầu nào?</td></tr>
+<tr><td>Requirement → design</td><td>Component nào đáp ứng?</td></tr>
+<tr><td>Design → code / config</td><td>Đổi interface thì sửa file nào?</td></tr>
+<tr><td>Requirement → test case</td><td>Đã có cách kiểm tra chưa?</td></tr>
+<tr><td>Test → kết quả @ baseline</td><td>Pass trên <b>phiên bản nào</b>, môi trường nào?</td></tr>
+<tr><td>Baseline → release / xe</td><td>Xe nào chạy thay đổi này?</td></tr>
+</tbody></table></div>
+
+<h4>b) Hai chiều: xuôi để tìm impact, ngược để tìm gap</h4>
+<ul>
+<li><b>Đi xuôi</b>: requirement đổi thì chạm design, code, test, variant nào.</li>
+<li><b>Đi ngược</b>: lỗi trên xe đến từ điều kiện nào chưa có requirement hoặc test.</li>
+<li><b>Gap phải hiện ra</b>: <i>orphan requirement</i> (không có test), <i>orphan test</i> (không ai yêu cầu), <i>suspect link</i> (một đầu đã đổi version, đầu kia chưa review lại).</li>
+</ul>
+<p>ASPICE và ISO 26262-8 đều đòi trace, nhưng lý do thực tế là: <b>không có trace thì không làm được impact analysis</b> (mục 2.8).</p>
+
+<h4>c) Traceability matrix gắn baseline (giả định minh họa)</h4>
+<div class="table-scroll"><table><thead><tr><th>Req ID</th><th>Requirement</th><th>Design / code</th><th>Test</th><th>Kết quả + baseline</th><th>Owner</th></tr></thead><tbody>
+<tr><td>REQ-002 (NFR)</td><td>P95 latency CAN → màn hình &lt; Z ms</td><td>DS-2 · <code>speed_publisher</code></td><td>TC-40 (HIL)</td><td>Pass @ BL-1.8; <b>chạy lại @ BL-1.9</b> vì code đổi</td><td>Team cluster</td></tr>
+<tr><td>REQ-012 v2</td><td>Chime khi cửa mở và tốc độ &gt; 10 km/h</td><td>DS-4 · audio policy</td><td>TC-88, TC-89</td><td><b>Mất hiệu lực</b>: kết quả cũ kiểm 5 km/h</td><td>Team audio</td></tr>
+<tr><td>REQ-031</td><td>Thêm field <code>speed_source</code>; consumer cũ không đổi hành vi</td><td>Interface contract v2</td><td>TC-120; IVI: <b>gap</b></td><td>TC-120 pass; IVI chưa có test</td><td>Team vehicle-data</td></tr>
+</tbody></table></div>
+<p>Reviewer cần thấy ba trạng thái: <b>phải chạy lại</b>, <b>evidence mất hiệu lực</b>, <b>gap được đánh dấu</b>.</p>
+
+<h4>d) Đo chất lượng của trace</h4>
+<pre><code>Requirement coverage = số requirement có ≥1 test pass @ baseline release
+                       / tổng số requirement trong scope release
+Suspect link rate    = số link có một đầu đã đổi version mà chưa review lại
+                       / tổng số link</code></pre>
+<p>Con số chỉ có nghĩa khi ghi rõ <b>baseline, variant, scope</b>.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Traceability là liên kết <b>hai chiều, có version</b> từ need đến requirement, design, code, test, kết quả @ baseline và xe. Đi xuôi để tìm impact, đi ngược để tìm gap. Đo bằng coverage và suspect link rate theo baseline; thiếu trace thì không làm được impact analysis.</p>
+</div>
+
+<!-- 2.4 -->
+<h3 id="p2-4">2.4 Quality gates, review, change control và defect management</h3>
+
+<figure class="fig">
+<svg viewBox="0 0 720 250" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Cấu tạo một quality gate: entry criteria, owner xem evidence, exit criteria và residual risk, ba kết quả pass, conditional, hold">
+<defs>
+<filter id="a2-sh3" x="-10%" y="-20%" width="120%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#174C43" flood-opacity="0.15"/></filter>
+<marker id="a2-arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Cấu tạo một quality gate: năm thứ định nghĩa trước, ba kết quả</text>
+<g filter="url(#a2-sh3)">
+<rect x="20" y="90" width="130" height="60" rx="9" fill="#2A6F66"/>
+<rect x="175" y="90" width="120" height="60" rx="9" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.4"/>
+<rect x="320" y="46" width="200" height="146" rx="10" fill="#174C43"/>
+<rect x="560" y="46" width="140" height="40" rx="8" fill="#2A6F66"/>
+<rect x="560" y="100" width="140" height="40" rx="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/>
+<rect x="560" y="154" width="140" height="40" rx="8" fill="#A93226"/>
+</g>
+<g text-anchor="middle">
+<text x="85" y="115" font-size="11.5" font-weight="700" fill="#fff">Artifact @ BL</text>
+<text x="85" y="132" font-size="9.5" fill="#fff" opacity="0.92">build · spec · report</text>
+<text x="235" y="115" font-size="11.5" font-weight="700" fill="#174C43">Entry criteria</text>
+<text x="235" y="132" font-size="9.5" fill="#174C43">đủ sẵn sàng để xét?</text>
+<text x="420" y="67" font-size="12" font-weight="700" fill="#fff">Gate · owner có tên</text>
+</g>
+<g fill="#E5EFEB">
+<rect x="334" y="80" width="172" height="28" rx="6"/>
+<rect x="334" y="114" width="172" height="28" rx="6"/>
+<rect x="334" y="148" width="172" height="28" rx="6"/>
+</g>
+<g text-anchor="middle" font-size="10.5" fill="#174C43">
+<text x="420" y="98">Evidence khách quan</text>
+<text x="420" y="132">Exit criteria chốt trước</text>
+<text x="420" y="166">Residual risk + người ký</text>
+</g>
+<g stroke="#596966" stroke-width="1.4" fill="none" marker-end="url(#a2-arr3)">
+<line x1="150" y1="120" x2="173" y2="120"/>
+<line x1="295" y1="120" x2="318" y2="120"/>
+<path d="M520,120 C 540,120 538,66 558,66"/>
+<line x1="520" y1="120" x2="558" y2="120"/>
+<path d="M520,120 C 540,120 538,174 558,174"/>
+<line x1="235" y1="150" x2="235" y2="186"/>
+</g>
+<g text-anchor="middle">
+<text x="630" y="63" font-size="11.5" font-weight="700" fill="#fff">Pass</text><text x="630" y="78" font-size="9.5" fill="#fff" opacity="0.92">đi tiếp</text>
+<text x="630" y="117" font-size="11.5" font-weight="700" fill="#1c2928">Conditional</text><text x="630" y="132" font-size="9.5" fill="#1c2928">điều kiện · hạn · chữ ký</text>
+<text x="630" y="171" font-size="11.5" font-weight="700" fill="#fff">Hold</text><text x="630" y="186" font-size="9.5" fill="#fff" opacity="0.92">quay lại sửa</text>
+</g>
+<text x="235" y="200" text-anchor="middle" font-size="10" fill="#A93226">chưa sẵn sàng → trả lại,</text>
+<text x="235" y="213" text-anchor="middle" font-size="10" fill="#A93226">không tốn công review</text>
+<text x="360" y="238" text-anchor="middle" font-size="10" font-style="italic" fill="#596966">Gate không phải cuộc họp: không có owner ký quyết định thì chỉ là một buổi báo cáo tiến độ</text>
+</svg>
+<figcaption>Entry chặn artifact chưa sẵn sàng; exit criteria làm quyết định khách quan; owner xem evidence và residual risk trước khi mở cửa.</figcaption>
+</figure>
+
+<h4>a) Quality gate: năm thành phần và gate G0–G4</h4>
+<p><span class="term">Quality gate</span> có năm thứ định nghĩa <b>trước</b>: <b>entry criteria</b>, <b>exit criteria</b>, <b>owner</b>, <b>evidence</b> và <b><span class="term">residual risk</span></b> cùng người chấp nhận.</p>
+<div class="table-scroll"><table><thead><tr><th>Gate</th><th>Quyết định</th><th>Evidence (ví dụ)</th><th>Owner</th></tr></thead><tbody>
+<tr><td>G0 · Concept → Requirement</td><td>Đáng làm, phạm vi rõ?</td><td>Feature definition, ước tính range</td><td>Program sponsor</td></tr>
+<tr><td>G1 · Design → Implementation</td><td>Requirement đã baseline, kiến trúc đủ?</td><td>Interface contract, design review</td><td>System architect</td></tr>
+<tr><td>G2 · Implementation → Integration</td><td>Code có trace, đủ chất lượng?</td><td>Static analysis, code review, unit test, SBOM</td><td>Engineering lead</td></tr>
+<tr><td>G3 · Integration → V&amp;V</td><td>Đúng contract, defect trong ngưỡng?</td><td>Integration test @ baseline</td><td>Integration lead</td></tr>
+<tr><td>G4 · V&amp;V → Release</td><td>Đủ evidence, risk chấp nhận, rollback sẵn?</td><td>Release evidence package (mục 2.7)</td><td>Release authority</td></tr>
+</tbody></table></div>
+<p>Gate thật có kết quả rõ (pass / conditional / hold), criteria chốt trước, và risk vượt quyền owner thì escalate.</p>
+
+<h4>b) Review: verification sớm và rẻ nhất</h4>
+<div class="table-scroll"><table><thead><tr><th>Dạng review</th><th>Khi nào dùng</th></tr></thead><tbody>
+<tr><td>Peer / code review</td><td>Mọi thay đổi code/config trước khi merge</td></tr>
+<tr><td>Technical review</td><td>Architecture, interface contract</td></tr>
+<tr><td>Inspection: checklist, vai trò rõ, ghi finding</td><td>Safety requirement, code trên safety path</td></tr>
+<tr><td>Confirmation measures (ISO 26262-2), độc lập I0–I3 theo ASIL</td><td>HARA, safety plan, safety case</td></tr>
+</tbody></table></div>
+<p>Review thật có <b>checklist</b>, reviewer đủ năng lực, finding có owner, record gắn version. "Approve" không finding thường là hình thức.</p>
+
+<h4>c) Change control và configuration management</h4>
+<ul>
+<li>Mỗi <span class="term">Configuration item</span> được quản lý version; <span class="term">Baseline</span> là điểm tham chiếu cho build, evidence, release và rollback.</li>
+<li><b>Mọi thay đổi sau baseline</b> đi qua <span class="term">change request</span> và <span class="term">CCB</span> (impact analysis ở mục 2.8).</li>
+<li><b>Provenance</b> (commit, config, tool tạo binary) giúp tái hiện lỗi và xác định đúng nhóm xe bị ảnh hưởng nhiều năm sau SOP.</li>
+<li>ASPICE: SUP.8 configuration, SUP.10 change request, SUP.9 problem resolution.</li>
+</ul>
+
+<h4>d) Defect management: severity, priority, containment, correction</h4>
+<ul>
+<li><b>Severity</b> là hậu quả, <b>priority</b> là thứ tự xử lý: lỗi chính tả màn hình chào sắp SOP có severity thấp, priority cao.</li>
+<li><b>Containment</b> giảm tác động trước mắt (tạm tắt chia sẻ màn hình gây treo IVI); <b>correction</b> sửa nguyên nhân gốc qua CR.</li>
+<li><b>Risk acceptance</b>: người có thẩm quyền chấp nhận, có hạn xem lại.</li>
+</ul>
+<p><b>Defect chỉ đóng khi correction có regression test pass trên baseline mới.</b> Severity defect <b>khác</b> mức S0–S3 trong HARA; ASIL không phải thang ưu tiên ticket.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Quality gate G0–G4 có criteria, owner, evidence và residual risk định nghĩa trước. Review có checklist, change control qua CR và CCB, defect chỉ đóng khi regression pass trên baseline mới. Bốn cơ chế này giúp quyết định ở gate <b>khách quan, không cảm tính</b>.</p>
+</div>
+
+<!-- 2.5 -->
+<h3 id="p2-5">2.5 Verification khác validation như thế nào</h3>
+
+<h4>a) Hai câu hỏi khác nhau</h4>
+<div class="table-scroll"><table><thead><tr><th>Khía cạnh</th><th>Verification</th><th>Validation</th></tr></thead><tbody>
+<tr><td>Câu hỏi</td><td>Làm đúng spec chưa?</td><td>Làm đúng thứ cần làm chưa?</td></tr>
+<tr><td>Đối chiếu với</td><td>Requirement, design, interface contract</td><td>Stakeholder need, môi trường thật</td></tr>
+<tr><td>Phương pháp</td><td>Review, static analysis, unit/integration/system test</td><td>Scenario trên HIL/xe, field trial, acceptance</td></tr>
+<tr><td>Evidence</td><td>Test report @ baseline, coverage</td><td>Validation report, acceptance record</td></tr>
+<tr><td>Ví dụ CDC</td><td>P95 latency &lt; Z ms trên HIL</td><td>Tài xế đọc được tốc độ trong nắng, ban đêm</td></tr>
+</tbody></table></div>
+<p>Hai thứ <b>không thay được cho nhau</b>: đúng spec chưa chắc đúng nhu cầu, và ngược lại. SYS.5 đạt vẫn là <b>verification</b>; validation là VAL.1 (ASPICE 4.0) và safety validation của ISO 26262-4.</p>
+
+<h4>b) Chọn môi trường kiểm tra: SIL, HIL, xe thật</h4>
+<p>Đặt mỗi test ở <b>lớp rẻ nhất vẫn cho evidence hợp lệ</b>:</p>
+<div class="table-scroll"><table><thead><tr><th>Lớp</th><th>Trả lời được</th><th>Giới hạn</th></tr></thead><tbody>
+<tr><td><span class="term">SIL</span></td><td>Logic, regression trong CI</td><td>Không chứng minh timing phần cứng</td></tr>
+<tr><td><span class="term">HIL</span></td><td>Timing thật, giao tiếp ECU–ECU</td><td>Bench khan hiếm, quyết định lịch</td></tr>
+<tr><td>Xe thật</td><td>Ánh sáng, âm thanh cabin, EMC, type approval</td><td>Đắt, muộn, nhưng không thay được</td></tr>
+</tbody></table></div>
+<p>Ví dụ chime: logic ngưỡng → SIL; độ trễ CAN → âm thanh → HIL; nghe rõ khi bật nhạc → lái thử.</p>
+
+<h4>c) Viết requirement để cả hai đều làm được</h4>
+<ul>
+<li><b>Verification cần requirement đo được</b>: "P95 latency &lt; Z ms với tải X", không phải "hiển thị nhanh".</li>
+<li><b>Validation cần scenario rõ</b>: ai dùng, điều kiện nào, thành công là gì.</li>
+<li>Verification pass mà validation fail → <b>sửa requirement qua CR trước</b>, rồi mới sửa code.</li>
+</ul>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p><b>Verification</b> hỏi làm đúng spec chưa; <b>validation</b> hỏi làm đúng thứ cần làm chưa, đối chiếu với stakeholder need. Hai thứ không thay nhau. Mỗi test đặt ở lớp rẻ nhất còn hợp lệ, và khi validation fail thì thường sửa requirement trước.</p>
+</div>
+
+<!-- 2.6 -->
+<h3 id="p2-6">2.6 Vì sao process governance cần hỗ trợ engineering thay vì chỉ tạo thủ tục</h3>
+<p>Governance chỉ có giá trị khi <b>giảm rủi ro thật và giúp quyết định nhanh, đúng</b>. Khi thành thủ tục, team "điền cho đủ", audit pass nhưng defect vẫn lọt ra xe.</p>
+
+<h4>a) Dấu hiệu governance đã thành thủ tục</h4>
+<div class="table-scroll"><table><thead><tr><th>Dấu hiệu</th><th>Hướng sửa</th></tr></thead><tbody>
+<tr><td>Trace matrix cập nhật dồn trước audit</td><td>Tạo link trong tool hằng ngày, kiểm gap tự động trong CI</td></tr>
+<tr><td>Review "Approve" không finding</td><td>Checklist, giới hạn kích thước review, theo dõi tỷ lệ finding</td></tr>
+<tr><td>Đổi icon và đổi logic chime cùng một quy trình 40 bước</td><td>Phân luồng theo risk (bảng b)</td></tr>
+</tbody></table></div>
+
+<h4>b) Tỷ lệ theo risk: luồng nhẹ và luồng mạnh</h4>
+<p><span class="term">Tailoring</span> được ISO 26262 cho phép; áp cùng tinh thần cho mọi thay đổi:</p>
+<div class="table-scroll"><table><thead><tr><th>Luồng</th><th>Áp cho</th><th>Review</th><th>Evidence tối thiểu</th></tr></thead><tbody>
+<tr><td>Nhẹ</td><td>Icon, text, layout IVI</td><td>Code review</td><td>UI test trong CI, release note</td></tr>
+<tr><td>Chuẩn</td><td>Feature IVI mới, interface ngoài safety path</td><td>+ technical review</td><td>Contract test, regression, trace</td></tr>
+<tr><td>Mạnh</td><td>Logic cảnh báo, telltale, hypervisor, OTA, security</td><td>Inspection độc lập theo ASIL/CAL</td><td>HIL, coverage theo ASIL, residual risk có chữ ký</td></tr>
+</tbody></table></div>
+<p>Phân luồng theo <b>impact và risk</b>, không theo số dòng: đổi hằng số ngưỡng chime thuộc luồng mạnh.</p>
+
+<h4>c) Năm nguyên tắc để governance phục vụ engineering</h4>
+<ol class="steps">
+<li><b>Mỗi bước có mục đích</b>: không trả lời câu hỏi rủi ro nào thì bỏ hoặc gộp.</li>
+<li><b>Evidence từ việc thật</b>: sinh tự động từ CI và tool.</li>
+<li><b>Tỷ lệ theo risk</b>: dành review cho safety/security path.</li>
+<li><b>Quyền quyết định rõ</b>: ai approve, ai chấp nhận risk, escalate lên ai.</li>
+<li><b>Feedback loop</b>: lỗi lọt ra thành regression test; metric để cải tiến, không để phạt.</li>
+</ol>
+
+<h4>d) Đo xem governance có hiệu quả</h4>
+<pre><code>Escape rate = số defect phát hiện sau release / tổng số defect của release đó
+              (cùng cửa sổ đo, ví dụ 3 tháng sau release)
+DRE         = defect tìm được trước release / tổng defect = 1 − escape rate
+Lead time   = thời gian từ CR được approve đến evidence đầy đủ trên baseline</code></pre>
+<p>Lái bằng <b>leading indicator</b> (trace coverage, ageing của risk), kiểm bằng <b>lagging indicator</b> (escape rate). Governance tốt làm <b>lead time và escape rate cùng giảm</b>; chỉ lead time tăng là thủ tục.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Vì governance chỉ có giá trị khi <b>giảm rủi ro thật</b>; thành thủ tục thì audit pass mà defect vẫn lọt. Mỗi bước phải có mục đích, evidence sinh tự động, quy trình tỷ lệ theo risk. Governance hiệu quả khi lead time và escape rate cùng giảm.</p>
+</div>
+
+<!-- 2.7 -->
+<h3 id="p2-7">2.7 Evidence nào chứng minh một feature đủ điều kiện release?</h3>
+<p>Release evidence package phải chứng minh: <b>đúng spec</b>, <b>đúng nhu cầu</b>, <b>trên đúng baseline</b>, và <b>residual risk đã được người có thẩm quyền chấp nhận</b>.</p>
+
+<h4>a) Nội dung release evidence package</h4>
+<div class="table-scroll"><table><thead><tr><th>Nhóm evidence</th><th>Gồm những gì</th></tr></thead><tbody>
+<tr><td>Traceability</td><td>Requirement baseline, trace đến test, gap đã xử lý</td></tr>
+<tr><td>Verification</td><td>Test report @ baseline release, coverage theo ASIL, static analysis</td></tr>
+<tr><td>Validation</td><td>Scenario trên HIL/xe, stakeholder acceptance</td></tr>
+<tr><td>Review record</td><td>Review, inspection; finding đã đóng</td></tr>
+<tr><td>Defect status</td><td>Defect mở dưới ngưỡng, mỗi cái có risk acceptance</td></tr>
+<tr><td>Safety / security</td><td><span class="term">Safety case</span>, cybersecurity case, vulnerability scan, <span class="term">SBOM</span></td></tr>
+<tr><td>Configuration</td><td>Baseline ID, provenance, variant, software identification theo R156</td></tr>
+<tr><td>Release readiness</td><td>Release note, known issues, rollback test, approval</td></tr>
+</tbody></table></div>
+
+<h4>b) Exit criteria G4 viết thành con số</h4>
+<pre><code>G4 · Release R2.1 trên BL-1.9 (giả định minh họa)
+- 100% requirement mức safety/regulation trong scope: test pass @ BL-1.9
+- Requirement còn lại: coverage ≥ ngưỡng đã thỏa thuận ở G1; gap có owner
+- 0 defect severity cao mở trên safety path; defect mở khác có risk acceptance
+- Static analysis: không finding mức major chưa xử lý
+- SBOM + vulnerability scan của đúng build; CVE mức critical đã đánh giá
+- Rollback test OTA pass; release note liệt kê REQ ID và variant
+- Residual risk: danh sách + người ký + ngày xem lại</code></pre>
+<p>Kết quả: <b>release</b>, <b>conditional release</b> (điều kiện, hạn, người ký, ví dụ rollout theo đợt) hoặc <b>hold</b>.</p>
+
+<h4>c) Phép thử sáu tháng</h4>
+<p>Sáu tháng sau có lỗi trên xe, người điều tra phải trả lời trong vài giờ, không phải vài tuần:</p>
+<ol class="steps">
+<li>Xe chạy <b>baseline nào</b>, build từ commit và config nào?</li>
+<li>Requirement liên quan đã test <b>trên chính baseline đó</b> chưa, ở môi trường nào?</li>
+<li>Lỗi có trong <b>known issues</b> hoặc residual risk đã được chấp nhận?</li>
+<li>Xe nào khác chạy cùng binary/thư viện (theo provenance, SBOM)?</li>
+</ol>
+<p>Package cũng nuôi PPAP (software version khớp baseline) và hồ sơ R156 cho OTA.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Cần package chứng minh <b>đúng spec, đúng nhu cầu, đúng baseline, residual risk đã được chấp nhận</b>, với exit criteria G4 viết thành con số. Package đạt khi sáu tháng sau có lỗi, truy ra baseline, test và xe bị ảnh hưởng trong vài giờ.</p>
+</div>
+
+<!-- 2.8 -->
+<h3 id="p2-8">2.8 Thay đổi requirement phải được đánh giá ảnh hưởng ra sao?</h3>
+
+<figure class="fig">
+<svg viewBox="0 0 720 290" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Tám bước impact analysis của một change request từ ghi nhận đến baseline mới">
+<defs>
+<filter id="a2-sh4" x="-10%" y="-20%" width="120%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#174C43" flood-opacity="0.15"/></filter>
+<marker id="a2-arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Change request: tám bước từ ghi nhận đến baseline mới</text>
+<g filter="url(#a2-sh4)">
+<rect x="20" y="40" width="155" height="66" rx="9" fill="#174C43"/>
+<rect x="195" y="40" width="155" height="66" rx="9" fill="#174C43"/>
+<rect x="370" y="40" width="155" height="66" rx="9" fill="#174C43"/>
+<rect x="545" y="40" width="155" height="66" rx="9" fill="#fff" stroke="#A93226" stroke-width="1.8"/>
+<rect x="545" y="146" width="155" height="66" rx="9" fill="#2A6F66"/>
+<rect x="370" y="146" width="155" height="66" rx="9" fill="#A64E32"/>
+<rect x="195" y="146" width="155" height="66" rx="9" fill="#2A8C8C"/>
+<rect x="20" y="146" width="155" height="66" rx="9" fill="#2A8C8C"/>
+</g>
+<g stroke="#596966" stroke-width="1.4" fill="none" marker-end="url(#a2-arr4)">
+<line x1="175" y1="73" x2="193" y2="73"/>
+<line x1="350" y1="73" x2="368" y2="73"/>
+<line x1="525" y1="73" x2="543" y2="73"/>
+<line x1="622" y1="106" x2="622" y2="144"/>
+<line x1="545" y1="179" x2="527" y2="179"/>
+<line x1="370" y1="179" x2="352" y2="179"/>
+<line x1="195" y1="179" x2="177" y2="179"/>
+</g>
+<g font-size="10" font-weight="700" text-anchor="middle" fill="#1c2928">
+<circle cx="32" cy="52" r="8" fill="#E2BD69"/><text x="32" y="56">1</text>
+<circle cx="207" cy="52" r="8" fill="#E2BD69"/><text x="207" y="56">2</text>
+<circle cx="382" cy="52" r="8" fill="#E2BD69"/><text x="382" y="56">3</text>
+<circle cx="557" cy="52" r="8" fill="#E2BD69"/><text x="557" y="56">4</text>
+<circle cx="557" cy="158" r="8" fill="#E2BD69"/><text x="557" y="162">5</text>
+<circle cx="382" cy="158" r="8" fill="#E2BD69"/><text x="382" y="162">6</text>
+<circle cx="207" cy="158" r="8" fill="#E2BD69"/><text x="207" y="162">7</text>
+<circle cx="32" cy="158" r="8" fill="#E2BD69"/><text x="32" y="162">8</text>
+</g>
+<g text-anchor="middle" fill="#fff">
+<text x="101" y="62" font-size="11.5" font-weight="700">Ghi nhận, phân loại</text><text x="97" y="80" font-size="9.5" opacity="0.92">lý do · người yêu cầu</text><text x="97" y="94" font-size="9.5" opacity="0.92">chạm safety/security?</text>
+<text x="276" y="62" font-size="11.5" font-weight="700">Đi theo trace</text><text x="272" y="80" font-size="9.5" opacity="0.92">xuôi: design → test</text><text x="272" y="94" font-size="9.5" opacity="0.92">ngược: consumer</text>
+<text x="451" y="62" font-size="11.5" font-weight="700">Quality attribute</text><text x="447" y="80" font-size="9.5" opacity="0.92">latency · resource</text><text x="447" y="94" font-size="9.5" opacity="0.92">safety arg. · TARA</text>
+<text x="626" y="168" font-size="11.5" font-weight="700">Effort, schedule</text><text x="622" y="186" font-size="9.5" opacity="0.92">regression · re-validation</text><text x="622" y="200" font-size="9.5" opacity="0.92">supplier · milestone</text>
+<text x="451" y="168" font-size="11.5" font-weight="700">CCB quyết định</text><text x="447" y="186" font-size="9.5" opacity="0.92">approve · reject · defer</text><text x="447" y="200" font-size="9.5" opacity="0.92">owner có tên</text>
+<text x="276" y="168" font-size="11.5" font-weight="700">Thực hiện</text><text x="272" y="186" font-size="9.5" opacity="0.92">sửa artifact · trace</text><text x="272" y="200" font-size="9.5" opacity="0.92">chạy lại test bị ảnh hưởng</text>
+<text x="101" y="168" font-size="11.5" font-weight="700">Baseline mới</text><text x="97" y="186" font-size="9.5" opacity="0.92">release note ghi REQ ID</text><text x="97" y="200" font-size="9.5" opacity="0.92">variant · version</text>
+</g>
+<g text-anchor="middle">
+<text x="626" y="62" font-size="11.5" font-weight="700" fill="#A93226">Evidence vô hiệu</text><text x="622" y="80" font-size="9.5" fill="#1c2928">test, review, analysis nào</text><text x="622" y="94" font-size="9.5" fill="#1c2928">không còn hợp lệ?</text>
+</g>
+<text x="612" y="126" font-size="9.5" font-style="italic" fill="#A93226" text-anchor="end">bước hay bị bỏ nhất ↑</text>
+<rect x="20" y="232" width="680" height="44" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/>
+<text x="360" y="250" text-anchor="middle" font-size="10.5" font-weight="700" fill="#174C43">Ví dụ chime 5 → 10 km/h (giả định minh họa)</text>
+<text x="360" y="266" text-anchor="middle" font-size="10" fill="#174C43">REQ-012 v2 → DS-4 audio policy → hàm ngưỡng → TC-88/89 mất hiệu lực → chạy lại trên HIL @ BL-1.9 → release note R2.1</text>
+</svg>
+<figcaption>Bước 4 là bước quyết định chất lượng của impact analysis: evidence cũ đã pass không mặc định còn đủ.</figcaption>
+</figure>
+
+<h4>a) Nội dung tối thiểu của một change request</h4>
+<pre><code>CR-0457 · Đổi ngưỡng chime cửa mở (giả định minh họa)
+Lý do / nguồn       : yêu cầu OEM cho thị trường EU
+Requirement bị đổi  : REQ-012 v1 → v2 (5 km/h → 10 km/h)
+Component / variant : audio policy (IVI), cluster telltale; EU, các trim
+Safety/cyber/regul. : có — cảnh báo người lái; xem lại safety analysis
+Evidence vô hiệu    : TC-88, TC-89, review DS-4
+Effort (range)      : xem bảng c)
+Quyết định CCB      : approve / reject / defer · người duyệt · ngày
+Release target      : R2.1 trên BL-1.9</code></pre>
+
+<h4>b) Đánh giá ảnh hưởng theo sáu chiều</h4>
+<div class="table-scroll"><table><thead><tr><th>Chiều</th><th>Ví dụ với CR chime</th></tr></thead><tbody>
+<tr><td>Artifact (đi xuôi trace)</td><td>DS-4, hàm ngưỡng, config thị trường, TC-88/89</td></tr>
+<tr><td>Consumer (đi ngược trace)</td><td>Cluster telltale, log diagnostic</td></tr>
+<tr><td>Variant</td><td>Chỉ EU; US giữ ngưỡng cũ</td></tr>
+<tr><td>Quality attribute</td><td>Latency không đổi; không phá variant US</td></tr>
+<tr><td>Safety / security / regulation</td><td>Cập nhật safety analysis; nếu qua OTA thì đánh giá theo R156</td></tr>
+<tr><td>Supplier / lịch</td><td>Tier 1 giao lại build IVI; cần slot HIL trước G4</td></tr>
+</tbody></table></div>
+
+<h4>c) Ước tính effort cả vòng, không chỉ code</h4>
+<p>Ước tính ba điểm (PERT): <code>E = (O + 4M + P) / 6</code>, độ lệch ≈ <code>(P − O) / 6</code>. Ví dụ (giả định minh họa, person-day):</p>
+<div class="table-scroll"><table><thead><tr><th>Phần việc</th><th class="c">O</th><th class="c">M</th><th class="c">P</th><th class="c">E</th></tr></thead><tbody>
+<tr><td>Requirement + review</td><td class="c">1</td><td class="c">2</td><td class="c">4</td><td class="c">2.2</td></tr>
+<tr><td>Design + interface</td><td class="c">1</td><td class="c">2</td><td class="c">5</td><td class="c">2.3</td></tr>
+<tr><td>Code + unit test</td><td class="c">2</td><td class="c">3</td><td class="c">6</td><td class="c">3.3</td></tr>
+<tr><td>Integration + regression</td><td class="c">2</td><td class="c">4</td><td class="c">10</td><td class="c">4.7</td></tr>
+<tr><td>Validation + evidence</td><td class="c">1</td><td class="c">3</td><td class="c">8</td><td class="c">3.5</td></tr>
+<tr class="total"><td>Tổng</td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c">≈ 16</td></tr>
+</tbody></table></div>
+<p>Code chỉ khoảng 20%; bất định lớn nhất ở integration và regression. Ghi estimate dạng range kèm giả định và cập nhật khi giả định đổi.</p>
+
+<h4>d) Quy tắc khi quyết định</h4>
+<ul>
+<li><b>Evidence cũ không mặc định còn hiệu lực</b>: test "xanh" của ngưỡng cũ đang chứng minh requirement đã hết hiệu lực.</li>
+<li><b>Reject và defer cũng hợp lệ</b>: thay đổi sát G4 có thể dời sang bản OTA sau, risk được ghi lại.</li>
+<li><b>Đóng CR khi</b> artifact, trace cập nhật, test bị ảnh hưởng pass trên baseline mới, release note ghi requirement và variant.</li>
+</ul>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Mỗi thay đổi qua CR, được đánh giá theo sáu chiều <b>trước khi CCB quyết định</b>, xác định <b>evidence nào bị vô hiệu</b> và ước tính effort cả vòng dạng range. CR chỉ đóng khi artifact, trace cập nhật và test bị ảnh hưởng pass trên baseline mới.</p>
+</div>
+
+<!-- 2.9 -->
+<h3 id="p2-9">2.9 Làm sao ngăn việc mất traceability trong hệ thống nhiều supplier?</h3>
+<p>Trace thường đứt ở <b>ranh giới tổ chức</b>, nơi OEM, Tier 1, Tier 2 mỗi bên một tool. Vì vậy trace phải được <b>thỏa thuận từ hợp đồng</b>, không xin lại ở cuối dự án.</p>
+
+<figure class="fig">
+<svg viewBox="0 0 720 318" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Luồng requirement và evidence giữa OEM, Tier 1 và Tier 2 với DIA, ReqIF, baseline và kiểm tra gap tự động">
+<defs>
+<filter id="a2-sh5" x="-10%" y="-20%" width="120%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#174C43" flood-opacity="0.15"/></filter>
+<marker id="a2-arr5f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#174C43"/></marker>
+<marker id="a2-arr5c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A64E32"/></marker>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Requirement đi xuống, evidence đi lên — cùng ID, cùng baseline</text>
+<rect x="20" y="34" width="680" height="28" rx="7" fill="#F6EBC8" stroke="#B7791F" stroke-width="1.2"/>
+<text x="360" y="52" text-anchor="middle" font-size="10.5" fill="#1c2928"><tspan font-weight="700">DIA (ISO 26262-8) · CIA (ISO/SAE 21434) · hợp đồng:</tspan> ai giao trace, evidence nào, format nào, khi nào</text>
+<g filter="url(#a2-sh5)">
+<rect x="20" y="74" width="180" height="34" rx="8" fill="#A64E32"/>
+<rect x="270" y="74" width="180" height="34" rx="8" fill="#174C43"/>
+<rect x="520" y="74" width="180" height="34" rx="8" fill="#2A6F66"/>
+</g>
+<g text-anchor="middle" fill="#fff">
+<text x="110" y="89" font-size="12" font-weight="700">OEM</text><text x="110" y="102" font-size="9.5" opacity="0.92">sở hữu requirement, release</text>
+<text x="360" y="89" font-size="12" font-weight="700">Tier 1</text><text x="360" y="102" font-size="9.5" opacity="0.92">tích hợp hộp CDC</text>
+<text x="610" y="89" font-size="12" font-weight="700">Tier 2</text><text x="610" y="102" font-size="9.5" opacity="0.92">BSP · hypervisor · OS</text>
+</g>
+<g fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2">
+<rect x="20" y="116" width="180" height="44" rx="8"/><rect x="270" y="116" width="180" height="44" rx="8"/><rect x="520" y="116" width="180" height="44" rx="8"/>
+<rect x="20" y="170" width="180" height="44" rx="8"/><rect x="270" y="170" width="180" height="44" rx="8"/><rect x="520" y="170" width="180" height="44" rx="8"/>
+<rect x="20" y="224" width="180" height="44" rx="8"/><rect x="270" y="224" width="180" height="44" rx="8"/><rect x="520" y="224" width="180" height="44" rx="8"/>
+</g>
+<g text-anchor="middle" fill="#174C43">
+<text x="110" y="134" font-size="11" font-weight="700">System requirement</text><text x="110" y="150" font-size="9.5">REQ-002, REQ-012 (ID gốc)</text>
+<text x="360" y="134" font-size="11" font-weight="700">SW req · architecture</text><text x="360" y="150" font-size="9.5">giữ nguyên REQ ID của OEM</text>
+<text x="610" y="134" font-size="11" font-weight="700">Component requirement</text><text x="610" y="150" font-size="9.5">link về REQ ID của OEM</text>
+<text x="110" y="188" font-size="11" font-weight="700">Integration · validation</text><text x="110" y="204" font-size="9.5">HIL, lái thử, acceptance</text>
+<text x="360" y="188" font-size="11" font-weight="700">Code · integration test</text><text x="360" y="204" font-size="9.5">kết quả gắn baseline Tier 1</text>
+<text x="610" y="188" font-size="11" font-weight="700">Component test report</text><text x="610" y="204" font-size="9.5">trên đúng version được giao</text>
+<text x="110" y="242" font-size="11" font-weight="700">Gap check mỗi delivery</text><text x="110" y="258" font-size="9.5">orphan · stale link · thiếu ID</text>
+<text x="360" y="242" font-size="11" font-weight="700">Delivery package</text><text x="360" y="258" font-size="9.5">release note + trace + SBOM</text>
+<text x="610" y="242" font-size="11" font-weight="700">SBOM · CVE status</text><text x="610" y="258" font-size="9.5">theo từng binary được giao</text>
+</g>
+<g stroke="#174C43" stroke-width="1.5" fill="none" marker-end="url(#a2-arr5f)">
+<line x1="202" y1="142" x2="268" y2="142"/>
+<line x1="452" y1="142" x2="518" y2="142"/>
+</g>
+<g stroke="#A64E32" stroke-width="1.5" fill="none" marker-end="url(#a2-arr5c)">
+<line x1="268" y1="252" x2="202" y2="252"/>
+<line x1="518" y1="252" x2="452" y2="252"/>
+</g>
+<g text-anchor="middle" font-size="9.5" font-weight="700">
+<text x="235" y="135" fill="#174C43">ReqIF</text>
+<text x="485" y="135" fill="#174C43">ReqIF</text>
+<text x="235" y="236" fill="#A64E32">evidence</text>
+<text x="235" y="246" fill="#A64E32">@ BL</text>
+<text x="485" y="236" fill="#A64E32">evidence</text>
+<text x="485" y="246" fill="#A64E32">@ BL</text>
+</g>
+<rect x="20" y="280" width="680" height="28" rx="7" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/>
+<text x="360" y="298" text-anchor="middle" font-size="10.5" fill="#174C43"><tspan font-weight="700">Joint CCB</tspan> · interface có owner và version · mọi delivery gắn baseline · ID không đánh số lại</text>
+</svg>
+<figcaption>Requirement đi xuống bằng định dạng trao đổi chuẩn; evidence đi lên kèm baseline; OEM kiểm gap tự động ở mỗi lần nhận hàng.</figcaption>
+</figure>
+
+<h4>a) Trace thường đứt ở đâu</h4>
+<ul>
+<li><b>Đánh số lại</b>: Tier 1 đổi REQ-002 thành SUP-118 → OEM không biết REQ-002 được test ở đâu.</li>
+<li><b>Trao đổi bằng PDF/Excel</b>: chép tay, mất version, mất link.</li>
+<li><b>Delivery không gắn baseline</b>: release note không ghi requirement đáp ứng, test trên version nào.</li>
+<li><b>Binary-only</b>: BSP/hypervisor không kèm requirement và test evidence liên kết được.</li>
+</ul>
+
+<h4>b) Biện pháp và evidence tương ứng</h4>
+<div class="table-scroll"><table><thead><tr><th>Biện pháp</th><th>Cách làm</th></tr></thead><tbody>
+<tr><td>Thỏa thuận từ đầu</td><td><span class="term">DIA</span>, cybersecurity interface agreement (ISO/SAE 21434) ghi nghĩa vụ giao trace link, test evidence, format</td></tr>
+<tr><td>ID ổn định</td><td>Giữ ID của OEM; ID riêng phải có parent ID gốc</td></tr>
+<tr><td>Format chuẩn</td><td><span class="term">ReqIF</span> có version thay vì chép tay</td></tr>
+<tr><td>Interface có owner</td><td>Owner, version, change control chung</td></tr>
+<tr><td>Delivery gắn baseline</td><td>Release note máy đọc được: REQ ID, test đã chạy, version, SBOM</td></tr>
+<tr><td>Kiểm gap tự động</td><td>Báo orphan, link trỏ version cũ mỗi lần nhận hàng</td></tr>
+</tbody></table></div>
+
+<h4>c) Checklist nhận một delivery từ supplier</h4>
+<ol class="steps">
+<li><b>Nhận dạng</b>: baseline, provenance, variant áp dụng.</li>
+<li><b>Requirement</b>: REQ ID của OEM được đáp ứng; không có ID lạ không link về gốc.</li>
+<li><b>Evidence</b>: test report trên <b>chính version được giao</b>, coverage trong scope.</li>
+<li><b>Gap</b>: kiểm tự động; mỗi gap có owner, hạn đóng, vào risk list nếu chạm safety/security.</li>
+<li><b>Security</b>: SBOM đúng binary, trạng thái CVE, lỗ hổng mới.</li>
+<li><b>Quyết định</b>: chấp nhận, chấp nhận có điều kiện hoặc trả lại, theo tiêu chí trong DIA.</li>
+</ol>
+
+<h4>d) Theo dõi bằng con số</h4>
+<p>Đo theo supplier và delivery: tỷ lệ trace về ID gốc, số orphan, link trỏ version cũ, tuổi gap. Gap tăng dần là tín hiệu sớm, xử lý ở joint CCB trước G4.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Phải <b>thỏa thuận trace từ hợp đồng</b>: ghi nghĩa vụ trong DIA, giữ ID gốc của OEM, trao đổi bằng ReqIF, mỗi delivery gắn baseline và SBOM, và <b>kiểm gap tự động mỗi lần nhận hàng</b>. Theo dõi gap theo supplier để xử lý trước G4.</p>
+</div>
+
+<div class="next-prev"><a href="1_Automotive_Industry_Engineering_Economics.html">← 1 · Automotive Industry &amp; Engineering Economics</a><a href="4_Cybersecurity_Long-term_Maintenance.html">4 · Cybersecurity &amp; Long-term Maintenance →</a></div>
+</article>
+  <footer class="article-footer"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></footer>
+  </main>
+</div>
+<script src="../assets/glossary-data.js"></script>
+<script src="../assets/term-glossary.js" data-unit="A.2"></script>
+</body>
+</html>

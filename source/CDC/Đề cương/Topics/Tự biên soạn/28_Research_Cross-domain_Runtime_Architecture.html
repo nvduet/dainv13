@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="../assets/site-ui.js" data-site-ui></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đề cương · Cross-domain Runtime Architecture</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f3f0e8;
+  --surface: #f9f7f1;
+  --ink: #2a3431;
+  --muted: #62706b;
+  --line: #dbd7cb;
+  --forest: #174c43;
+  --forest-soft: #e3ece6;
+  --copper: #a64e32;
+  --gold: #e2bd69;
+  --code: #ebe7dd;
+  --focus: #b34d31;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--copper); }
+a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.reader-header {
+  min-height: 74px;
+  padding: 12px clamp(20px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--forest);
+  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.reader-header a { color: white; text-decoration: none; }
+.reader-header nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; font-size: 0.9rem; }
+
+/* Navigation buttons: same shape/order as the AI library (secondary links | ← Quay lại | ⌂ Trang chủ) */
+.nav-link { padding: 6px 4px; color: #d4e4de; font-weight: 500; white-space: nowrap; }
+.reader-header a.nav-link:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+.nav-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(255, 255, 255, 0.3); }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.nav-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.nav-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.nav-ico { flex: none; width: 16px; height: 16px; }
+.reader-header .nav-btn { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+.reader-header .nav-btn:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.reader-header .nav-btn--primary { color: var(--forest); border-color: var(--gold); background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); }
+.reader-header .nav-btn--primary:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.article-footer .nav-btn { color: var(--forest); border-color: var(--forest); background: transparent; }
+.article-footer .nav-btn:hover { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary:hover { border-color: var(--copper); background: var(--copper); }
+.reader-header nav a:hover { color: var(--gold); }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; line-height: 1.12; }
+.brand small { color: #d4e4de; font-size: 0.75rem; font-weight: 400; }
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  border-radius: 2px;
+}
+
+.reader-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+
+.contents-panel {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 32px 20px 28px clamp(20px, 4vw, 48px);
+  border-right: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--copper);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contents-panel ul { margin: 0; padding: 0; list-style: none; }
+.contents-panel li { margin: 0; padding: 0; }
+.contents-panel a {
+  display: block;
+  padding: 7px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.contents-panel a:hover { color: var(--forest); text-decoration: underline; }
+.contents-panel .toc-level-3 { padding-left: 14px; border-left: 1px solid var(--line); }
+
+.article {
+  min-width: 0;
+  padding: 26px clamp(22px, 5vw, 76px) 70px;
+}
+
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+article { max-width: 900px; }
+article h1, article h2, article h3, .library-intro h1 {
+  color: light-dark(#26403d, #c5e8e4);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  line-height: 1.18;
+}
+article h1 { margin: 0 0 28px; font-size: 2.35rem; }
+article h2 {
+  margin: 48px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+}
+article h3 { margin: 32px 0 12px; color: var(--forest); font-size: 1.24rem; }
+article p { margin: 0 0 18px; }
+article li { margin: 6px 0; padding-left: 4px; }
+article ul, article ol { margin: 0 0 22px; padding-left: 26px; }
+article strong { color: light-dark(#26403c, #c3e9e3); }
+
+blockquote {
+  margin: 22px 0;
+  padding: 15px 20px;
+  border-left: 4px solid var(--copper);
+  background: light-dark(#f8eee8, #31231a);
+  color: light-dark(#543e35, #d4c2bb);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+.table-scroll { width: 100%; margin: 22px 0 26px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.92rem; }
+th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--forest-soft); color: light-dark(#26403c, #c3e9e3); font-weight: 700; }
+tr:nth-child(even) td { background: light-dark(#f9f7f2, #2c2918); }
+
+code, pre { font-family: Consolas, "Courier New", monospace; }
+code { padding: 0.1em 0.28em; background: var(--code); color: light-dark(#24433e, #c3dfda); font-size: 0.9em; }
+pre {
+  max-width: 100%;
+  margin: 20px 0 26px;
+  padding: 18px 20px;
+  overflow: auto;
+  border-left: 3px solid var(--forest);
+  background: light-dark(#e9eeea, #222c25);
+  color: light-dark(#26403d, #d0e6e4);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; color: inherit; }
+hr { margin: 36px 0; border: 0; border-top: 1px solid var(--line); }
+
+.audit-item { margin: 14px 0; }
+
+.audit-item details {
+  margin-top: 9px;
+  border-left: 3px solid #86a99e;
+  background: var(--forest-soft);
+}
+.audit-item summary {
+  padding: 9px 13px;
+  color: var(--forest);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.answer-body { padding: 0 14px 10px; }
+.answer-body p { margin: 4px 0 10px; }
+.answer-body ul { margin: -4px 0 12px; padding-left: 22px; }
+.answer-body li { margin: 3px 0; line-height: 1.55; }
+/* Key questions: map 1-1 to the Learning Plan "Unit Detail" requirements of the topic */
+details.audit-reveal { margin: 8px 0 18px; border-left: 3px solid #86a99e; background: var(--forest-soft); }
+details.audit-reveal > summary { padding: 9px 13px; color: var(--forest); cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.audit-key-intro { margin: 18px 0 28px; padding: 16px 20px 14px; border: 1px solid light-dark(#e6cf95, #62542f); border-left: 6px solid var(--gold); background: light-dark(#fff7e0, #312b1a); }
+.audit-key-intro p { margin: 0 0 8px; }
+.audit-key-intro ol { margin: 0; padding-left: 22px; }
+.audit-key-intro li { margin: 4px 0; }
+.audit-key-intro .req-tag { color: var(--muted); font-size: 0.8rem; }
+.audit-question-heading.audit-key { padding: 10px 14px; border-left: 6px solid var(--copper); background: light-dark(#fbeee4, #31251a); }
+.audit-question-heading.audit-key::after {
+  content: "Tr\1ECDng t\00E2m";
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--copper);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+details.audit-key-reveal, .audit-item details.audit-key-reveal { border-left: 6px solid var(--copper); background: light-dark(#f9f7f2, #2c2317); }
+details.audit-key-reveal > summary, .audit-item details.audit-key-reveal summary { color: var(--copper); }
+
+.article-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 54px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.library-main { width: min(1120px, 100%); margin: 0 auto; padding: 50px clamp(20px, 5vw, 72px) 76px; }
+.library-intro { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+.library-intro h1 { margin: 0; font-size: 3rem; }
+.library-intro h1 span { color: var(--copper); }
+
+.search-label { display: block; margin: 0 0 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#topic-search {
+  width: min(520px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-intro { max-width: 740px; color: var(--muted); }
+.qa-filter { margin: 26px 0 34px; }
+.qa-filter label { display: block; margin-bottom: 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#qa-search {
+  width: min(640px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-filter p { margin: 7px 0 0; color: var(--muted); font-size: 0.82rem; }
+.qa-topic { margin-top: 40px; }
+.qa-topic-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.qa-topic-heading h2 { flex: 1; }
+.qa-topic-heading a { flex: none; font-size: 0.86rem; }
+.qa-question[hidden], .qa-topic[hidden] { display: none; }
+.search-status { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.topic-list { margin-top: 8px; border-top: 1px solid var(--line); }
+.topic-link {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 15px;
+  min-height: 72px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topic-link:hover { background: light-dark(#e8eee9, #222d23); color: var(--forest); }
+.topic-number { color: var(--copper); font-family: Georgia, serif; font-size: 1.1rem; }
+.topic-title { font-weight: 650; }
+.topic-arrow { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.source-note { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.87rem; }
+
+@media (max-width: 860px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .contents-panel {
+    position: static;
+    max-height: none;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contents-panel nav { max-height: 210px; overflow: auto; }
+  .article { padding-top: 22px; }
+}
+
+@media (max-width: 560px) {
+  .reader-header { align-items: flex-start; padding: 12px 17px; }
+  .reader-header { flex-wrap: wrap; }
+  .reader-header nav { gap: 6px 8px; }
+  .nav-sep { display: none; }
+  .nav-btn { min-height: 34px; padding: 6px 12px; }
+  .library-intro h1 { font-size: 2.25rem; }
+  article h1 { font-size: 1.9rem; }
+  article h2 { font-size: 1.4rem; }
+  .topic-link { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .topic-arrow { display: none; }
+  .qa-topic-heading { align-items: flex-start; flex-direction: column; gap: 0; }
+  th, td { min-width: 130px; padding: 9px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* Highlight non-AI (CDC/SDV) topics in the library index */
+.topic-link.topic-core { background: var(--forest-soft); box-shadow: inset 5px 0 0 var(--forest); }
+.topic-link.topic-core .topic-title { color: var(--forest); }
+.topic-link.topic-core .topic-number { color: var(--forest); font-weight: 700; }
+.topic-link.topic-core:hover { background: light-dark(#d4e5de, #233930); }
+.topic-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 18px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.legend-swatch { display: inline-block; width: 18px; height: 14px; margin-right: -10px; border: 1px solid var(--line); vertical-align: -2px; }
+.legend-swatch.legend-core { background: var(--forest-soft); box-shadow: inset 4px 0 0 var(--forest); }
+
+/* Non-learning items (assignment / review / OJT) among CDC/SDV topics: red text */
+.topic-link.topic-task .topic-title, .topic-link.topic-task .topic-number { color: light-dark(#b3261e, #e9847e); }
+.topic-link.topic-task:hover .topic-title { color: light-dark(#8c1d18, #ed9794); }
+.legend-task { color: light-dark(#b3261e, #e9847e); font-weight: 600; }
+/* Study-time note per topic (from Fast_Track_CDC_Weekly_Checklist.xlsx) */
+.topic-time { display: block; margin-top: 3px; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.topic-link.topic-task .topic-time { color: light-dark(#b3261e, #e9847e); opacity: 0.85; }
+.legend-time { flex-basis: 100%; color: var(--muted); }
+
+/* ---- Thuật ngữ: bấm để xem giải nghĩa ---- */
+.gl {
+  border-bottom: 1.5px dotted #6f9a8e;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color .12s;
+}
+.gl:hover { background: var(--forest-soft); }
+.gl:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.gl.is-open { background: var(--forest-soft); border-bottom-style: solid; border-bottom-color: var(--forest); }
+.gl-pop {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(28, 41, 40, .16);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gl-term { display: block; margin-bottom: 2px; color: var(--forest); font-weight: 700; font-size: .82rem; }
+.gl-hint { color: var(--muted); font-size: .85rem; }
+.gl-hint .gl-demo { border-bottom: 1.5px dotted #6f9a8e; }
+
+/* ---- Checklist đầu ra (tick được, lưu trên trình duyệt) ---- */
+.checklist { margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 16px 14px; }
+.checklist > h3 { margin-top: 18px; }
+.cl-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--muted); font-size: .9rem; }
+.cl-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 99px; background: var(--forest-soft); overflow: hidden; }
+.cl-bar > i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s; }
+.cl-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.cl-item { padding: 9px 0 10px; border-top: 1px dashed var(--line); }
+.cl-item:first-child { border-top: 0; }
+.cl-item > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.cl-item input[type="checkbox"] { margin-top: .35em; width: 17px; height: 17px; accent-color: var(--forest); flex: none; }
+.cl-item.is-done > label > span { color: var(--muted); text-decoration: line-through; text-decoration-color: light-dark(#9fb3ad, #495c56); }
+.cl-pass, .cl-src { margin: 4px 0 0 27px; font-size: .9rem; }
+.cl-pass { color: var(--ink); }
+.cl-src { color: var(--muted); font-size: .82rem; }
+.cl-reset { margin-left: auto; border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 2px 9px; color: var(--muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.cl-reset:hover { color: var(--copper); border-color: var(--copper); }
+
+/* Lesson style for CDC/SDV topics — mirrors the teaching layout of the AI library
+   (bài đọc: hook → giải thích → ví dụ → vì sao quan trọng → nghiền ngẫm → thực hành → tự kiểm)
+   while keeping the CDC palette of reader.css. Load AFTER reader.css. */
+:root {
+  --teal: #2A8C8C; --teal-soft: #EEF7F6;
+  --violet: #6A4FC0; --violet-soft: #F5F2FD;
+  --green: #2E7D4F; --green-soft: #EFF8F2;
+  --amber: #B7791F; --amber-soft: #FFF7E8;
+  --red: #A93226; --red-soft: #FCEFEC;
+}
+
+body.lesson-page article { max-width: 800px; }
+body.lesson-page article p, body.lesson-page article li { line-height: 1.75; }
+body.lesson-page article h2 { margin-top: 44px; }
+body.lesson-page article h2 .sec-no { color: var(--copper); font-weight: 700; margin-right: 6px; }
+
+/* Bài nav (pill row, like .tapnav in the AI library) */
+.bai-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+.bai-nav a { font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--surface); }
+.bai-nav a:hover { border-color: var(--forest); color: var(--forest); }
+.bai-nav a.cur { background: var(--forest); border-color: var(--forest); color: #fff; }
+.bai-nav .grp { font-size: 0.7rem; font-weight: 700; color: var(--copper); align-self: center; margin: 0 2px 0 6px; letter-spacing: .06em; }
+
+.lesson-kicker { margin: 0 0 6px; color: var(--copper); font-size: 0.78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+body.lesson-page article h1 { margin-bottom: 10px; }
+.lesson-meta { margin: 0 0 18px; font-weight: 600; color: light-dark(#2c4b46, #bfdad5); font-size: 0.95rem; }
+
+/* Bản đồ bài — chuỗi khái niệm */
+.roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 24px; font-size: 0.86rem; }
+.roadmap span { background: var(--forest-soft); color: var(--forest); border: 1px solid light-dark(#c9ddd5, #314e42); border-radius: 8px; padding: 5px 10px; font-weight: 600; }
+.roadmap i { color: var(--muted); font-style: normal; }
+
+/* Figure card for SVG diagrams */
+.fig { margin: 24px 0; background: light-dark(#f9f7f2, #202819); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 12px; box-shadow: 0 1px 3px rgba(23,76,67,.06); overflow-x: auto; }
+.fig svg { width: 100%; height: auto; display: block; min-width: 560px; }
+.fig figcaption, .fig .cap { margin-top: 8px; color: var(--muted); font-size: 0.84rem; text-align: center; font-style: italic; }
+
+/* Opening question of a section */
+.hook { font-size: 1.04rem; color: light-dark(#26403c, #c6e2de); border-left: 3px solid var(--copper); padding: 4px 0 4px 14px; margin: 6px 0 18px; }
+
+/* Plain-language explanation */
+.plain { background: var(--forest-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0 18px; }
+.plain .ttl { color: var(--forest); }
+
+/* Generic box header */
+.box { border-radius: 12px; padding: 14px 18px; margin: 20px 0; }
+.box > .ttl, .plain > .ttl { margin: 0 0 7px; font-weight: 700; font-size: 0.86rem; }
+.box p { margin: 6px 0; }
+.box ul, .box ol { margin: 6px 0; padding-left: 22px; }
+.box li { margin: 4px 0; }
+
+.ex { background: var(--teal-soft); border: 1px solid var(--teal); }
+.ex > .ttl { color: light-dark(#1d6b6b, #a8e7e7); }
+.case { background: light-dark(#f9f7f2, #2c2117); border: 1px solid light-dark(#EBB28F, #63432f); border-left: 4px solid var(--copper); }
+.case > .ttl { color: var(--copper); font-size: 0.74rem; text-transform: uppercase; letter-spacing: .05em; }
+.pitfall { background: var(--amber-soft); border: 1px solid light-dark(#EBC77A, #695833); }
+.pitfall > .ttl { color: light-dark(#8A5A00, #ffd88f); }
+.why { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--forest); }
+.why > .ttl { color: var(--forest); }
+
+.practice { background: var(--green-soft); border: 1px solid var(--green); }
+.practice > .ttl { color: light-dark(#1F6340, #ade5c9); }
+.remember { background: var(--forest); color: #E4EFEB; }
+.remember > .ttl { color: var(--gold); }
+.remember b, .remember strong { color: #fff; }
+
+/* Sai vs đúng */
+.contrast { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.contrast > div { border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; }
+.contrast .bad { background: var(--red-soft); border: 1px solid light-dark(#E3A79F, #60342e); }
+.contrast .good { background: var(--green-soft); border: 1px solid light-dark(#9CCFB0, #326747); }
+.contrast .ttl { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
+.contrast .bad .ttl { color: var(--red); }
+.contrast .good .ttl { color: var(--green); }
+.contrast p { margin: 4px 0; }
+
+/* Step-by-step anatomy */
+.steps { list-style: none; counter-reset: st; padding-left: 0 !important; }
+.steps > li { counter-increment: st; position: relative; padding: 2px 0 2px 42px !important; margin: 12px 0 !important; }
+.steps > li::before { content: counter(st); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+
+/* Small term chips inline */
+.term { font-weight: 650; color: light-dark(#26403c, #c3e9e3); }
+.term-gloss { color: var(--muted); font-size: 0.92em; }
+
+/* Lesson prev/next */
+.next-prev { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .contrast { grid-template-columns: 1fr; }
+  .fig svg { min-width: 520px; }
+}
+
+/* ---------- Learning reflection + Unit assessment (assets/assessment.js) ---------- */
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.refl-intro { color: light-dark(#2c4b46, #bfdad5); }
+.refl-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--violet); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.refl-label { margin: 0 0 4px !important; font-weight: 700; color: light-dark(#3f2c86, #a99ade); }
+.refl-hint { color: light-dark(#41506B, #aeb9ce); font-size: 0.93rem; margin-bottom: 8px; }
+.refl-hint ul { margin: 4px 0 0; padding-left: 20px; }
+.refl-hint li { margin: 2px 0; }
+#reflection-app textarea, #quiz-app textarea, #workshop-app textarea { width: 100%; font: inherit; font-size: 0.95rem; line-height: 1.55; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); color: var(--ink); resize: vertical; }
+#reflection-app textarea:focus, #quiz-app textarea:focus, #workshop-app textarea:focus { outline: 2px solid var(--gold); border-color: var(--forest); }
+.refl-sample { margin-top: 8px; }
+.refl-sample summary { cursor: pointer; color: var(--forest); font-size: 0.86rem; font-weight: 600; }
+.refl-sample-body { margin: 6px 0; padding: 8px 12px; background: var(--forest-soft); border-radius: 6px; font-size: 0.92rem; }
+.refl-sample-body ul { margin: 4px 0; padding-left: 20px; }
+.refl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 6px; }
+.refl-tools p { flex-basis: 100%; margin: 2px 0 0; }
+.tool-msg { color: var(--green); font-size: 0.86rem; }
+.act-btn, .mini-btn { font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1.5px solid var(--forest); }
+.act-btn { background: var(--forest); color: #fff; }
+.act-btn:hover { background: var(--copper); border-color: var(--copper); }
+.mini-btn { background: transparent; color: var(--forest); padding: 5px 12px; font-size: 0.82rem; }
+.mini-btn:hover { background: var(--forest-soft); }
+.mini-btn.danger { color: var(--red); border-color: light-dark(#E3A79F, #60342e); }
+.assess-note { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; }
+.assess-note.small { background: transparent; padding: 0; }
+
+table.rubric select { font: inherit; font-size: 0.86rem; padding: 4px 6px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ws-col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.ws-h { margin: 0 0 4px !important; font-weight: 700; color: var(--forest); font-size: 0.9rem; }
+.ws-col ol, .ws-col ul { margin: 0 !important; padding-left: 20px !important; font-size: 0.93rem; }
+table.rubric td.num { text-align: center; font-weight: 700; color: var(--copper); }
+table.rubric td { font-size: 0.9rem; }
+table.rubric textarea { min-width: 180px; }
+.rub-pts { font-size: 0.82rem; color: var(--forest); font-weight: 600; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.dash-card.pass { border-color: light-dark(#9CCFB0, #326747); background: var(--green-soft); }
+.dash-card.fail { border-color: light-dark(#E3A79F, #60342e); background: var(--red-soft); }
+.dash-h { margin: 0 !important; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-v { margin: 2px 0 !important; font-size: 1.6rem; font-weight: 700; color: var(--forest); }
+.dash-sub { margin: 0 !important; font-size: 0.84rem; color: var(--muted); }
+
+/* ---------- Knowledge questions (open questions, self-rated) ---------- */
+.kq-howto { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kq-toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.kq-filter { font-size: 0.88rem; color: var(--forest); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.kq-progress { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; }
+.kq-track { flex: 1; height: 8px; border-radius: 99px; background: light-dark(#E3E8E2, #272f25); overflow: hidden; display: flex; }
+.kq-track .seg { height: 100%; }
+.seg-yes { background: var(--green); } .seg-part { background: light-dark(#D9A441, #665027); } .seg-no { background: light-dark(#C0504D, #6a2a28); }
+.kq-count { font-size: 0.84rem; color: var(--muted); white-space: nowrap; }
+.kq-group { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; border-bottom: 1px dashed var(--line); }
+.kq-group-title { margin: 0 0 6px !important; font-size: 1.08rem !important; }
+.kq-back { font-size: 0.82rem; white-space: nowrap; }
+.kq-list { padding-left: 26px !important; margin-top: 8px !important; }
+.kq-item { margin: 12px 0 !important; padding: 10px 14px !important; border: 1px solid var(--line); border-left: 4px solid light-dark(#C9D3CF, #3b4843); border-radius: 10px; background: var(--surface); }
+.kq-item[data-rate="yes"] { border-left-color: var(--green); }
+.kq-item[data-rate="part"] { border-left-color: #D9A441; }
+.kq-item[data-rate="no"] { border-left-color: #C0504D; }
+.only-weak .kq-item[data-rate="yes"] { display: none; }
+.kq-q { margin: 0 0 6px !important; font-weight: 600; line-height: 1.6 !important; }
+.kq-type { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 4px; background: var(--forest-soft); color: var(--forest); font-size: 0.72rem; font-weight: 700; letter-spacing: .03em; vertical-align: 2px; text-transform: uppercase; }
+.kq-mine, .kq-answer { margin: 6px 0; }
+.kq-mine summary, .kq-answer summary { cursor: pointer; font-size: 0.86rem; font-weight: 600; color: var(--forest); }
+.kq-mine textarea { margin-top: 6px; width: 100%; font: inherit; font-size: 0.95rem; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; resize: vertical; }
+.kq-answer-body { margin-top: 6px; padding: 10px 14px; background: light-dark(#F4F8F6, #1b2a22); border: 1px solid light-dark(#D5E3DD, #2f473d); border-radius: 8px; font-size: 0.95rem; }
+.kq-answer-body p { margin: 4px 0 8px !important; }
+.kq-answer-body ul, .kq-answer-body ol { margin: 4px 0 8px !important; padding-left: 20px !important; }
+.kq-answer-body li { margin: 2px 0 !important; }
+.kq-refs { font-size: 0.84rem; color: var(--muted); border-top: 1px dashed light-dark(#D5E3DD, #2f473d); padding-top: 6px; margin-top: 8px !important; }
+.kq-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.kq-rate-l { font-size: 0.8rem; color: var(--muted); }
+.kq-rbtn { font: inherit; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid light-dark(#C9D3CF, #3b4843); background: light-dark(#f9f7f2, #192320); color: var(--muted); cursor: pointer; }
+.kq-rbtn[aria-pressed="true"].r-yes { background: var(--green); border-color: var(--green); color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-part { background: light-dark(#D9A441, #665027); border-color: #D9A441; color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-no { background: light-dark(#C0504D, #6a2a28); border-color: #C0504D; color: #fff; }
+
+
+  </style>
+  <style>
+    article h4 { margin: 22px 0 8px; color: var(--forest); font-size: 1.02rem; }
+    td.c, th.c { text-align: center; }
+    tr.total td { font-weight: 700; background: var(--forest-soft) !important; }
+    .fig svg .hit:hover { opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="../assets/dark.css">
+</head>
+<body class="topic-page lesson-page">
+<header class="reader-header">
+    <a class="brand" href="../../dainv13.html"><span class="brand-mark">Đ</span><span>Đề cương<br><small>Cross-domain Runtime Architecture</small></span></a>
+    <nav aria-label="Page actions"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></nav>
+</header>
+<div class="reader-layout">
+  <aside class="contents-panel">
+    <p class="eyebrow">Nội dung trang</p>
+    <nav aria-label="Topic contents"><ul>
+<li class="toc-level-2"><a href="#p1">Phần 1 · Giải thích chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-2">1.2 Tổng quan về chủ đề</a></li>
+<li class="toc-level-2"><a href="#p2">Phần 2 · Nội dung chi tiết</a></li>
+<li class="toc-level-3"><a href="#p2-1">2.1 Runtime architecture nối nhiều domain</a></li>
+<li class="toc-level-3"><a href="#p2-2">2.2 Communication, discovery, lifecycle</a></li>
+<li class="toc-level-3"><a href="#p2-3">2.3 Scheduling, arbitration, isolation, observability</a></li>
+<li class="toc-level-3"><a href="#p2-4">2.4 Consistency, timing, event flow, failure</a></li>
+<li class="toc-level-3"><a href="#p2-5">2.5 Runtime, middleware, platform, application</a></li>
+<li class="toc-level-3"><a href="#p2-6">2.6 Domain tiến hóa độc lập</a></li>
+</ul></nav>
+  </aside>
+  <main class="article">
+    <article>
+<p class="lesson-kicker">Đề cương tự biên soạn · Research Topic 3</p>
+<h1 id="top">Cross-domain Runtime Architecture</h1>
+<p class="lesson-meta">Kiến trúc runtime xuyên domain trong xe · đọc ~20 phút</p>
+
+<h2 id="p1"><span class="sec-no">1 ·</span> Giải thích chủ đề</h2>
+<h3 id="p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</h3>
+<ul>
+<li><b>Cross-domain</b>: vượt qua ranh giới giữa các domain chức năng của xe, như cockpit, ADAS, body, powertrain, chassis, vốn do các nhóm và ECU khác nhau phụ trách.</li>
+<li><b>Runtime</b>: môi trường lúc phần mềm đang chạy, gồm việc khởi động, lập lịch, giao tiếp, giám sát và tắt các thành phần.</li>
+<li><b>Architecture</b>: cách tổ chức các khối runtime, giao diện giữa chúng và các quy tắc chung để nhiều domain phối hợp được.</li>
+</ul>
+<h3 id="p1-2">1.2 Tổng quan về chủ đề</h3>
+<p>Trong SDV, một tính năng thường cần dữ liệu từ nhiều domain. Ví dụ, cảnh báo điểm mù trên cluster cần radar từ ADAS, trạng thái xi nhan từ body và màn hình từ CDC. Cross-domain runtime architecture là phần nền giúp các mảnh đó tìm thấy nhau, trao đổi dữ liệu đúng lúc, chia tài nguyên công bằng và không kéo nhau cùng sập khi một bên lỗi.</p>
+<p>Khó ở chỗ các domain khác nhau về gần như mọi mặt: mức an toàn, hệ điều hành, nhịp phát hành, nhà cung cấp, cả cách nghĩ về thời gian. ADAS tính bằng mili giây và có ASIL cao. IVI cập nhật thường xuyên và chạy Android. Body có nhiều ECU nhỏ dùng tín hiệu CAN. Chủ đề này đi qua lớp runtime chung, cách giao tiếp và quản lý vòng đời, cách chia và cách ly tài nguyên, tính nhất quán của dữ liệu và thời gian, ranh giới giữa các tầng phần mềm, và cách thiết kế để mỗi domain thay đổi mà không kéo các domain khác theo.</p>
+<h2 id="p2"><span class="sec-no">2 ·</span> Nội dung chi tiết</h2>
+<h3 id="p2-1">2.1 Runtime architecture kết nối nhiều domain chức năng trong xe</h3>
+<p>Xe SDV thường gồm vài máy tính trung tâm hoặc domain controller, nối với các zonal ECU qua Ethernet. Mỗi máy có thể chạy nhiều OS trên hypervisor: RTOS cho phần cần thời gian thực, Linux hoặc Android cho phần giàu tính năng.</p>
+<p>Runtime architecture đặt ra lớp chung trên đó:</p>
+<ul>
+<li>Mô hình giao tiếp dạng service, ví dụ SOME/IP hoặc DDS.</li>
+<li>Quản lý vòng đời và trạng thái máy, như Execution Management và State Management của AUTOSAR Adaptive.</li>
+<li>Giám sát sức khỏe và ghi log thống nhất.</li>
+<li>Đồng bộ thời gian chung cho mọi máy, thường bằng gPTP.</li>
+<li>Bảo mật giao tiếp và quyền truy cập service: ai được đọc, ai được gọi.</li>
+<li>Quản lý cấu hình và cập nhật phần mềm cho từng thành phần.</li>
+</ul>
+<p>Các domain mà lớp này phải nối có tính chất rất khác nhau:</p>
+<div class="table-scroll"><table>
+<tr><th>Domain</th><th>Ví dụ chức năng</th><th>Đặc điểm runtime</th></tr>
+<tr><td>Cockpit</td><td>Cluster, IVI, HUD, voice</td><td>Linux, Android, QNX trên hypervisor; giàu tính năng; cluster có phần an toàn.</td></tr>
+<tr><td>ADAS</td><td>Nhận diện làn, phanh khẩn cấp, đỗ xe</td><td>Tải tính toán lớn, deadline chặt, ASIL cao.</td></tr>
+<tr><td>Body và comfort</td><td>Cửa, đèn, điều hòa, ghế</td><td>Nhiều ECU nhỏ, AUTOSAR Classic, giao tiếp bằng tín hiệu CAN, LIN.</td></tr>
+<tr><td>Powertrain, năng lượng</td><td>Quản lý pin, sạc, động cơ điện</td><td>Thời gian thực cứng, an toàn cao, ít thay đổi.</td></tr>
+<tr><td>Chassis</td><td>Phanh, lái, treo</td><td>An toàn cao nhất, thường giữ trên ECU riêng.</td></tr>
+<tr><td>Connectivity</td><td>Telematics, OTA, dịch vụ cloud</td><td>Hướng ra ngoài xe, nhiều rủi ro bảo mật.</td></tr>
+</table></div>
+<p>Vì phần lớn ECU cũ vẫn nói bằng tín hiệu, trong khi máy tính trung tâm nói bằng service, cần một lớp chuyển đổi tín hiệu sang service. Lớp này thường nằm ở gateway hoặc zonal ECU: nó đọc frame CAN, gom thành service có kiểu dữ liệu rõ ràng và đưa lên Ethernet.</p>
+<p>Ví dụ: CDC cần tốc độ xe từ domain chassis. Thay vì nối dây tín hiệu riêng, CDC đăng ký một service tốc độ do gateway hoặc zonal ECU cung cấp.</p>
+<figure class="fig"><svg viewBox="0 0 720 318" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="CDC và domain controller ADAS chạy nhiều OS trên hypervisor, nối Ethernet với zonal ECU, cùng dùng một lớp runtime chung"><defs></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Nhiều máy, nhiều OS, chung một lớp runtime</text><rect x="20" y="40" width="330" height="156" rx="10" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="185" y="60" font-size="12" fill="#174C43" font-weight="bold" text-anchor="middle">CDC</text><rect x="35" y="112" width="145" height="40" rx="8" fill="#174C43"/><text x="107.5" y="129.0" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">RTOS</text><text x="107.5" y="143.0" font-size="10" fill="#fff" text-anchor="middle">cluster</text><rect x="190" y="112" width="145" height="40" rx="8" fill="#2A8C8C"/><text x="262.5" y="129.0" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Android / Linux</text><text x="262.5" y="143.0" font-size="10" fill="#fff" text-anchor="middle">IVI</text><rect x="35" y="160" width="300" height="24" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2"/><text x="185.0" y="176.0" font-size="10.5" fill="#1c2928" font-weight="bold" text-anchor="middle">Hypervisor + phần cứng</text><line x1="185" y1="197" x2="185" y2="222" stroke="#596966" stroke-width="2"/><rect x="370" y="40" width="330" height="156" rx="10" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="535" y="60" font-size="12" fill="#174C43" font-weight="bold" text-anchor="middle">Domain controller ADAS</text><rect x="385" y="112" width="145" height="40" rx="8" fill="#174C43"/><text x="457.5" y="129.0" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">RTOS</text><text x="457.5" y="143.0" font-size="10" fill="#fff" text-anchor="middle">thời gian thực</text><rect x="540" y="112" width="145" height="40" rx="8" fill="#2A8C8C"/><text x="612.5" y="129.0" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Linux</text><text x="612.5" y="143.0" font-size="10" fill="#fff" text-anchor="middle">tính năng giàu</text><rect x="385" y="160" width="300" height="24" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2"/><text x="535.0" y="176.0" font-size="10.5" fill="#1c2928" font-weight="bold" text-anchor="middle">Hypervisor + phần cứng</text><line x1="535" y1="197" x2="535" y2="222" stroke="#596966" stroke-width="2"/><rect x="10" y="70" width="700" height="34" rx="8" fill="#A64E32"/><text x="360.0" y="91.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Lớp runtime chung: service · vòng đời, trạng thái · giám sát, log · thời gian · bảo mật · cập nhật</text><line x1="40" y1="222" x2="680" y2="222" stroke="#1c2928" stroke-width="3"/><text x="40" y="216" font-size="10" fill="#596966">Ethernet</text><line x1="140" y1="222" x2="140" y2="238" stroke="#1c2928" stroke-width="2"/><rect x="60" y="238" width="160" height="36" rx="8" fill="#2A6F66"/><text x="140.0" y="260.0" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Zonal ECU trước</text><line x1="360" y1="222" x2="360" y2="238" stroke="#1c2928" stroke-width="2"/><rect x="280" y="238" width="160" height="36" rx="8" fill="#2A6F66"/><text x="360.0" y="260.0" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Zonal ECU sau</text><line x1="580" y1="222" x2="580" y2="238" stroke="#1c2928" stroke-width="2"/><rect x="500" y="238" width="160" height="36" rx="8" fill="#2A6F66"/><text x="580.0" y="260.0" font-size="11" fill="#fff" font-weight="bold" text-anchor="middle">Gateway</text><text x="20" y="298" font-size="10.5" fill="#1c2928">Ví dụ: CDC đăng ký service tốc độ xe do zonal ECU cung cấp, không cần nối dây tín hiệu riêng.</text></svg><figcaption>OS và máy khác nhau, nhưng mọi domain cùng nói chung một ngôn ngữ service, vòng đời và giám sát.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Runtime architecture là lớp chung giúp các domain trên nhiều máy và OS giao tiếp, khởi động và được giám sát theo một luật. Nó phải nối được những domain rất khác nhau về an toàn và thời gian, kể cả các ECU cũ chỉ biết tín hiệu.</p></div>
+<h3 id="p2-2">2.2 Cross-domain communication, service discovery và lifecycle</h3>
+<h4>a) Cross-domain communication</h4>
+<p>Communication có hai kiểu chính: event hoặc topic để phát dữ liệu định kỳ, và method để gọi có phản hồi. SOME/IP hỗ trợ cả hai; DDS thiên về publish-subscribe với nhiều tùy chọn QoS.</p>
+<p>SOME/IP còn có field: một giá trị trạng thái có getter, setter và thông báo khi đổi, ví dụ nhiệt độ cài đặt của điều hòa. Dữ liệu được serialize theo định nghĩa interface rồi gửi qua UDP cho dữ liệu định kỳ, qua TCP khi cần chắc chắn tới nơi. DDS cho phép đặt QoS cho từng topic: reliability, history, deadline, durability. Ví dụ, topic vị trí xe có thể chọn best effort và chỉ giữ mẫu mới nhất, vì mẫu cũ không còn giá trị.</p>
+<p>Giao tiếp trong cùng một máy không nên đi qua socket mạng nếu không cần. Middleware có thể dùng bộ nhớ chia sẻ zero-copy, như Eclipse iceoryx, cho dữ liệu lớn như ảnh camera. Giao tiếp với ECU cũ thì đi qua gateway chuyển tín hiệu CAN sang service như ở 2.1.</p>
+<div class="table-scroll"><table>
+<tr><th>Kiểu</th><th>Khi nào dùng</th><th>Ví dụ trong CDC</th></tr>
+<tr><td>Event, topic</td><td>Dữ liệu phát liên tục hoặc khi có thay đổi, nhiều bên nhận</td><td>Tốc độ xe, trạng thái xi nhan</td></tr>
+<tr><td>Method</td><td>Yêu cầu một hành động và cần kết quả</td><td>IVI yêu cầu đổi chế độ lái, nhận lại chấp nhận hay từ chối</td></tr>
+<tr><td>Field</td><td>Một trạng thái cần đọc, đặt và theo dõi</td><td>Nhiệt độ cài đặt điều hòa</td></tr>
+</table></div>
+<h4>b) Service discovery</h4>
+<p>Service discovery giúp bên dùng tìm bên cung cấp mà không cấu hình cứng địa chỉ. SOME/IP-SD gửi OfferService và FindService qua multicast; bên dùng subscribe vào eventgroup cần thiết. DDS có cơ chế discovery riêng giữa các participant.</p>
+<p>Mỗi lời offer có TTL. Nếu bên cung cấp ngừng nhắc lại trước khi TTL hết, bên dùng coi service đã mất. Khi khởi động, SOME/IP-SD đi qua các pha chờ ban đầu, lặp lại nhanh rồi vào pha chính gửi định kỳ, để vừa tìm nhau nhanh vừa không làm ngập mạng. Trong xe, danh sách service thường đã biết từ lúc thiết kế, nên discovery chủ yếu để biết khi nào service sẵn sàng hơn là để khám phá cái mới. Discovery cũng là bề mặt tấn công: một node giả mạo có thể offer service giả, nên cần chính sách ai được offer service nào và giao tiếp được bảo vệ.</p>
+<h4>c) Lifecycle</h4>
+<p>Lifecycle cho biết service đang khởi động, sẵn sàng, suy giảm hay đã dừng. Khi IVI khởi động lại, các client ở domain khác phải nhận được việc service biến mất, và tự đăng ký lại khi nó xuất hiện, thay vì treo chờ.</p>
+<p>Có hai mức vòng đời. Mức tiến trình: Execution Management của AUTOSAR Adaptive khởi động tiến trình theo thứ tự phụ thuộc và theo dõi các trạng thái Idle, Starting, Running, Terminating, Terminated. Mức máy và nhóm chức năng: State Management quyết định nhóm tiến trình nào chạy ở trạng thái nào của xe, ví dụ khi xe đang đỗ, đang lái, đang cập nhật phần mềm hay sắp ngủ. Vòng đời của xe còn gồm việc ngủ và thức qua network management: trước khi ngủ, các service phải dừng gọn và lưu trạng thái cần thiết.</p>
+<figure class="fig"><svg viewBox="0 0 720 280" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Trạng thái tiến trình Idle, Starting, Running, Terminating, Terminated; trạng thái máy đỗ xe, đang lái, cập nhật phần mềm, chuẩn bị ngủ"><defs><marker id="s28-f6m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker><marker id="s28-f6m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Hai mức vòng đời: tiến trình và trạng thái máy</text><text x="20" y="50" font-size="11" fill="#174C43" font-weight="bold">Mức tiến trình · Execution Management</text><rect x="20" y="60" width="120" height="36" rx="8" fill="#2A6F66"/><text x="80.0" y="82.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Idle</text><line x1="141" y1="78" x2="158" y2="78" stroke="#596966" stroke-width="1.4" marker-end="url(#s28-f6m1)"/><rect x="160" y="60" width="120" height="36" rx="8" fill="#2A8C8C"/><text x="220.0" y="82.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Starting</text><line x1="281" y1="78" x2="298" y2="78" stroke="#596966" stroke-width="1.4" marker-end="url(#s28-f6m1)"/><rect x="300" y="60" width="120" height="36" rx="8" fill="#174C43"/><text x="360.0" y="82.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Running</text><line x1="421" y1="78" x2="438" y2="78" stroke="#596966" stroke-width="1.4" marker-end="url(#s28-f6m1)"/><rect x="440" y="60" width="120" height="36" rx="8" fill="#A64E32"/><text x="500.0" y="82.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Terminating</text><line x1="561" y1="78" x2="578" y2="78" stroke="#596966" stroke-width="1.4" marker-end="url(#s28-f6m1)"/><rect x="580" y="60" width="120" height="36" rx="8" fill="#596966"/><text x="640.0" y="82.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Terminated</text><path d="M640,97 L640,112 L220,112 L220,99" stroke="#A93226" stroke-width="1.4" fill="none" stroke-dasharray="5 4" marker-end="url(#s28-f6m2)"/><text x="430" y="128" font-size="10" fill="#A93226" text-anchor="middle">khởi động lại khi tiến trình lỗi, nếu cấu hình cho phép</text><text x="20" y="160" font-size="11" fill="#174C43" font-weight="bold">Mức máy và nhóm chức năng · State Management</text><rect x="20" y="170" width="155" height="58" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="97.5" y="189.0" font-size="11" fill="#1c2928" font-weight="bold" text-anchor="middle">Đỗ xe</text><text x="97.5" y="203.0" font-size="10" fill="#1c2928" text-anchor="middle">IVI, body comfort,</text><text x="97.5" y="217.0" font-size="10" fill="#1c2928" text-anchor="middle">cluster tắt</text><rect x="195" y="170" width="155" height="58" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="272.5" y="189.0" font-size="11" fill="#1c2928" font-weight="bold" text-anchor="middle">Đang lái</text><text x="272.5" y="203.0" font-size="10" fill="#1c2928" text-anchor="middle">cluster, ADAS, IVI,</text><text x="272.5" y="217.0" font-size="10" fill="#1c2928" text-anchor="middle">đủ mọi nhóm</text><rect x="370" y="170" width="155" height="58" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="447.5" y="189.0" font-size="11" fill="#1c2928" font-weight="bold" text-anchor="middle">Cập nhật phần mềm</text><text x="447.5" y="203.0" font-size="10" fill="#1c2928" text-anchor="middle">chỉ OTA, chẩn đoán;</text><text x="447.5" y="217.0" font-size="10" fill="#1c2928" text-anchor="middle">tính năng lái khóa</text><rect x="545" y="170" width="155" height="58" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="622.5" y="189.0" font-size="11" fill="#1c2928" font-weight="bold" text-anchor="middle">Chuẩn bị ngủ</text><text x="622.5" y="203.0" font-size="10" fill="#1c2928" text-anchor="middle">dừng gọn service,</text><text x="622.5" y="217.0" font-size="10" fill="#1c2928" text-anchor="middle">lưu trạng thái</text><text x="20" y="250" font-size="10.5" fill="#1c2928">State Management chọn nhóm chức năng nào chạy ở mỗi trạng thái xe; Execution Management</text><text x="20" y="266" font-size="10.5" fill="#1c2928">khởi động và dừng các tiến trình thuộc nhóm đó theo đúng thứ tự phụ thuộc (ví dụ minh họa).</text></svg><figcaption>Một tiến trình có vòng đời riêng, nhưng việc nó có được chạy hay không do trạng thái của cả xe quyết định.</figcaption></figure>
+<figure class="fig"><svg viewBox="0 0 720 322" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Biểu đồ trình tự SOME/IP-SD: OfferService, FindService, Subscribe, event; service khởi động lại và client đăng ký lại"><defs><marker id="s28-f2m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A6F66"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Service discovery và vòng đời qua SOME/IP-SD</text><rect x="60" y="40" width="180" height="32" rx="8" fill="#174C43"/><text x="150.0" y="60.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Client (cluster)</text><rect x="480" y="40" width="180" height="32" rx="8" fill="#2A8C8C"/><text x="570.0" y="60.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Service (IVI)</text><line x1="150" y1="73" x2="150" y2="306" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><line x1="570" y1="73" x2="570" y2="306" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><line x1="570" y1="100" x2="152" y2="100" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s28-f2m1)"/><text x="360" y="94" font-size="10.5" fill="#1c2928" text-anchor="middle">OfferService (multicast)</text><line x1="150" y1="130" x2="568" y2="130" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s28-f2m1)"/><text x="360" y="124" font-size="10.5" fill="#1c2928" text-anchor="middle">FindService</text><line x1="150" y1="160" x2="568" y2="160" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s28-f2m1)"/><text x="360" y="154" font-size="10.5" fill="#1c2928" text-anchor="middle">Subscribe eventgroup</text><line x1="570" y1="190" x2="152" y2="190" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s28-f2m1)"/><text x="360" y="184" font-size="10.5" fill="#1c2928" text-anchor="middle">event định kỳ</text><rect x="558" y="206" width="24" height="24" rx="7" fill="#A93226"/><text x="570" y="223" font-size="14" fill="#fff" font-weight="bold" text-anchor="middle">×</text><text x="160" y="222" font-size="10.5" fill="#A93226" font-weight="bold">service biến mất: client biết ngay, không treo chờ</text><line x1="570" y1="260" x2="152" y2="260" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s28-f2m1)"/><text x="360" y="254" font-size="10.5" fill="#1c2928" text-anchor="middle">OfferService lại sau khi khởi động xong</text><line x1="150" y1="290" x2="568" y2="290" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s28-f2m1)"/><text x="360" y="284" font-size="10.5" fill="#1c2928" text-anchor="middle">Subscribe lại</text><rect x="588" y="122" width="80" height="22" rx="7" fill="#2A6F66"/><text x="628.0" y="137.0" font-size="10" fill="#fff" font-weight="bold" text-anchor="middle">sẵn sàng</text><rect x="588" y="212" width="80" height="22" rx="7" fill="#A93226"/><text x="628.0" y="227.0" font-size="10" fill="#fff" font-weight="bold" text-anchor="middle">dừng</text><rect x="588" y="266" width="80" height="22" rx="7" fill="#2A6F66"/><text x="628.0" y="281.0" font-size="10" fill="#fff" font-weight="bold" text-anchor="middle">sẵn sàng</text></svg><figcaption>Client tìm service qua discovery và theo dõi vòng đời của nó, nên khi service khởi động lại thì client tự đăng ký lại.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Giao tiếp chéo domain dựa trên service với ba kiểu event, method, field, được tìm thấy động qua discovery có TTL và luôn đi kèm trạng thái vòng đời rõ ràng ở cả mức tiến trình lẫn mức máy.</p></div>
+<h3 id="p2-3">2.3 Scheduling, resource arbitration, isolation và observability</h3>
+<div class="table-scroll"><table>
+<tr><th>Vấn đề</th><th>Ý nghĩa và ví dụ trong CDC</th></tr>
+<tr><td>Scheduling</td><td>Tác vụ có deadline cứng như telltale cluster được ưu tiên hoặc có lát thời gian cố định; tác vụ UX chạy phần còn lại.</td></tr>
+<tr><td>Resource arbitration</td><td>Chia CPU, GPU, DSP, bộ nhớ, băng thông mạng giữa các domain theo hạn mức và ưu tiên.</td></tr>
+<tr><td>Isolation</td><td>Hypervisor, container, cgroups ngăn lỗi hoặc quá tải của IVI lan sang cluster.</td></tr>
+<tr><td>Observability</td><td>Log, metric, trace có ID chung để theo một yêu cầu đi qua nhiều domain.</td></tr>
+</table></div>
+<p>Bốn việc này đi cùng nhau: không đo được thì không biết isolation có hiệu quả hay hạn mức có đúng không.</p>
+<h4>a) Scheduling</h4>
+<p>Lập lịch xảy ra ở nhiều tầng chồng lên nhau. Hypervisor lập lịch các vCPU của VM lên lõi thật. Trong VM, RTOS thường dùng ưu tiên cố định, còn Linux có lớp thời gian thực <code>SCHED_FIFO</code>, <code>SCHED_DEADLINE</code> và lớp thông thường cho phần còn lại. Cách chia đơn giản và dễ chứng minh là ghim lõi: VM cluster có lõi riêng, IVI không dùng chung. Cách chia linh hoạt hơn là chia theo lát thời gian, tận dụng CPU tốt hơn nhưng khó chứng minh deadline hơn.</p>
+<p>Với chức năng chéo domain, deadline thuộc về cả chuỗi chứ không thuộc một tác vụ. Ví dụ cảnh báo điểm mù: radar xử lý ở ADAS, gửi qua mạng, CDC nhận và vẽ. Mỗi chặng chỉ được một phần ngân sách, và lịch của các chặng nên được canh khớp nhau để dữ liệu không phải chờ thêm một chu kỳ ở mỗi bên.</p>
+<h4>b) Resource arbitration</h4>
+<p>Resource arbitration quyết định ai được bao nhiêu khi nhiều bên cùng xin. Cần trả lời ba câu: ai là trọng tài, chia theo luật gì, và khi thiếu thì ai nhường. Ngoài CPU, các tài nguyên dễ bị quên gồm cache dùng chung và băng thông bộ nhớ, nơi tính năng như Arm MPAM cho phép chia phần; GPU và DSP; băng thông Ethernet, nơi VLAN priority và TSN cho phép dành chỗ; cả bộ nhớ flash và số lần ghi.</p>
+<div class="table-scroll"><table>
+<tr><th>Tài nguyên</th><th>Cơ chế phân xử thường dùng</th></tr>
+<tr><td>CPU</td><td>Ghim lõi, ưu tiên, cgroups cpu quota</td></tr>
+<tr><td>Bộ nhớ, cache</td><td>Phân vùng khi cấp phát, giới hạn cgroups, chia cache và băng thông bằng MPAM</td></tr>
+<tr><td>GPU, DSP</td><td>Ưu tiên job, preemption, hạn mức thời gian</td></tr>
+<tr><td>Mạng</td><td>VLAN priority, traffic shaping, TSN dành băng thông</td></tr>
+</table></div>
+<figure class="fig"><svg viewBox="0 0 720 262" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Phần chia CPU, băng thông bộ nhớ, GPU và Ethernet giữa phần an toàn, IVI và dự phòng, kèm cơ chế phân xử"><defs></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Mỗi tài nguyên dùng chung cần cơ chế phân xử riêng</text><text x="20" y="50" font-size="10.5" fill="#596966" font-weight="bold">Tài nguyên</text><text x="160" y="50" font-size="10.5" fill="#596966" font-weight="bold">Phần chia (giả định minh họa)</text><text x="478" y="50" font-size="10.5" fill="#596966" font-weight="bold">Cơ chế</text><text x="20" y="81" font-size="11.5" fill="#1c2928" font-weight="bold">CPU</text><rect x="160" y="62" width="88" height="30" rx="4" fill="#174C43"/><text x="204.0" y="81" font-size="10" fill="#fff" font-weight="bold" text-anchor="middle">2 lõi cluster</text><rect x="250" y="62" width="178" height="30" rx="4" fill="#2A8C8C"/><text x="339.0" y="81" font-size="10" fill="#fff" font-weight="bold" text-anchor="middle">IVI</text><rect x="430" y="62" width="28" height="30" rx="4" fill="#E5EFEB"/><rect x="476" y="62" width="224" height="30" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="588.0" y="81.0" font-size="10.5" fill="#1c2928" text-anchor="middle">ghim lõi, ưu tiên, cgroups</text><text x="20" y="123" font-size="11.5" fill="#1c2928" font-weight="bold">Bộ nhớ, cache</text><rect x="160" y="104" width="73" height="30" rx="4" fill="#174C43"/><text x="196.5" y="123" font-size="10" fill="#fff" font-weight="bold" text-anchor="middle">an toàn</text><rect x="235" y="104" width="163" height="30" rx="4" fill="#2A8C8C"/><text x="316.5" y="123" font-size="10" fill="#fff" font-weight="bold" text-anchor="middle">IVI</text><rect x="400" y="104" width="58" height="30" rx="4" fill="#E5EFEB"/><text x="429.0" y="123" font-size="10" fill="#1c2928" font-weight="bold" text-anchor="middle">dự phòng</text><rect x="476" y="104" width="224" height="30" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="588.0" y="123.0" font-size="10.5" fill="#1c2928" text-anchor="middle">MPAM, giới hạn cấp phát</text><text x="20" y="165" font-size="11.5" fill="#1c2928" font-weight="bold">GPU</text><rect x="160" y="146" width="58" height="30" rx="4" fill="#174C43"/><text x="189.0" y="165" font-size="10" fill="#fff" font-weight="bold" text-anchor="middle">cluster</text><rect x="220" y="146" width="208" height="30" rx="4" fill="#2A8C8C"/><text x="324.0" y="165" font-size="10" fill="#fff" font-weight="bold" text-anchor="middle">IVI, màn phụ</text><rect x="430" y="146" width="28" height="30" rx="4" fill="#E5EFEB"/><rect x="476" y="146" width="224" height="30" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="588.0" y="165.0" font-size="10.5" fill="#1c2928" text-anchor="middle">ưu tiên job, preemption</text><text x="20" y="207" font-size="11.5" fill="#1c2928" font-weight="bold">Ethernet</text><rect x="160" y="188" width="110" height="30" rx="4" fill="#174C43"/><text x="215.0" y="207" font-size="10" fill="#fff" font-weight="bold" text-anchor="middle">ADAS, điều khiển</text><rect x="272" y="188" width="126" height="30" rx="4" fill="#2A8C8C"/><text x="335.0" y="207" font-size="10" fill="#fff" font-weight="bold" text-anchor="middle">media, OTA</text><rect x="400" y="188" width="58" height="30" rx="4" fill="#E5EFEB"/><text x="429.0" y="207" font-size="10" fill="#1c2928" font-weight="bold" text-anchor="middle">dự phòng</text><rect x="476" y="188" width="224" height="30" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="588.0" y="207.0" font-size="10.5" fill="#1c2928" text-anchor="middle">VLAN priority, TSN</text><rect x="20" y="236" width="14" height="14" rx="3" fill="#174C43"/><text x="40" y="247" font-size="10.5" fill="#1c2928">phần an toàn, giữ chỗ trước</text><rect x="250" y="236" width="14" height="14" rx="3" fill="#2A8C8C"/><text x="270" y="247" font-size="10.5" fill="#1c2928">IVI và giải trí</text><rect x="480" y="236" width="14" height="14" rx="3" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="500" y="247" font-size="10.5" fill="#1c2928">dự phòng cho lúc cao điểm</text></svg><figcaption>Phần an toàn được giữ chỗ trước trên mọi tài nguyên, và mỗi tài nguyên cần cơ chế cưỡng chế riêng chứ không chỉ một bộ lập lịch CPU.</figcaption></figure>
+<h4>c) Isolation</h4>
+<p>Isolation có ba mặt. Không gian: MMU và IOMMU ngăn một VM hay một thiết bị DMA ghi vào bộ nhớ của bên khác. Thời gian: một bên chạy quá lâu không được làm bên khác lỡ deadline. Lỗi: một bên sập không kéo bên khác sập theo. ISO 26262 gọi yêu cầu này là freedom from interference, và nó là điều kiện để phần ASIL cao chạy chung SoC với phần QM như Android. Các công cụ đi từ mạnh tới nhẹ: tách ECU, hypervisor, container, cgroups và namespace trong cùng một OS. Càng nhẹ thì càng rẻ và càng linh hoạt, nhưng mức cách ly càng thấp.</p>
+<h4>d) Observability</h4>
+<p>Observability là khả năng nhìn từ ngoài vào để biết hệ thống đang làm gì. Có ba loại dữ liệu: log ghi sự kiện, metric ghi số đo theo thời gian như tải CPU hay độ trễ, trace ghi đường đi của một yêu cầu qua nhiều thành phần. Trong xe, log thường theo định dạng DLT của AUTOSAR. Để trace được chéo domain, mọi bên phải gắn cùng một ID cho cùng một yêu cầu và dùng đồng hồ chung, nếu không không thể ghép các mảnh lại.</p>
+<p>Observability có giá: ghi log tốn CPU, bộ nhớ và băng thông. Nên có mức log khác nhau cho lúc phát triển và lúc chạy thật, có bộ đệm vòng lưu vài giây gần nhất để lấy ra khi có sự cố, và có quy tắc dữ liệu nào được gửi về cloud.</p>
+<figure class="fig"><svg viewBox="0 0 720 262" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Swimlane ADAS, mạng, service CDC và HMI CDC; các span cùng trace ID trên đồng hồ chung gPTP"><defs><marker id="s28-f8m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Một trace đi qua bốn chặng từ ADAS tới CDC</text><rect x="20" y="46" width="680" height="30" rx="7" fill="#E5EFEB"/><text x="28" y="65" font-size="11" fill="#174C43" font-weight="bold">ADAS: radar</text><rect x="20" y="82" width="680" height="30" rx="7" fill="#fff"/><text x="28" y="101" font-size="11" fill="#174C43" font-weight="bold">Mạng, gateway</text><rect x="20" y="118" width="680" height="30" rx="7" fill="#E5EFEB"/><text x="28" y="137" font-size="11" fill="#174C43" font-weight="bold">CDC: service</text><rect x="20" y="154" width="680" height="30" rx="7" fill="#fff"/><text x="28" y="173" font-size="11" fill="#174C43" font-weight="bold">CDC: HMI</text><rect x="161" y="50" width="178" height="22" rx="8" fill="#2A6F66"/><text x="250.0" y="65.0" font-size="10" fill="#fff" text-anchor="middle">xử lý radar</text><line x1="340" y1="72" x2="340" y2="85" stroke="#596966" stroke-width="1.2" marker-end="url(#s28-f8m1)"/><rect x="341" y="86" width="52" height="22" rx="8" fill="#B7791F"/><text x="367.0" y="101.0" font-size="10" fill="#fff" text-anchor="middle">mạng</text><line x1="394" y1="108" x2="394" y2="121" stroke="#596966" stroke-width="1.2" marker-end="url(#s28-f8m1)"/><rect x="395" y="122" width="52" height="22" rx="8" fill="#2A8C8C"/><text x="421.0" y="137.0" font-size="10" fill="#fff" text-anchor="middle">nhận</text><line x1="448" y1="144" x2="448" y2="157" stroke="#596966" stroke-width="1.2" marker-end="url(#s28-f8m1)"/><rect x="449" y="158" width="178" height="22" rx="8" fill="#A64E32"/><text x="538.0" y="173.0" font-size="10" fill="#fff" text-anchor="middle">vẽ cảnh báo</text><line x1="160" y1="196" x2="700" y2="196" stroke="#596966" stroke-width="1.2"/><line x1="160" y1="192" x2="160" y2="200" stroke="#596966" stroke-width="1.2"/><text x="160" y="212" font-size="9.5" fill="#596966" text-anchor="middle">0 ms</text><line x1="250" y1="192" x2="250" y2="200" stroke="#596966" stroke-width="1.2"/><text x="250" y="212" font-size="9.5" fill="#596966" text-anchor="middle">10 ms</text><line x1="340" y1="192" x2="340" y2="200" stroke="#596966" stroke-width="1.2"/><text x="340" y="212" font-size="9.5" fill="#596966" text-anchor="middle">20 ms</text><line x1="430" y1="192" x2="430" y2="200" stroke="#596966" stroke-width="1.2"/><text x="430" y="212" font-size="9.5" fill="#596966" text-anchor="middle">30 ms</text><line x1="520" y1="192" x2="520" y2="200" stroke="#596966" stroke-width="1.2"/><text x="520" y="212" font-size="9.5" fill="#596966" text-anchor="middle">40 ms</text><line x1="610" y1="192" x2="610" y2="200" stroke="#596966" stroke-width="1.2"/><text x="610" y="212" font-size="9.5" fill="#596966" text-anchor="middle">50 ms</text><line x1="700" y1="192" x2="700" y2="200" stroke="#596966" stroke-width="1.2"/><text x="700" y="212" font-size="9.5" fill="#596966" text-anchor="middle">60 ms</text><text x="20" y="200" font-size="10" fill="#596966" font-weight="bold">gPTP</text><text x="20" y="236" font-size="10.5" fill="#1c2928">Mọi span mang cùng trace id 7f3a và timestamp từ đồng hồ chung, nên công cụ ghép được cả chuỗi:</text><text x="20" y="252" font-size="10.5" fill="#1c2928">tổng ≈ 52 ms, trong đó vẽ trên CDC chiếm phần lớn (giả định minh họa).</text></svg><figcaption>Trace chéo domain chỉ ghép được khi mọi chặng gắn cùng một ID và đo trên cùng một đồng hồ.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Lập lịch và phân xử tài nguyên phải có cách ly đi kèm, và cả hai cần observability để kiểm chứng. Deadline tính cho cả chuỗi chéo domain, mỗi tài nguyên dùng chung cần cơ chế phân xử riêng, và trace chỉ ghép được khi mọi bên dùng chung ID và đồng hồ.</p></div>
+<h3 id="p2-4">2.4 Data consistency, timing, event flow và failure propagation</h3>
+<h4>a) Data consistency</h4>
+<p>Data consistency: các domain phải thấy cùng một trạng thái xe. Nếu cluster nói cửa đóng còn IVI nói cửa mở, người lái mất tin tưởng. Mỗi dữ liệu nên có một nguồn chính và có timestamp.</p>
+<ul>
+<li><b>Một nguồn chính</b>: chỉ một service được quyền ghi trạng thái cửa; các bên khác chỉ đọc hoặc gửi yêu cầu.</li>
+<li><b>Bộ đếm và version</b>: mỗi lần cập nhật tăng số thứ tự, bên nhận bỏ bản cũ đến muộn.</li>
+<li><b>Ảnh chụp đồng thời</b>: những giá trị phải đi cùng nhau, như tốc độ và số đang vào, nên được gửi trong một gói thay vì hai event rời.</li>
+<li><b>Bảo vệ end-to-end</b>: AUTOSAR E2E thêm CRC, bộ đếm và data ID vào dữ liệu để bên nhận phát hiện dữ liệu hỏng, mất, lặp hoặc đến sai thứ tự.</li>
+</ul>
+<h4>b) Timing</h4>
+<p>Timing: dữ liệu cũ nguy hiểm như dữ liệu sai. Đồng hồ chung qua gPTP giúp bên nhận kiểm tra độ tươi, ví dụ bỏ khung radar cũ hơn 100 ms (giả định minh họa).</p>
+<p>Mỗi dữ liệu cần ba con số: chu kỳ gửi, tuổi tối đa chấp nhận được, và thời gian chờ trước khi coi là mất. Bên nhận theo dõi deadline: nếu quá thời gian mà không có mẫu mới, nó chuyển sang trạng thái "không có dữ liệu" và báo cho HMI, chứ không giữ mãi giá trị cuối. Độ chính xác của đồng hồ chung cũng phải đủ cho yêu cầu: kiểm tra tuổi 100 ms thì sai số vài micro giây là quá đủ, nhưng ghép dữ liệu cảm biến cần chặt hơn nhiều.</p>
+<h4>c) Event flow</h4>
+<p>Event flow: một sự kiện như vào số lùi kích hoạt chuỗi camera, hình trên IVI, giảm âm nhạc. Chuỗi này nên được mô tả rõ để biết tổng thời gian và điểm có thể nghẽn.</p>
+<p>Hai vấn đề hay gặp là thứ tự và bão sự kiện. Thứ tự: nếu "ra số lùi" đến trước "vào số lùi" do đi đường khác nhau, màn hình có thể kẹt ở camera. Giải pháp là dùng bộ đếm hoặc timestamp để xếp lại, và để bên nhận luôn đọc trạng thái hiện tại chứ không chỉ dựa vào sự kiện thay đổi. Bão sự kiện: lúc khởi động, hàng trăm service cùng offer và gửi giá trị đầu tiên, có thể làm nghẽn mạng và CPU. Cách giảm là khởi động theo đợt, gộp sự kiện và bỏ bớt sự kiện trùng.</p>
+<h4>d) Failure propagation</h4>
+<p>Failure propagation: lỗi ở một service có thể lan theo chuỗi phụ thuộc. Cần timeout, giá trị mặc định an toàn và circuit breaker để chặn lan truyền.</p>
+<ul>
+<li><b>Timeout chồng timeout</b>: A chờ B, B chờ C; nếu timeout của A ngắn hơn tổng của B và C, A bỏ cuộc trong khi B vẫn đang làm.</li>
+<li><b>Retry storm</b>: nhiều client cùng gọi lại một service vừa khởi động lại khiến nó quá tải và sập tiếp. Cần thời gian chờ tăng dần và ngẫu nhiên giữa các lần thử.</li>
+<li><b>Lỗi im lặng</b>: service vẫn chạy nhưng gửi giá trị đóng băng. Chỉ phát hiện được nếu có bộ đếm và kiểm tra độ tươi.</li>
+</ul>
+<p>Cách chặn: mỗi dữ liệu mang trạng thái chất lượng như hợp lệ, cũ, không có; mỗi bên dùng có hành vi định trước khi dữ liệu không hợp lệ; tài nguyên được chia vách để một client lỗi không ăn hết luồng xử lý của service; và circuit breaker ngừng gọi một service đang hỏng trong một khoảng thời gian.</p>
+<figure class="fig"><svg viewBox="0 0 720 262" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Chuỗi sự kiện vào số lùi: camera, hình trên IVI, giảm nhạc; dữ liệu có timestamp, rào chắn lỗi chặn lan truyền"><defs><marker id="s28-f3m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Chuỗi sự kiện khi vào số lùi</text><rect x="20" y="46" width="152" height="52" rx="8" fill="#174C43"/><text x="96.0" y="69.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Vào số lùi</text><text x="96.0" y="83.0" font-size="10.5" fill="#fff" text-anchor="middle">sự kiện có timestamp</text><rect x="196" y="46" width="152" height="52" rx="8" fill="#2A6F66"/><text x="272.0" y="69.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Camera lùi</text><text x="272.0" y="83.0" font-size="10.5" fill="#fff" text-anchor="middle">khung hình mới</text><rect x="372" y="46" width="152" height="52" rx="8" fill="#2A8C8C"/><text x="448.0" y="69.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Hình trên IVI</text><text x="448.0" y="83.0" font-size="10.5" fill="#fff" text-anchor="middle">kiểm tra độ tươi</text><rect x="548" y="46" width="152" height="52" rx="8" fill="#A64E32"/><text x="624.0" y="69.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Giảm âm nhạc</text><text x="624.0" y="83.0" font-size="10.5" fill="#fff" text-anchor="middle">phía audio</text><line x1="173" y1="72" x2="194" y2="72" stroke="#596966" stroke-width="1.6" marker-end="url(#s28-f3m1)"/><line x1="349" y1="72" x2="370" y2="72" stroke="#596966" stroke-width="1.6" marker-end="url(#s28-f3m1)"/><line x1="525" y1="72" x2="546" y2="72" stroke="#596966" stroke-width="1.6" marker-end="url(#s28-f3m1)"/><line x1="184" y1="80" x2="184" y2="132" stroke="#A93226" stroke-width="1.3" stroke-dasharray="5 4"/><circle cx="184" cy="72" r="4" fill="#A93226"/><line x1="360" y1="80" x2="360" y2="132" stroke="#A93226" stroke-width="1.3" stroke-dasharray="5 4"/><circle cx="360" cy="72" r="4" fill="#A93226"/><line x1="536" y1="80" x2="536" y2="132" stroke="#A93226" stroke-width="1.3" stroke-dasharray="5 4"/><circle cx="536" cy="72" r="4" fill="#A93226"/><text x="273" y="112" font-size="10" fill="#596966" text-anchor="middle">điểm có thể nghẽn hoặc đứt</text><rect x="40" y="134" width="640" height="56" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.2"/><text x="360.0" y="159.0" font-size="11" fill="#A93226" font-weight="bold" text-anchor="middle">Rào chắn ở mỗi điểm nối: timeout, giá trị mặc định an toàn, circuit breaker</text><text x="360.0" y="173.0" font-size="10.5" fill="#A93226" text-anchor="middle">dữ liệu cũ hơn ngưỡng (ví dụ 100 ms) bị bỏ, lỗi không đi tiếp theo chuỗi</text><line x1="40" y1="214" x2="680" y2="214" stroke="#596966" stroke-width="1.6" marker-end="url(#s28-f3m1)"/><line x1="680" y1="214" x2="40" y2="214" stroke="#596966" stroke-width="1.6" marker-end="url(#s28-f3m1)"/><text x="360" y="234" font-size="10.5" fill="#1c2928" text-anchor="middle">Tổng thời gian = cộng mọi bước, đo trên đồng hồ chung gPTP</text></svg><figcaption>Một sự kiện kéo theo cả chuỗi phản ứng ở nhiều domain, nên cần biết tổng thời gian và đặt rào chắn để lỗi không lan.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Dữ liệu chéo domain cần một nguồn chính, thời gian chung, chuỗi sự kiện rõ và rào chắn để lỗi không lan. Bộ đếm, timestamp và bảo vệ E2E giúp phát hiện dữ liệu cũ, sai thứ tự hay đóng băng trước khi chúng gây hậu quả.</p></div>
+<h3 id="p2-5">2.5 Boundary giữa runtime, middleware, platform và application</h3>
+<ul>
+<li><b>Platform</b>: phần cứng, hypervisor, OS, driver, bootloader. Cung cấp nền chạy và cách ly.</li>
+<li><b>Runtime</b>: khởi động, lập lịch, giám sát, quản lý trạng thái tiến trình.</li>
+<li><b>Middleware</b>: giao tiếp, serialization, discovery, như SOME/IP stack hoặc DDS.</li>
+<li><b>Application</b>: logic tính năng, ví dụ HMI cluster, navigation, điều khiển điều hòa.</li>
+</ul>
+<p>Mỗi tầng vừa cung cấp cho tầng trên, vừa phụ thuộc vào tầng dưới:</p>
+<div class="table-scroll"><table>
+<tr><th>Tầng</th><th>Cung cấp cho tầng trên</th><th>Không nên làm</th><th>Ví dụ trong CDC</th></tr>
+<tr><td>Platform</td><td>CPU, bộ nhớ, thiết bị, cách ly giữa VM</td><td>Chứa logic tính năng</td><td>Hypervisor, kernel Linux, BSP của SoC</td></tr>
+<tr><td>Runtime</td><td>Khởi động đúng thứ tự, khởi động lại khi lỗi, trạng thái máy, giám sát sức khỏe</td><td>Biết nội dung dữ liệu nghiệp vụ</td><td>Execution, State, Platform Health Management; init system; dịch vụ watchdog</td></tr>
+<tr><td>Middleware</td><td>Tìm và gọi service, serialization, QoS, bảo mật kênh</td><td>Quyết định chính sách tính năng</td><td>SOME/IP stack, DDS, cầu nối sang Binder và VHAL của Android</td></tr>
+<tr><td>Application</td><td>Tính năng người dùng thấy</td><td>Gọi thẳng driver, tự mở socket, tự đặt ưu tiên thời gian thực</td><td>HMI cluster, navigation, điều khiển điều hòa</td></tr>
+</table></div>
+<p>Trong AUTOSAR Adaptive, ranh giới này hiện ra ở tên API: <code>ara::com</code> cho giao tiếp, <code>ara::exec</code> cho vòng đời, <code>ara::log</code> cho log, <code>ara::phm</code> cho giám sát sức khỏe. App chỉ gọi những API này và không cần biết bên dưới là SOME/IP hay DDS, Linux hay QNX.</p>
+<p>Ranh giới tốt nghĩa là app chỉ gọi API ổn định, không phụ thuộc OS hay giao thức cụ thể. Khi đổi từ SOME/IP sang DDS, app không cần viết lại. Ranh giới mờ gây ra hậu quả: một app tự mở socket riêng sẽ không được giám sát và khó kiểm soát băng thông.</p>
+<p>Một số việc nằm ở vùng xám và phải được phân công rõ: đồng bộ thời gian, cấu hình, quản lý khóa bảo mật, cập nhật phần mềm. Nếu không ghi rõ tầng nào sở hữu, mỗi nhóm sẽ tự làm một bản, hoặc không ai làm. Ranh giới tầng cũng thường trùng với ranh giới hợp đồng giữa OEM và nhà cung cấp, nên nó cần được viết thành tài liệu interface có version, không chỉ là sơ đồ.</p>
+<figure class="fig"><svg viewBox="0 0 720 276" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Bốn tầng application, middleware, runtime, platform; ranh giới tốt qua API ổn định, ranh giới mờ khi app tự mở socket"><defs><marker id="s28-f4m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Bốn tầng và ranh giới API ổn định</text><rect x="20" y="44" width="440" height="44" rx="8" fill="#2A8C8C"/><text x="32" y="63.0" font-size="11.5" fill="#fff" font-weight="bold">Application</text><text x="32" y="77.0" font-size="10.5" fill="#fff">HMI cluster, navigation, điều khiển điều hòa</text><line x1="20" y1="100" x2="460" y2="100" stroke="#B7791F" stroke-width="2" stroke-dasharray="5 4"/><text x="414" y="97" font-size="10.5" fill="#B7791F" font-weight="bold" text-anchor="end">API ổn định</text><rect x="20" y="110" width="440" height="44" rx="8" fill="#2A6F66"/><text x="32" y="129.0" font-size="11.5" fill="#fff" font-weight="bold">Middleware</text><text x="32" y="143.0" font-size="10.5" fill="#fff">SOME/IP stack, DDS: giao tiếp, serialization, discovery</text><rect x="20" y="162" width="440" height="44" rx="8" fill="#174C43"/><text x="32" y="181.0" font-size="11.5" fill="#fff" font-weight="bold">Runtime</text><text x="32" y="195.0" font-size="10.5" fill="#fff">khởi động, lập lịch, giám sát, trạng thái tiến trình</text><rect x="20" y="214" width="440" height="44" rx="8" fill="#A64E32"/><text x="32" y="233.0" font-size="11.5" fill="#fff" font-weight="bold">Platform</text><text x="32" y="247.0" font-size="10.5" fill="#fff">phần cứng, hypervisor, OS, driver, bootloader</text><path d="M430,89 L430,212" stroke="#A93226" stroke-width="2" fill="none" stroke-dasharray="5 4" marker-end="url(#s28-f4m1)"/><rect x="490" y="44" width="210" height="84" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="595.0" y="69.0" font-size="11.5" fill="#174C43" font-weight="bold" text-anchor="middle">Ranh giới tốt</text><text x="595.0" y="83.0" font-size="10.5" fill="#174C43" text-anchor="middle">app chỉ gọi API ổn định;</text><text x="595.0" y="97.0" font-size="10.5" fill="#174C43" text-anchor="middle">đổi SOME/IP sang DDS,</text><text x="595.0" y="111.0" font-size="10.5" fill="#174C43" text-anchor="middle">app không phải viết lại</text><rect x="490" y="150" width="210" height="100" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.2"/><text x="595.0" y="176.0" font-size="11.5" fill="#A93226" font-weight="bold" text-anchor="middle">Ranh giới mờ</text><text x="595.0" y="190.0" font-size="10.5" fill="#A93226" text-anchor="middle">nét đứt đỏ: app tự mở</text><text x="595.0" y="204.0" font-size="10.5" fill="#A93226" text-anchor="middle">socket riêng, đi tắt xuống</text><text x="595.0" y="218.0" font-size="10.5" fill="#A93226" text-anchor="middle">platform; không được giám</text><text x="595.0" y="232.0" font-size="10.5" fill="#A93226" text-anchor="middle">sát, khó kiểm soát băng thông</text></svg><figcaption>App đứng trên đường API ổn định; đi tắt xuống tầng dưới là mất giám sát và mất khả năng thay giao thức.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Mỗi tầng có trách nhiệm riêng, và app chỉ nên chạm vào tầng dưới qua API ổn định. Những việc ở vùng xám như thời gian, cấu hình, khóa bảo mật phải được giao rõ cho một tầng.</p></div>
+<h3 id="p2-6">2.6 Cách thiết kế để domain có thể tiến hóa độc lập</h3>
+<p>Mục đích là để nhóm ADAS cập nhật phần mềm qua OTA mà không buộc CDC phải phát hành lại cùng lúc. Các cách làm chính:</p>
+<ol>
+<li>Định nghĩa interface bằng IDL hoặc ARXML và quản lý version theo semantic versioning.</li>
+<li>Chỉ thêm field mới theo cách tương thích ngược; bên cũ bỏ qua field lạ.</li>
+<li>Cho phép nhiều version của một service cùng chạy trong thời gian chuyển tiếp.</li>
+<li>Kiểm thử hợp đồng giữa bên cung cấp và bên dùng trong CI.</li>
+<li>Dùng feature flag để bật tính năng mới khi cả hai phía đã sẵn sàng.</li>
+</ol>
+<p>Ví dụ: service trạng thái cửa thêm thông tin cửa sổ trời ở version 1.1; cluster cũ vẫn chạy với dữ liệu 1.0, IVI mới dùng thêm phần mở rộng.</p>
+<figure class="fig"><svg viewBox="0 0 720 246" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Service trạng thái cửa v1.1 thêm field cửa sổ trời; cluster cũ dùng dữ liệu 1.0, IVI mới dùng thêm phần mở rộng"><defs><marker id="s28-f5m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="bold">Một service, hai phiên bản client cùng chạy</text><rect x="20" y="50" width="190" height="74" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="115.0" y="77.0" font-size="11.5" fill="#1c2928" font-weight="bold" text-anchor="middle">Cluster cũ</text><text x="115.0" y="91.0" font-size="10.5" fill="#1c2928" text-anchor="middle">hiểu dữ liệu v1.0,</text><text x="115.0" y="105.0" font-size="10.5" fill="#1c2928" text-anchor="middle">bỏ qua field lạ</text><rect x="255" y="44" width="210" height="86" rx="8" fill="#174C43"/><text x="360.0" y="70.0" font-size="11.5" fill="#fff" font-weight="bold" text-anchor="middle">Service trạng thái cửa</text><text x="360.0" y="84.0" font-size="10.5" fill="#fff" text-anchor="middle">v1.1</text><text x="360.0" y="98.0" font-size="10.5" fill="#fff" text-anchor="middle">field 1.0: các cửa</text><text x="360.0" y="112.0" font-size="10.5" fill="#fff" text-anchor="middle">+ field mới: cửa sổ trời</text><rect x="510" y="50" width="190" height="74" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="605.0" y="77.0" font-size="11.5" fill="#1c2928" font-weight="bold" text-anchor="middle">IVI mới</text><text x="605.0" y="91.0" font-size="10.5" fill="#1c2928" text-anchor="middle">dùng cả v1.0</text><text x="605.0" y="105.0" font-size="10.5" fill="#1c2928" text-anchor="middle">và cửa sổ trời</text><line x1="254" y1="87" x2="212" y2="87" stroke="#596966" stroke-width="1.6" marker-end="url(#s28-f5m1)"/><line x1="466" y1="87" x2="508" y2="87" stroke="#596966" stroke-width="1.6" marker-end="url(#s28-f5m1)"/><text x="360" y="160" font-size="11" fill="#174C43" font-weight="bold" text-anchor="middle">Những thứ giữ cho hai phía phát hành lệch nhịp được</text><rect x="20" y="174" width="161" height="50" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="100.5" y="196.0" font-size="11" fill="#1c2928" font-weight="bold" text-anchor="middle">IDL / ARXML</text><text x="100.5" y="210.0" font-size="10" fill="#1c2928" text-anchor="middle">semantic versioning</text><rect x="193" y="174" width="161" height="50" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="273.5" y="196.0" font-size="11" fill="#1c2928" font-weight="bold" text-anchor="middle">Tương thích ngược</text><text x="273.5" y="210.0" font-size="10" fill="#1c2928" text-anchor="middle">chỉ thêm field</text><rect x="366" y="174" width="161" height="50" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="446.5" y="196.0" font-size="11" fill="#1c2928" font-weight="bold" text-anchor="middle">Contract test</text><text x="446.5" y="210.0" font-size="10" fill="#1c2928" text-anchor="middle">trong CI</text><rect x="539" y="174" width="161" height="50" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="619.5" y="196.0" font-size="11" fill="#1c2928" font-weight="bold" text-anchor="middle">Feature flag</text><text x="619.5" y="210.0" font-size="10" fill="#1c2928" text-anchor="middle">bật khi hai bên sẵn sàng</text></svg><figcaption>Field mới được thêm theo cách tương thích ngược, nên client cũ và client mới dùng chung một service mà không phải phát hành cùng lúc.</figcaption></figure>
+<h4>a) Luật version cho interface</h4>
+<p>Semantic versioning chỉ có ích khi cả tổ chức thống nhất loại thay đổi nào tăng số nào:</p>
+<div class="table-scroll"><table>
+<tr><th>Loại thay đổi</th><th>Tương thích?</th><th>Version</th></tr>
+<tr><td>Thêm field tùy chọn, thêm event mới, thêm method mới</td><td>Có, bên cũ bỏ qua phần lạ</td><td>Tăng minor</td></tr>
+<tr><td>Sửa lỗi không đổi hình dạng dữ liệu</td><td>Có</td><td>Tăng patch</td></tr>
+<tr><td>Đổi kiểu dữ liệu, đổi đơn vị, xóa field, đổi ý nghĩa giá trị</td><td>Không</td><td>Tăng major, chạy song song bản cũ</td></tr>
+</table></div>
+<p>Đổi đơn vị là thay đổi phá vỡ nguy hiểm nhất, vì dữ liệu vẫn đúng hình dạng nên không ai báo lỗi: tốc độ đổi từ km/h sang m/s mà cluster không biết sẽ hiện sai mà không sập. SOME/IP mang sẵn major version trong header và minor version trong lời offer của SD, nên bên dùng có thể từ chối service có major không khớp ngay lúc discovery.</p>
+<h4>b) Tách mô hình dữ liệu khỏi nơi cung cấp</h4>
+<p>App nên phụ thuộc vào một mô hình dữ liệu chung của xe, không phụ thuộc vào ECU cụ thể nào cung cấp dữ liệu. COVESA Vehicle Signal Specification là một ví dụ được biết đến rộng rãi về cây tín hiệu xe dùng chung, như <code>Vehicle.Speed</code>. Khi zonal ECU được thay bằng thế hệ mới, chỉ lớp chuyển đổi bên dưới đổi; app ở IVI vẫn đọc cùng một tên.</p>
+<h4>c) Phát hành và kiểm thử lệch nhịp</h4>
+<ul>
+<li><b>Ma trận tương thích</b>: mỗi gói OTA khai báo nó cần version tối thiểu nào của các service khác; hệ thống cập nhật từ chối tổ hợp không hợp lệ.</li>
+<li><b>Consumer-driven contract test</b>: bên dùng viết ra những gì nó dựa vào, bên cung cấp chạy các test đó trong CI trước mỗi lần phát hành.</li>
+<li><b>Thời hạn hỗ trợ</b>: bản cũ được giữ trong một khoảng định trước, có thông báo ngừng hỗ trợ, rồi mới được gỡ.</li>
+<li><b>Rollback độc lập</b>: domain có thể quay về bản trước mà không kéo theo domain khác, vì interface vẫn tương thích.</li>
+</ul>
+<p>Cái giá của tiến hóa độc lập là chi phí duy trì nhiều version, thêm lớp chuyển đổi và thêm test. Vì vậy không phải mọi thứ đều cần tách: các thành phần luôn thay đổi cùng nhau, như HMI cluster và service riêng của nó, có thể phát hành chung một gói.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Domain tiến hóa độc lập được khi interface có version, tương thích ngược và được kiểm thử như một hợp đồng. Mô hình dữ liệu chung, ma trận tương thích và rollback riêng từng domain giúp phát hành lệch nhịp, đổi lại là chi phí duy trì nhiều version.</p></div>
+<div class="next-prev"><a href="26_Research_Audio_System_Architecture.html">← 26 · Audio System Architecture</a><a href="../29_Assignment_3_Research_Synthesis_Architecture_Sharing.html">29 · Assignment 3: Research Synthesis &amp; Architecture Sharing →</a></div>
+</article>
+  <footer class="article-footer"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></footer>
+  </main>
+</div>
+<script src="../assets/glossary-data.js"></script>
+<script src="../assets/term-glossary.js" data-unit="C.4"></script>
+</body>
+</html>

@@ -1,0 +1,1250 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="../assets/site-ui.js" data-site-ui></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đề cương · Virtualization &amp; Mixed Criticality Systems</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f3f0e8;
+  --surface: #f9f7f1;
+  --ink: #2a3431;
+  --muted: #62706b;
+  --line: #dbd7cb;
+  --forest: #174c43;
+  --forest-soft: #e3ece6;
+  --copper: #a64e32;
+  --gold: #e2bd69;
+  --code: #ebe7dd;
+  --focus: #b34d31;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--copper); }
+a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.reader-header {
+  min-height: 74px;
+  padding: 12px clamp(20px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--forest);
+  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.reader-header a { color: white; text-decoration: none; }
+.reader-header nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; font-size: 0.9rem; }
+
+/* Navigation buttons: same shape/order as the AI library (secondary links | ← Quay lại | ⌂ Trang chủ) */
+.nav-link { padding: 6px 4px; color: #d4e4de; font-weight: 500; white-space: nowrap; }
+.reader-header a.nav-link:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+.nav-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(255, 255, 255, 0.3); }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.nav-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.nav-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.nav-ico { flex: none; width: 16px; height: 16px; }
+.reader-header .nav-btn { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+.reader-header .nav-btn:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.reader-header .nav-btn--primary { color: var(--forest); border-color: var(--gold); background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); }
+.reader-header .nav-btn--primary:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.article-footer .nav-btn { color: var(--forest); border-color: var(--forest); background: transparent; }
+.article-footer .nav-btn:hover { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary:hover { border-color: var(--copper); background: var(--copper); }
+.reader-header nav a:hover { color: var(--gold); }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; line-height: 1.12; }
+.brand small { color: #d4e4de; font-size: 0.75rem; font-weight: 400; }
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  border-radius: 2px;
+}
+
+.reader-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+
+.contents-panel {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 32px 20px 28px clamp(20px, 4vw, 48px);
+  border-right: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--copper);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contents-panel ul { margin: 0; padding: 0; list-style: none; }
+.contents-panel li { margin: 0; padding: 0; }
+.contents-panel a {
+  display: block;
+  padding: 7px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.contents-panel a:hover { color: var(--forest); text-decoration: underline; }
+.contents-panel .toc-level-3 { padding-left: 14px; border-left: 1px solid var(--line); }
+
+.article {
+  min-width: 0;
+  padding: 26px clamp(22px, 5vw, 76px) 70px;
+}
+
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+article { max-width: 900px; }
+article h1, article h2, article h3, .library-intro h1 {
+  color: light-dark(#26403d, #c5e8e4);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  line-height: 1.18;
+}
+article h1 { margin: 0 0 28px; font-size: 2.35rem; }
+article h2 {
+  margin: 48px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+}
+article h3 { margin: 32px 0 12px; color: var(--forest); font-size: 1.24rem; }
+article p { margin: 0 0 18px; }
+article li { margin: 6px 0; padding-left: 4px; }
+article ul, article ol { margin: 0 0 22px; padding-left: 26px; }
+article strong { color: light-dark(#26403c, #c3e9e3); }
+
+blockquote {
+  margin: 22px 0;
+  padding: 15px 20px;
+  border-left: 4px solid var(--copper);
+  background: light-dark(#f8eee8, #31231a);
+  color: light-dark(#543e35, #d4c2bb);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+.table-scroll { width: 100%; margin: 22px 0 26px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.92rem; }
+th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--forest-soft); color: light-dark(#26403c, #c3e9e3); font-weight: 700; }
+tr:nth-child(even) td { background: light-dark(#f9f7f2, #2c2918); }
+
+code, pre { font-family: Consolas, "Courier New", monospace; }
+code { padding: 0.1em 0.28em; background: var(--code); color: light-dark(#24433e, #c3dfda); font-size: 0.9em; }
+pre {
+  max-width: 100%;
+  margin: 20px 0 26px;
+  padding: 18px 20px;
+  overflow: auto;
+  border-left: 3px solid var(--forest);
+  background: light-dark(#e9eeea, #222c25);
+  color: light-dark(#26403d, #d0e6e4);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; color: inherit; }
+hr { margin: 36px 0; border: 0; border-top: 1px solid var(--line); }
+
+.audit-item { margin: 14px 0; }
+
+.audit-item details {
+  margin-top: 9px;
+  border-left: 3px solid #86a99e;
+  background: var(--forest-soft);
+}
+.audit-item summary {
+  padding: 9px 13px;
+  color: var(--forest);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.answer-body { padding: 0 14px 10px; }
+.answer-body p { margin: 4px 0 10px; }
+.answer-body ul { margin: -4px 0 12px; padding-left: 22px; }
+.answer-body li { margin: 3px 0; line-height: 1.55; }
+/* Key questions: map 1-1 to the Learning Plan "Unit Detail" requirements of the topic */
+details.audit-reveal { margin: 8px 0 18px; border-left: 3px solid #86a99e; background: var(--forest-soft); }
+details.audit-reveal > summary { padding: 9px 13px; color: var(--forest); cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.audit-key-intro { margin: 18px 0 28px; padding: 16px 20px 14px; border: 1px solid light-dark(#e6cf95, #62542f); border-left: 6px solid var(--gold); background: light-dark(#fff7e0, #312b1a); }
+.audit-key-intro p { margin: 0 0 8px; }
+.audit-key-intro ol { margin: 0; padding-left: 22px; }
+.audit-key-intro li { margin: 4px 0; }
+.audit-key-intro .req-tag { color: var(--muted); font-size: 0.8rem; }
+.audit-question-heading.audit-key { padding: 10px 14px; border-left: 6px solid var(--copper); background: light-dark(#fbeee4, #31251a); }
+.audit-question-heading.audit-key::after {
+  content: "Tr\1ECDng t\00E2m";
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--copper);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+details.audit-key-reveal, .audit-item details.audit-key-reveal { border-left: 6px solid var(--copper); background: light-dark(#f9f7f2, #2c2317); }
+details.audit-key-reveal > summary, .audit-item details.audit-key-reveal summary { color: var(--copper); }
+
+.article-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 54px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.library-main { width: min(1120px, 100%); margin: 0 auto; padding: 50px clamp(20px, 5vw, 72px) 76px; }
+.library-intro { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+.library-intro h1 { margin: 0; font-size: 3rem; }
+.library-intro h1 span { color: var(--copper); }
+
+.search-label { display: block; margin: 0 0 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#topic-search {
+  width: min(520px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-intro { max-width: 740px; color: var(--muted); }
+.qa-filter { margin: 26px 0 34px; }
+.qa-filter label { display: block; margin-bottom: 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#qa-search {
+  width: min(640px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-filter p { margin: 7px 0 0; color: var(--muted); font-size: 0.82rem; }
+.qa-topic { margin-top: 40px; }
+.qa-topic-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.qa-topic-heading h2 { flex: 1; }
+.qa-topic-heading a { flex: none; font-size: 0.86rem; }
+.qa-question[hidden], .qa-topic[hidden] { display: none; }
+.search-status { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.topic-list { margin-top: 8px; border-top: 1px solid var(--line); }
+.topic-link {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 15px;
+  min-height: 72px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topic-link:hover { background: light-dark(#e8eee9, #222d23); color: var(--forest); }
+.topic-number { color: var(--copper); font-family: Georgia, serif; font-size: 1.1rem; }
+.topic-title { font-weight: 650; }
+.topic-arrow { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.source-note { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.87rem; }
+
+@media (max-width: 860px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .contents-panel {
+    position: static;
+    max-height: none;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contents-panel nav { max-height: 210px; overflow: auto; }
+  .article { padding-top: 22px; }
+}
+
+@media (max-width: 560px) {
+  .reader-header { align-items: flex-start; padding: 12px 17px; }
+  .reader-header { flex-wrap: wrap; }
+  .reader-header nav { gap: 6px 8px; }
+  .nav-sep { display: none; }
+  .nav-btn { min-height: 34px; padding: 6px 12px; }
+  .library-intro h1 { font-size: 2.25rem; }
+  article h1 { font-size: 1.9rem; }
+  article h2 { font-size: 1.4rem; }
+  .topic-link { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .topic-arrow { display: none; }
+  .qa-topic-heading { align-items: flex-start; flex-direction: column; gap: 0; }
+  th, td { min-width: 130px; padding: 9px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* Highlight non-AI (CDC/SDV) topics in the library index */
+.topic-link.topic-core { background: var(--forest-soft); box-shadow: inset 5px 0 0 var(--forest); }
+.topic-link.topic-core .topic-title { color: var(--forest); }
+.topic-link.topic-core .topic-number { color: var(--forest); font-weight: 700; }
+.topic-link.topic-core:hover { background: light-dark(#d4e5de, #233930); }
+.topic-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 18px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.legend-swatch { display: inline-block; width: 18px; height: 14px; margin-right: -10px; border: 1px solid var(--line); vertical-align: -2px; }
+.legend-swatch.legend-core { background: var(--forest-soft); box-shadow: inset 4px 0 0 var(--forest); }
+
+/* Non-learning items (assignment / review / OJT) among CDC/SDV topics: red text */
+.topic-link.topic-task .topic-title, .topic-link.topic-task .topic-number { color: light-dark(#b3261e, #e9847e); }
+.topic-link.topic-task:hover .topic-title { color: light-dark(#8c1d18, #ed9794); }
+.legend-task { color: light-dark(#b3261e, #e9847e); font-weight: 600; }
+/* Study-time note per topic (from Fast_Track_CDC_Weekly_Checklist.xlsx) */
+.topic-time { display: block; margin-top: 3px; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.topic-link.topic-task .topic-time { color: light-dark(#b3261e, #e9847e); opacity: 0.85; }
+.legend-time { flex-basis: 100%; color: var(--muted); }
+
+/* ---- Thuật ngữ: bấm để xem giải nghĩa ---- */
+.gl {
+  border-bottom: 1.5px dotted #6f9a8e;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color .12s;
+}
+.gl:hover { background: var(--forest-soft); }
+.gl:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.gl.is-open { background: var(--forest-soft); border-bottom-style: solid; border-bottom-color: var(--forest); }
+.gl-pop {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(28, 41, 40, .16);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gl-term { display: block; margin-bottom: 2px; color: var(--forest); font-weight: 700; font-size: .82rem; }
+.gl-hint { color: var(--muted); font-size: .85rem; }
+.gl-hint .gl-demo { border-bottom: 1.5px dotted #6f9a8e; }
+
+/* ---- Checklist đầu ra (tick được, lưu trên trình duyệt) ---- */
+.checklist { margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 16px 14px; }
+.checklist > h3 { margin-top: 18px; }
+.cl-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--muted); font-size: .9rem; }
+.cl-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 99px; background: var(--forest-soft); overflow: hidden; }
+.cl-bar > i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s; }
+.cl-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.cl-item { padding: 9px 0 10px; border-top: 1px dashed var(--line); }
+.cl-item:first-child { border-top: 0; }
+.cl-item > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.cl-item input[type="checkbox"] { margin-top: .35em; width: 17px; height: 17px; accent-color: var(--forest); flex: none; }
+.cl-item.is-done > label > span { color: var(--muted); text-decoration: line-through; text-decoration-color: light-dark(#9fb3ad, #495c56); }
+.cl-pass, .cl-src { margin: 4px 0 0 27px; font-size: .9rem; }
+.cl-pass { color: var(--ink); }
+.cl-src { color: var(--muted); font-size: .82rem; }
+.cl-reset { margin-left: auto; border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 2px 9px; color: var(--muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.cl-reset:hover { color: var(--copper); border-color: var(--copper); }
+
+/* Lesson style for CDC/SDV topics — mirrors the teaching layout of the AI library
+   (bài đọc: hook → giải thích → ví dụ → vì sao quan trọng → nghiền ngẫm → thực hành → tự kiểm)
+   while keeping the CDC palette of reader.css. Load AFTER reader.css. */
+:root {
+  --teal: #2A8C8C; --teal-soft: #EEF7F6;
+  --violet: #6A4FC0; --violet-soft: #F5F2FD;
+  --green: #2E7D4F; --green-soft: #EFF8F2;
+  --amber: #B7791F; --amber-soft: #FFF7E8;
+  --red: #A93226; --red-soft: #FCEFEC;
+}
+
+body.lesson-page article { max-width: 800px; }
+body.lesson-page article p, body.lesson-page article li { line-height: 1.75; }
+body.lesson-page article h2 { margin-top: 44px; }
+body.lesson-page article h2 .sec-no { color: var(--copper); font-weight: 700; margin-right: 6px; }
+
+/* Bài nav (pill row, like .tapnav in the AI library) */
+.bai-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+.bai-nav a { font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--surface); }
+.bai-nav a:hover { border-color: var(--forest); color: var(--forest); }
+.bai-nav a.cur { background: var(--forest); border-color: var(--forest); color: #fff; }
+.bai-nav .grp { font-size: 0.7rem; font-weight: 700; color: var(--copper); align-self: center; margin: 0 2px 0 6px; letter-spacing: .06em; }
+
+.lesson-kicker { margin: 0 0 6px; color: var(--copper); font-size: 0.78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+body.lesson-page article h1 { margin-bottom: 10px; }
+.lesson-meta { margin: 0 0 18px; font-weight: 600; color: light-dark(#2c4b46, #bfdad5); font-size: 0.95rem; }
+
+/* Bản đồ bài — chuỗi khái niệm */
+.roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 24px; font-size: 0.86rem; }
+.roadmap span { background: var(--forest-soft); color: var(--forest); border: 1px solid light-dark(#c9ddd5, #314e42); border-radius: 8px; padding: 5px 10px; font-weight: 600; }
+.roadmap i { color: var(--muted); font-style: normal; }
+
+/* Figure card for SVG diagrams */
+.fig { margin: 24px 0; background: light-dark(#f9f7f2, #202819); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 12px; box-shadow: 0 1px 3px rgba(23,76,67,.06); overflow-x: auto; }
+.fig svg { width: 100%; height: auto; display: block; min-width: 560px; }
+.fig figcaption, .fig .cap { margin-top: 8px; color: var(--muted); font-size: 0.84rem; text-align: center; font-style: italic; }
+
+/* Opening question of a section */
+.hook { font-size: 1.04rem; color: light-dark(#26403c, #c6e2de); border-left: 3px solid var(--copper); padding: 4px 0 4px 14px; margin: 6px 0 18px; }
+
+/* Plain-language explanation */
+.plain { background: var(--forest-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0 18px; }
+.plain .ttl { color: var(--forest); }
+
+/* Generic box header */
+.box { border-radius: 12px; padding: 14px 18px; margin: 20px 0; }
+.box > .ttl, .plain > .ttl { margin: 0 0 7px; font-weight: 700; font-size: 0.86rem; }
+.box p { margin: 6px 0; }
+.box ul, .box ol { margin: 6px 0; padding-left: 22px; }
+.box li { margin: 4px 0; }
+
+.ex { background: var(--teal-soft); border: 1px solid var(--teal); }
+.ex > .ttl { color: light-dark(#1d6b6b, #a8e7e7); }
+.case { background: light-dark(#f9f7f2, #2c2117); border: 1px solid light-dark(#EBB28F, #63432f); border-left: 4px solid var(--copper); }
+.case > .ttl { color: var(--copper); font-size: 0.74rem; text-transform: uppercase; letter-spacing: .05em; }
+.pitfall { background: var(--amber-soft); border: 1px solid light-dark(#EBC77A, #695833); }
+.pitfall > .ttl { color: light-dark(#8A5A00, #ffd88f); }
+.why { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--forest); }
+.why > .ttl { color: var(--forest); }
+
+.practice { background: var(--green-soft); border: 1px solid var(--green); }
+.practice > .ttl { color: light-dark(#1F6340, #ade5c9); }
+.remember { background: var(--forest); color: #E4EFEB; }
+.remember > .ttl { color: var(--gold); }
+.remember b, .remember strong { color: #fff; }
+
+/* Sai vs đúng */
+.contrast { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.contrast > div { border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; }
+.contrast .bad { background: var(--red-soft); border: 1px solid light-dark(#E3A79F, #60342e); }
+.contrast .good { background: var(--green-soft); border: 1px solid light-dark(#9CCFB0, #326747); }
+.contrast .ttl { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
+.contrast .bad .ttl { color: var(--red); }
+.contrast .good .ttl { color: var(--green); }
+.contrast p { margin: 4px 0; }
+
+/* Step-by-step anatomy */
+.steps { list-style: none; counter-reset: st; padding-left: 0 !important; }
+.steps > li { counter-increment: st; position: relative; padding: 2px 0 2px 42px !important; margin: 12px 0 !important; }
+.steps > li::before { content: counter(st); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+
+/* Small term chips inline */
+.term { font-weight: 650; color: light-dark(#26403c, #c3e9e3); }
+.term-gloss { color: var(--muted); font-size: 0.92em; }
+
+/* Lesson prev/next */
+.next-prev { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .contrast { grid-template-columns: 1fr; }
+  .fig svg { min-width: 520px; }
+}
+
+/* ---------- Learning reflection + Unit assessment (assets/assessment.js) ---------- */
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.refl-intro { color: light-dark(#2c4b46, #bfdad5); }
+.refl-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--violet); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.refl-label { margin: 0 0 4px !important; font-weight: 700; color: light-dark(#3f2c86, #a99ade); }
+.refl-hint { color: light-dark(#41506B, #aeb9ce); font-size: 0.93rem; margin-bottom: 8px; }
+.refl-hint ul { margin: 4px 0 0; padding-left: 20px; }
+.refl-hint li { margin: 2px 0; }
+#reflection-app textarea, #quiz-app textarea, #workshop-app textarea { width: 100%; font: inherit; font-size: 0.95rem; line-height: 1.55; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); color: var(--ink); resize: vertical; }
+#reflection-app textarea:focus, #quiz-app textarea:focus, #workshop-app textarea:focus { outline: 2px solid var(--gold); border-color: var(--forest); }
+.refl-sample { margin-top: 8px; }
+.refl-sample summary { cursor: pointer; color: var(--forest); font-size: 0.86rem; font-weight: 600; }
+.refl-sample-body { margin: 6px 0; padding: 8px 12px; background: var(--forest-soft); border-radius: 6px; font-size: 0.92rem; }
+.refl-sample-body ul { margin: 4px 0; padding-left: 20px; }
+.refl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 6px; }
+.refl-tools p { flex-basis: 100%; margin: 2px 0 0; }
+.tool-msg { color: var(--green); font-size: 0.86rem; }
+.act-btn, .mini-btn { font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1.5px solid var(--forest); }
+.act-btn { background: var(--forest); color: #fff; }
+.act-btn:hover { background: var(--copper); border-color: var(--copper); }
+.mini-btn { background: transparent; color: var(--forest); padding: 5px 12px; font-size: 0.82rem; }
+.mini-btn:hover { background: var(--forest-soft); }
+.mini-btn.danger { color: var(--red); border-color: light-dark(#E3A79F, #60342e); }
+.assess-note { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; }
+.assess-note.small { background: transparent; padding: 0; }
+
+table.rubric select { font: inherit; font-size: 0.86rem; padding: 4px 6px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ws-col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.ws-h { margin: 0 0 4px !important; font-weight: 700; color: var(--forest); font-size: 0.9rem; }
+.ws-col ol, .ws-col ul { margin: 0 !important; padding-left: 20px !important; font-size: 0.93rem; }
+table.rubric td.num { text-align: center; font-weight: 700; color: var(--copper); }
+table.rubric td { font-size: 0.9rem; }
+table.rubric textarea { min-width: 180px; }
+.rub-pts { font-size: 0.82rem; color: var(--forest); font-weight: 600; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.dash-card.pass { border-color: light-dark(#9CCFB0, #326747); background: var(--green-soft); }
+.dash-card.fail { border-color: light-dark(#E3A79F, #60342e); background: var(--red-soft); }
+.dash-h { margin: 0 !important; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-v { margin: 2px 0 !important; font-size: 1.6rem; font-weight: 700; color: var(--forest); }
+.dash-sub { margin: 0 !important; font-size: 0.84rem; color: var(--muted); }
+
+/* ---------- Knowledge questions (open questions, self-rated) ---------- */
+.kq-howto { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kq-toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.kq-filter { font-size: 0.88rem; color: var(--forest); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.kq-progress { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; }
+.kq-track { flex: 1; height: 8px; border-radius: 99px; background: light-dark(#E3E8E2, #272f25); overflow: hidden; display: flex; }
+.kq-track .seg { height: 100%; }
+.seg-yes { background: var(--green); } .seg-part { background: light-dark(#D9A441, #665027); } .seg-no { background: light-dark(#C0504D, #6a2a28); }
+.kq-count { font-size: 0.84rem; color: var(--muted); white-space: nowrap; }
+.kq-group { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; border-bottom: 1px dashed var(--line); }
+.kq-group-title { margin: 0 0 6px !important; font-size: 1.08rem !important; }
+.kq-back { font-size: 0.82rem; white-space: nowrap; }
+.kq-list { padding-left: 26px !important; margin-top: 8px !important; }
+.kq-item { margin: 12px 0 !important; padding: 10px 14px !important; border: 1px solid var(--line); border-left: 4px solid light-dark(#C9D3CF, #3b4843); border-radius: 10px; background: var(--surface); }
+.kq-item[data-rate="yes"] { border-left-color: var(--green); }
+.kq-item[data-rate="part"] { border-left-color: #D9A441; }
+.kq-item[data-rate="no"] { border-left-color: #C0504D; }
+.only-weak .kq-item[data-rate="yes"] { display: none; }
+.kq-q { margin: 0 0 6px !important; font-weight: 600; line-height: 1.6 !important; }
+.kq-type { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 4px; background: var(--forest-soft); color: var(--forest); font-size: 0.72rem; font-weight: 700; letter-spacing: .03em; vertical-align: 2px; text-transform: uppercase; }
+.kq-mine, .kq-answer { margin: 6px 0; }
+.kq-mine summary, .kq-answer summary { cursor: pointer; font-size: 0.86rem; font-weight: 600; color: var(--forest); }
+.kq-mine textarea { margin-top: 6px; width: 100%; font: inherit; font-size: 0.95rem; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; resize: vertical; }
+.kq-answer-body { margin-top: 6px; padding: 10px 14px; background: light-dark(#F4F8F6, #1b2a22); border: 1px solid light-dark(#D5E3DD, #2f473d); border-radius: 8px; font-size: 0.95rem; }
+.kq-answer-body p { margin: 4px 0 8px !important; }
+.kq-answer-body ul, .kq-answer-body ol { margin: 4px 0 8px !important; padding-left: 20px !important; }
+.kq-answer-body li { margin: 2px 0 !important; }
+.kq-refs { font-size: 0.84rem; color: var(--muted); border-top: 1px dashed light-dark(#D5E3DD, #2f473d); padding-top: 6px; margin-top: 8px !important; }
+.kq-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.kq-rate-l { font-size: 0.8rem; color: var(--muted); }
+.kq-rbtn { font: inherit; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid light-dark(#C9D3CF, #3b4843); background: light-dark(#f9f7f2, #192320); color: var(--muted); cursor: pointer; }
+.kq-rbtn[aria-pressed="true"].r-yes { background: var(--green); border-color: var(--green); color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-part { background: light-dark(#D9A441, #665027); border-color: #D9A441; color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-no { background: light-dark(#C0504D, #6a2a28); border-color: #C0504D; color: #fff; }
+
+
+  </style>
+  <style>
+    article h4 { margin: 22px 0 8px; color: var(--forest); font-size: 1.02rem; }
+    td.c, th.c { text-align: center; }
+    tr.total td { font-weight: 700; background: var(--forest-soft) !important; }
+    .fig svg .hit:hover { opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="../assets/dark.css">
+</head>
+<body class="topic-page lesson-page">
+<header class="reader-header">
+    <a class="brand" href="../../dainv13.html"><span class="brand-mark">Đ</span><span>Đề cương<br><small>Virtualization &amp; Mixed Criticality Systems</small></span></a>
+    <nav aria-label="Page actions"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></nav>
+</header>
+<div class="reader-layout">
+  <aside class="contents-panel">
+    <p class="eyebrow">Nội dung trang</p>
+    <nav aria-label="Topic contents"><ul>
+<li class="toc-level-2"><a href="#p1">Phần 1 · Giải thích chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-2">1.2 Tổng quan về chủ đề</a></li>
+<li class="toc-level-2"><a href="#p2">Phần 2 · Nội dung chi tiết</a></li>
+<li class="toc-level-3"><a href="#p2-1">2.1 Virtualization và workload khác criticality</a></li>
+<li class="toc-level-3"><a href="#p2-2">2.2 Hypervisor, VM, container, partitioning</a></li>
+<li class="toc-level-3"><a href="#p2-3">2.3 CPU, memory, I/O, network isolation</a></li>
+<li class="toc-level-3"><a href="#p2-4">2.4 Safety-, mission-, non-critical workload</a></li>
+<li class="toc-level-3"><a href="#p2-5">2.5 Fault containment, timing isolation, reservation</a></li>
+<li class="toc-level-3"><a href="#p2-6">2.6 Trade-off năm hướng tối ưu</a></li>
+<li class="toc-level-3"><a href="#p2-7">2.7 Non-critical không ảnh hưởng critical</a></li>
+<li class="toc-level-3"><a href="#p2-8">2.8 Chứng minh isolation bằng evidence</a></li>
+<li class="toc-level-3"><a href="#p2-9">2.9 Policy ưu tiên khi tranh chấp</a></li>
+</ul></nav>
+  </aside>
+  <main class="article">
+    <article>
+<p class="lesson-kicker">Đề cương chi tiết</p>
+<h1 id="top">Virtualization &amp; Mixed Criticality Systems</h1>
+<p class="lesson-meta">Ảo hóa &amp; hệ thống mixed-criticality · đọc ~60 phút</p>
+
+<h2 id="p1"><span class="sec-no">1 ·</span> Giải thích chủ đề</h2>
+
+<h3 id="p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</h3>
+<ul>
+<li><b><span class="term">Virtualization</span></b>: dùng <span class="term">hypervisor</span> hoặc cơ chế tương tự (container, partitioning) để nhiều <span class="term">guest</span> chia sẻ một <span class="term">SoC</span>.</li>
+<li><b><span class="term">Mixed Criticality Systems</span></b>: các workload khác nhau về hậu quả khi lỗi, deadline và mức assurance cùng chạy trên một nền tảng, ví dụ telltale phanh cạnh app nghe nhạc.</li>
+</ul>
+
+<h3 id="p1-2">1.2 Tổng quan về chủ đề</h3>
+<p>CDC gộp nhiều chức năng lên một SoC để giảm ECU, chi phí và dây điện. Hypervisor chia tài nguyên cho cluster (liên quan safety) và IVI, nhưng cache, memory bandwidth, GPU, I/O dùng chung vẫn gây can nhiễu.</p>
+<p>Yêu cầu cốt lõi là <span class="term">Freedom from Interference</span>: phần ít quan trọng không được làm hỏng phần quan trọng, kể cả khi quá tải hay lỗi. Điều này cần isolation, dự trữ tài nguyên, fault containment, policy ưu tiên và evidence trên target, đổi lại một phần utilization và tính linh hoạt.</p>
+
+<h2 id="p2"><span class="sec-no">2 ·</span> Nội dung chi tiết</h2>
+
+<!-- 2.1 -->
+<h3 id="p2-1">2.1 Virtualization và việc đồng tồn tại của các workload có mức độ criticality khác nhau</h3>
+
+<h4>a) Vì sao gộp nhiều workload lên một SoC</h4>
+<p>Với <span class="term">consolidation</span>, cluster, IVI, HUD chạy trên một SoC thay vì nhiều ECU:</p>
+<pre><code>hardware (SoC) -> hypervisor -> VM / partition -> guest OS -> service / application</code></pre>
+<div class="table-scroll"><table><thead><tr><th>Lợi ích</th><th>Cái giá đi kèm</th></tr></thead><tbody>
+<tr><td>Ít ECU, dây → giảm BOM, trọng lượng</td><td>Tài nguyên chung gây interference không để lại log</td></tr>
+<tr><td>Mỗi workload chạy OS hợp với nó (RTOS, Android)</td><td>Overhead ảo hóa; boot, recovery phức tạp hơn</td></tr>
+<tr><td>Chia sẻ GPU, màn hình, camera</td><td><span class="term">Blast radius</span> lớn: hypervisor hay SoC hỏng thì mọi VM cùng mất</td></tr>
+<tr><td>Update từng guest qua OTA</td><td>Phải chứng minh FFI và giữ evidence qua mỗi lần đổi</td></tr>
+</tbody></table></div>
+
+<h4>b) Coexistence theo ISO 26262</h4>
+<p>Khi phần tử ASIL (cluster) chạy chung phần tử <span class="term">QM</span> như AAOS (<span class="term">coexistence of elements</span>), có hai lựa chọn:</p>
+<ol class="steps">
+<li><b>Phát triển mọi phần tử theo ASIL cao nhất</b>: không thực tế với stack cỡ Android.</li>
+<li><b>Chứng minh FFI</b>: phần QM không gây cascading failure vi phạm safety requirement của phần ASIL. Đây là con đường thực tế duy nhất cho CDC có AAOS.</li>
+</ol>
+
+<h4>c) Ba nhóm can nhiễu cần xét</h4>
+<p>ISO 26262-6 (Annex D) liệt kê ba nhóm:</p>
+<div class="table-scroll"><table><thead><tr><th>Nhóm (ISO 26262)</th><th>Tên thường gọi</th><th>Ví dụ vi phạm trên CDC</th><th>Cơ chế chặn điển hình</th></tr></thead><tbody>
+<tr><td>Memory</td><td>Spatial</td><td>DMA của AAOS ghi vào RAM cluster</td><td>Stage-2 MMU, IOMMU/SMMU</td></tr>
+<tr><td>Timing and execution</td><td>Temporal</td><td>Render AAOS làm frame cluster trễ</td><td>Core pinning, time budget, watchdog</td></tr>
+<tr><td>Exchange of information</td><td>Communication</td><td>Message mất, lặp, trễ, hỏng</td><td>E2E protection, IPC contract</td></tr>
+</tbody></table></div>
+<p>Thiết kế phải trả lời: guest non-critical quá tải, crash, dùng chung device hay update thì guest critical có bị ảnh hưởng không?</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Virtualization cho phép gộp cluster, IVI, HUD lên một SoC, đổi lại interference qua tài nguyên chung và blast radius lớn. Để cluster ASIL chạy chung AAOS QM, con đường thực tế là <b>chứng minh FFI</b> theo ba nhóm can nhiễu: memory, timing, communication.</p>
+</div>
+
+<!-- 2.2 -->
+<h3 id="p2-2">2.2 Hypervisor, virtual machine, container và partitioning</h3>
+
+<figure class="fig">
+<svg viewBox="0 0 720 360" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Type-1 hypervisor trên SoC của CDC với VM cluster, VM Android Automotive, backend VM và phần cứng dùng chung">
+<defs>
+<filter id="a6-sh" x="-10%" y="-20%" width="120%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#174C43" flood-opacity="0.15"/></filter>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">CDC trên type-1 hypervisor: ba VM, một SoC, nhiều tài nguyên dùng chung</text>
+<g filter="url(#a6-sh)">
+<rect x="20" y="36" width="210" height="136" rx="10" fill="#174C43"/>
+<rect x="240" y="36" width="280" height="136" rx="10" fill="#A64E32"/>
+<rect x="530" y="36" width="170" height="136" rx="10" fill="#2A6F66"/>
+<rect x="20" y="184" width="680" height="40" rx="8" fill="#1c2928"/>
+</g>
+<g text-anchor="middle" fill="#fff">
+<text x="125" y="57" font-size="12.5" font-weight="700">VM Cluster · RTOS</text>
+<text x="125" y="73" font-size="10" opacity="0.92">ASIL B (giả định minh họa)</text>
+<text x="380" y="57" font-size="12.5" font-weight="700">VM IVI · Android Automotive</text>
+<text x="380" y="73" font-size="10" opacity="0.92">QM · nguồn interference chính</text>
+<text x="615" y="57" font-size="12.5" font-weight="700">Backend VM</text>
+<text x="615" y="73" font-size="10" opacity="0.92">sở hữu device thật</text>
+</g>
+<g fill="#fff" fill-opacity="0.16">
+<rect x="34" y="86" width="182" height="22" rx="6"/>
+<rect x="34" y="114" width="182" height="22" rx="6"/>
+<rect x="34" y="142" width="182" height="22" rx="6"/>
+<rect x="254" y="86" width="252" height="22" rx="6"/>
+<rect x="254" y="114" width="252" height="22" rx="6"/>
+<rect x="254" y="142" width="252" height="22" rx="6"/>
+<rect x="542" y="86" width="146" height="22" rx="6"/>
+<rect x="542" y="114" width="146" height="22" rx="6"/>
+<rect x="542" y="142" width="146" height="22" rx="6"/>
+</g>
+<g text-anchor="middle" font-size="10.5" fill="#fff">
+<text x="125" y="101">Telltale · cảnh báo</text>
+<text x="125" y="129">Tốc độ · số · trạng thái xe</text>
+<text x="125" y="157">Health monitor cluster</text>
+<text x="380" y="101">Navigation 3D · media</text>
+<text x="380" y="129">App bên thứ ba · analytics</text>
+<text x="380" y="157">OTA agent · diagnostic (mission)</text>
+<text x="615" y="101">VirtIO block · net</text>
+<text x="615" y="129">GPU server / mediator</text>
+<text x="615" y="157">Audio · USB backend</text>
+</g>
+<text x="360" y="209" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">Type-1 hypervisor (SEooC) · stage-2 MMU · vCPU scheduler · virtual IRQ · cấu hình SMMU</text>
+<rect x="20" y="236" width="680" height="96" rx="10" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.4"/>
+<text x="32" y="252" font-size="11" font-weight="700" fill="#174C43">SoC của CDC</text>
+<rect x="32" y="258" width="100" height="34" rx="7" fill="#174C43"/>
+<rect x="140" y="258" width="150" height="34" rx="7" fill="#A64E32"/>
+<rect x="298" y="258" width="110" height="34" rx="7" fill="#E2BD69" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="5 3"/>
+<rect x="416" y="258" width="140" height="34" rx="7" fill="#fff" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="5 3"/>
+<rect x="564" y="258" width="124" height="34" rx="7" fill="#2A8C8C"/>
+<g text-anchor="middle" font-size="11" font-weight="700">
+<text x="82" y="279" fill="#fff">CPU core 0–1</text>
+<text x="215" y="279" fill="#fff">CPU core 2–7</text>
+<text x="353" y="279" fill="#1c2928">GPU (chia sẻ)</text>
+<text x="486" y="279" fill="#1c2928">Display · plane 0 / 1</text>
+<text x="626" y="279" fill="#fff">IOMMU / SMMU</text>
+</g>
+<g fill="#fff" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="5 3">
+<rect x="32" y="300" width="200" height="24" rx="6"/>
+<rect x="240" y="300" width="200" height="24" rx="6"/>
+<rect x="448" y="300" width="240" height="24" rx="6"/>
+</g>
+<g text-anchor="middle" font-size="10.5" fill="#1c2928">
+<text x="132" y="316">LLC (cache dùng chung)</text>
+<text x="340" y="316">DRAM · memory bus</text>
+<text x="568" y="316">UFS · Ethernet · Wi-Fi</text>
+</g>
+<text x="360" y="350" text-anchor="middle" font-size="10" font-style="italic" fill="#596966">Viền vàng đứt nét = tài nguyên dùng chung: nơi interference sinh ra dù mỗi VM đã có ranh giới riêng</text>
+</svg>
+<figcaption>Màu VM khớp màu core được pin: cluster chỉ chạy core 0–1, AAOS chỉ chạy core 2–7. GPU, display, cache, DRAM và storage vẫn dùng chung.</figcaption>
+</figure>
+
+<h4>a) Type-1 và type-2 hypervisor</h4>
+<div class="table-scroll"><table><thead><tr><th>Loại</th><th>Chạy ở đâu</th><th>Trusted computing base</th><th>Dùng trong xe</th></tr></thead><tbody>
+<tr><td><b>Type-1</b> (bare-metal)</td><td>Thẳng trên phần cứng</td><td>Có thể rất nhỏ (microkernel / separation kernel)</td><td>CDC; nhiều sản phẩm có safety package (QNX Hypervisor, PikeOS; Xen, ACRN là open source)</td></tr>
+<tr><td><b>Type-2</b> (hosted)</td><td>Ứng dụng trên host OS</td><td>Gồm cả host OS</td><td>Phát triển, SIL trên PC</td></tr>
+</tbody></table></div>
+<p>Quan trọng hơn "type mấy" là <span class="term">trusted computing base</span> lớn cỡ nào: với KVM, cả host Linux nằm trong TCB; pKVM tách hypervisor nhỏ để thu hẹp TCB, nên phạm vi chứng nhận hẹp hơn.</p>
+
+<h4>b) Guest dùng device thế nào: emulation, paravirtualization, passthrough</h4>
+<div class="table-scroll"><table><thead><tr><th>Cách</th><th>Nghĩa là gì</th><th>Ưu</th><th>Rủi ro / đánh đổi</th></tr></thead><tbody>
+<tr><td>Full emulation</td><td>Hypervisor giả lập device bằng phần mềm</td><td>Không cần sửa guest</td><td>Overhead, latency cao</td></tr>
+<tr><td><span class="term">Paravirtualization</span> / <span class="term">VirtIO</span></td><td>Frontend trong guest ↔ backend sở hữu device thật</td><td>Hiệu quả, interface chuẩn</td><td>Backend dùng chung: nghẽn hay crash là mọi guest bị ảnh hưởng</td></tr>
+<tr><td>Passthrough</td><td>Giao device thật cho một guest</td><td>Gần native</td><td>Khó chia sẻ; DMA phải qua IOMMU/SMMU</td></tr>
+</tbody></table></div>
+<p><b>GPU</b> khó nhất: VirtIO-GPU, <span class="term">mediated passthrough</span> hay chia cứng đều còn chung preemption và hang/reset GPU. Vì vậy telltale thường vẽ trên <b>display plane riêng</b> do VM cluster điều khiển.</p>
+
+<h4>c) Process, container, VM, partition hay ECU riêng</h4>
+<div class="table-scroll"><table><thead><tr><th>Cơ chế</th><th>Ranh giới</th><th>Chung kernel?</th><th>Phù hợp</th></tr></thead><tbody>
+<tr><td><span class="term">Container</span></td><td>Namespace, cgroups</td><td>Có</td><td>App, analytics non-critical</td></tr>
+<tr><td>VM</td><td>Hypervisor tách memory, CPU, device</td><td>Không</td><td>Tách OS khác criticality</td></tr>
+<tr><td>Partition (time/space)</td><td>Tài nguyên tĩnh, time window cố định (kiểu ARINC 653)</td><td>Tùy</td><td>Workload cần determinism</td></tr>
+<tr><td>ECU / MCU riêng</td><td>Phần cứng riêng</td><td>Không</td><td>Tuyến phòng thủ cuối khi SoC hỏng</td></tr>
+</tbody></table></div>
+<p>Container <b>không tạo được FFI</b> vì chung kernel, scheduler, driver; nó chỉ hợp cho workload cùng criticality <b>bên trong</b> một VM, ví dụ cgroups giới hạn analytics trong VM AAOS.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Hypervisor type-1 chia SoC thành các VM có kernel riêng; điều quyết định là <b>TCB nhỏ cỡ nào</b> và cách guest dùng device, trong đó GPU khó nhất. Container chung kernel nên <b>không tạo được FFI</b>; partition tĩnh cho workload cần determinism, ECU riêng cho tuyến phòng thủ cuối.</p>
+</div>
+
+<!-- 2.3 -->
+<h3 id="p2-3">2.3 CPU, memory, I/O và network isolation</h3>
+<p>Isolation phải dựng cho <b>từng đường ống tài nguyên</b>; thiếu một đường là còn một đường rò, thường không để lại log.</p>
+
+<figure class="fig">
+<svg viewBox="0 0 720 330" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Bốn đường ống tài nguyên CPU, memory, I/O, network với cơ chế cô lập và điểm còn rò">
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Bốn đường ống tài nguyên: cơ chế cô lập và chỗ còn rò</text>
+<g filter="url(#a6-sh)">
+<rect x="20" y="36" width="164" height="34" rx="8" fill="#174C43"/>
+<rect x="192" y="36" width="164" height="34" rx="8" fill="#174C43"/>
+<rect x="364" y="36" width="164" height="34" rx="8" fill="#174C43"/>
+<rect x="536" y="36" width="164" height="34" rx="8" fill="#174C43"/>
+</g>
+<g text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">
+<text x="102" y="58">CPU</text>
+<text x="274" y="58">Memory</text>
+<text x="446" y="58">I/O · device</text>
+<text x="618" y="58">Network</text>
+</g>
+<g fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.3">
+<rect x="20" y="78" width="164" height="128" rx="8"/>
+<rect x="192" y="78" width="164" height="128" rx="8"/>
+<rect x="364" y="78" width="164" height="128" rx="8"/>
+<rect x="536" y="78" width="164" height="128" rx="8"/>
+</g>
+<g font-size="10.5" font-weight="700" fill="#174C43">
+<text x="30" y="96">Cơ chế</text><text x="202" y="96">Cơ chế</text><text x="374" y="96">Cơ chế</text><text x="546" y="96">Cơ chế</text>
+</g>
+<g font-size="10" fill="#1c2928">
+<text x="30" y="116">• Core pinning</text>
+<text x="30" y="134">• vCPU budget / period</text>
+<text x="30" y="152">• Priority đã phân tích</text>
+<text x="30" y="170">• Interrupt affinity</text>
+<text x="30" y="188">• Admission control</text>
+<text x="202" y="116">• Stage-2 page table</text>
+<text x="202" y="134">• RAM cấp tĩnh</text>
+<text x="202" y="152">• Shared mem read-only</text>
+<text x="202" y="170">• Cache coloring / MPAM</text>
+<text x="202" y="188">• Bandwidth regulation</text>
+<text x="374" y="116">• IOMMU/SMMU cho DMA</text>
+<text x="374" y="134">• Mỗi device một owner</text>
+<text x="374" y="152">• VirtIO backend + quota</text>
+<text x="374" y="170">• Hàng đợi ưu tiên</text>
+<text x="374" y="188">• Reset cô lập theo guest</text>
+<text x="546" y="116">• Virtual switch + rule</text>
+<text x="546" y="134">• VLAN / segmentation</text>
+<text x="546" y="152">• QoS · priority queue</text>
+<text x="546" y="170">• Rate limit theo VM</text>
+<text x="546" y="188">• Firewall / allowlist</text>
+</g>
+<g fill="#fff" stroke="#A93226" stroke-width="1.3" stroke-dasharray="5 3">
+<rect x="20" y="216" width="164" height="84" rx="8"/>
+<rect x="192" y="216" width="164" height="84" rx="8"/>
+<rect x="364" y="216" width="164" height="84" rx="8"/>
+<rect x="536" y="216" width="164" height="84" rx="8"/>
+</g>
+<g font-size="10.5" font-weight="700" fill="#A93226">
+<text x="30" y="234">Còn rò qua</text><text x="202" y="234">Còn rò qua</text><text x="374" y="234">Còn rò qua</text><text x="546" y="234">Còn rò qua</text>
+</g>
+<g font-size="10" fill="#1c2928">
+<text x="30" y="254">IRQ của device dùng chung</text>
+<text x="30" y="272">Hypervisor tick, trap</text>
+<text x="30" y="290">Lock-holder preemption</text>
+<text x="202" y="254">LLC dùng chung</text>
+<text x="202" y="272">Băng thông DRAM</text>
+<text x="202" y="290">Coherency / snoop traffic</text>
+<text x="374" y="254">Backend nghẽn hoặc crash</text>
+<text x="374" y="272">Storage bị flood ghi</text>
+<text x="374" y="290">GPU preemption chậm</text>
+<text x="546" y="254">Queue chung bị flood</text>
+<text x="546" y="272">Broadcast storm</text>
+<text x="546" y="290">Switch ngoài hypervisor</text>
+</g>
+<text x="360" y="322" text-anchor="middle" font-size="10" font-style="italic" fill="#596966">Bật cơ chế ở hàng trên chưa đủ: hàng dưới chỉ lộ ra khi test dưới tải chéo trên target</text>
+</svg>
+<figcaption>Mỗi cột là một đường ống cần cơ chế, owner và test riêng; ô đỏ là nơi review thiết kế hay bỏ sót.</figcaption>
+</figure>
+
+<h4>a) CPU và memory: tách core, tách RAM chưa phải là tách hết</h4>
+<ul>
+<li><b>CPU</b>: VM cluster pin trên core 0–1; interrupt của device AAOS không route tới đó. Buộc chia core thì dùng vCPU budget, ví dụ 2 ms mỗi 10 ms (giả định minh họa). Điểm rò: hypervisor tick, <span class="term">lock-holder preemption</span>.</li>
+<li><b>Memory</b>: <span class="term">stage-2 translation</span>, RAM cấp tĩnh, không map chéo.</li>
+<li><b>Cache và băng thông</b>: AAOS làm bẩn <span class="term">LLC</span> và chiếm băng thông DRAM, làm task cluster chậm. Giảm bằng <span class="term">cache coloring</span>, <span class="term">MPAM</span> <b>nếu SoC hỗ trợ</b>; nếu không, phải đo dưới cross-load.</li>
+</ul>
+
+<h4>b) I/O, device và network</h4>
+<ul>
+<li><b>IOMMU / SMMU</b> cho <b>mọi</b> bus master có DMA mà guest QM điều khiển; mỗi device một owner.</li>
+<li><b>Backend có quota và hàng đợi ưu tiên</b>: log AAOS không được làm cluster lỡ hạn ghi <span class="term">DTC</span>.</li>
+<li><b>Network</b>: virtual switch chỉ cho luồng đã khai báo, VLAN, QoS, rate limit theo VM.</li>
+</ul>
+
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Mỗi đường ống cần cơ chế và test riêng: pin core và route interrupt cho CPU, stage-2 và RAM tĩnh cho memory, <b>IOMMU/SMMU cho mọi bus master có DMA</b>, backend có quota, network có VLAN và QoS. Cache và băng thông DRAM vẫn rò, cần MPAM/cache coloring hoặc đo dưới cross-load.</p>
+</div>
+
+<!-- 2.4 -->
+<h3 id="p2-4">2.4 Safety-critical, mission-critical và non-critical workload</h3>
+<p>Loại workload quyết định <b>mức isolation, ưu tiên khi tranh chấp và evidence</b>, nên phân loại phải lấy từ <span class="term">HARA</span>, safety goal và requirement, không theo cảm nhận.</p>
+
+<h4>a) Ba loại workload</h4>
+<div class="table-scroll"><table><thead><tr><th>Loại</th><th>Hậu quả khi lỗi</th><th>Ví dụ trong CDC</th><th>Yêu cầu isolation / evidence</th></tr></thead><tbody>
+<tr><td><b>Safety-critical</b></td><td>Có thể gây nguy hiểm; có ASIL</td><td>Telltale, cảnh báo cluster</td><td>FFI theo safety process; static partition, reserve</td></tr>
+<tr><td><b>Mission-critical</b></td><td>Mất chức năng chính, dịch vụ, tuân thủ</td><td>OTA agent, diagnostic, telematics</td><td>Availability, recovery time, budget tối thiểu</td></tr>
+<tr><td><b>Non-critical</b></td><td>Ảnh hưởng trải nghiệm</td><td>Media, app bên thứ ba, analytics</td><td>Bị cap; nguồn interference chính</td></tr>
+</tbody></table></div>
+<p>ISO 26262 chỉ có <b>ASIL A–D và QM</b>; "mission-critical" là phân loại theo availability, nên workload QM như OTA agent vẫn có thể mission-critical. Yêu cầu pháp lý (như FMVSS 111 cho camera lùi) cũng phải phản ánh vào phân loại.</p>
+
+<h4>b) Quy trình phân loại</h4>
+<ol class="steps">
+<li><b>Truy từng workload tới safety goal</b>: safety requirement nào, ASIL bao nhiêu? Không truy được → QM.</li>
+<li><b>Gán availability cho phần QM</b>: mission-critical hay non-critical, recovery time chấp nhận được.</li>
+<li><b>Ghi deadline, partition, owner</b> và nguồn mỗi con số; safety owner duyệt phần safety.</li>
+<li><b>Review lại khi feature đổi</b>: thêm cảnh báo ADAS vào cluster có thể đổi phân loại cả luồng dữ liệu.</li>
+</ol>
+
+<h4>c) Workload inventory mẫu (giả định minh họa)</h4>
+<div class="table-scroll"><table><thead><tr><th>Workload</th><th>Loại</th><th>ASIL / QM</th><th>Partition</th><th>Deadline / recovery</th></tr></thead><tbody>
+<tr><td>Telltale, cảnh báo</td><td>Safety-critical</td><td>ASIL B</td><td>VM cluster (RTOS)</td><td>≤ 10 ms, đo worst-case dưới cross-load</td></tr>
+<tr><td>OTA agent, diagnostic</td><td>Mission-critical</td><td>QM</td><td>VM AAOS, budget tối thiểu</td><td>Chạy lại ≤ 60 s, không mất gói đã tải</td></tr>
+<tr><td>Navigation 3D, media</td><td>Non-critical</td><td>QM</td><td>VM AAOS, trong cap</td><td>Phản hồi chạm ≤ 200 ms (UX)</td></tr>
+<tr><td>Analytics, app bên thứ ba</td><td>Non-critical</td><td>QM</td><td>Container trong VM AAOS</td><td>Bị dừng đầu tiên khi quá tải</td></tr>
+</tbody></table></div>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Safety-critical có ASIL, cần FFI và reserve; mission-critical là QM nhưng cần availability và budget tối thiểu; non-critical bị cap và coi là nguồn interference. Phân loại phải <b>truy ngược từ HARA và safety goal</b>, có owner duyệt và review lại khi feature đổi.</p>
+</div>
+
+<!-- 2.5 -->
+<h3 id="p2-5">2.5 Fault containment, timing isolation và resource reservation</h3>
+<p>Ba khái niệm <b>bổ sung nhau, không thay nhau</b>, và mỗi cái cần evidence riêng.</p>
+
+<h4>a) Ba khái niệm, ba loại evidence</h4>
+<div class="table-scroll"><table><thead><tr><th>Khái niệm</th><th>Mục tiêu</th><th>Cách thực hiện</th><th>Evidence</th></tr></thead><tbody>
+<tr><td><span class="term">Fault containment</span></td><td>Lỗi không lan sang partition khác</td><td>Memory/DMA isolation, restart độc lập, validate input</td><td>Fault injection</td></tr>
+<tr><td><span class="term">Timing isolation</span></td><td>Response time critical không phụ thuộc tải bên khác</td><td>Core riêng hoặc time budget, interrupt routing, bandwidth regulation</td><td>WCRT / P99 dưới cross-load</td></tr>
+<tr><td><span class="term">Resource reservation</span></td><td>Critical luôn có tài nguyên tối thiểu</td><td>Budget cố định; non-critical có cap</td><td>Review budget ≤ capacity; test vượt cap</td></tr>
+</tbody></table></div>
+<p>Containment xử lý khi <b>có lỗi</b>; timing isolation phải đúng cả khi <b>chỉ có tải nặng</b>. Reservation chưa đủ cho timing vì cache và băng thông DRAM vẫn gây interference.</p>
+
+<h4>b) Timing: WCET, response time và time partitioning</h4>
+<ul>
+<li><span class="term">WCET</span> trên SoC chia sẻ lớn hơn khi chạy một mình, do interference qua cache và bus.</li>
+<li><span class="term">Worst-case response time</span> là số so với deadline.</li>
+<li><span class="term">P99</span> là thước đo thực nghiệm; phần safety cần thêm max quan sát được và lập luận vì sao điều kiện test là xấu nhất.</li>
+</ul>
+<pre><code>WCRT = WCET(dưới interference) + blocking + chờ lập lịch (vCPU, preemption) + overhead hypervisor
+Điều kiện: WCRT ≤ deadline, với margin đã thống nhất
+
+Ví dụ (giả định minh họa): idle P99 = 4 ms · AAOS stress render P99 = 12 ms · deadline 10 ms
+→ FFI chưa đạt; chỉ số dưới tải chéo mới có giá trị chứng minh</code></pre>
+<p><span class="term">Time partitioning</span> bảo đảm partition critical luôn có cửa sổ của nó, bất kể bên kia đòi bao nhiêu:</p>
+
+<figure class="fig">
+<svg viewBox="0 0 720 290" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="So sánh lịch CPU không reservation và có time partitioning với budget cho cluster">
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Time partitioning: cửa sổ của cluster được giữ dù Android quá tải (giả định minh họa)</text>
+<g font-size="11" font-weight="700" fill="#1c2928">
+<text x="20" y="70">Không</text><text x="20" y="85">reservation</text>
+<text x="20" y="166">Có time</text><text x="20" y="181">partition</text>
+</g>
+<g filter="url(#a6-sh)">
+<rect x="120" y="56" width="174" height="36" rx="7" fill="#A64E32"/>
+<rect x="294" y="56" width="58" height="36" rx="7" fill="#174C43"/>
+<rect x="352" y="56" width="58" height="36" rx="7" fill="#A64E32"/>
+<rect x="410" y="56" width="58" height="36" rx="7" fill="#A64E32"/>
+<rect x="468" y="56" width="58" height="36" rx="7" fill="#174C43"/>
+<rect x="526" y="56" width="174" height="36" rx="7" fill="#A64E32"/>
+<rect x="120" y="152" width="87" height="36" rx="7" fill="#174C43"/>
+<rect x="207" y="152" width="58" height="36" rx="7" fill="#2A8C8C"/>
+<rect x="265" y="152" width="145" height="36" rx="7" fill="#A64E32"/>
+<rect x="410" y="152" width="87" height="36" rx="7" fill="#174C43"/>
+<rect x="497" y="152" width="58" height="36" rx="7" fill="#2A8C8C"/>
+<rect x="555" y="152" width="145" height="36" rx="7" fill="#A64E32"/>
+</g>
+<g text-anchor="middle" font-size="10.5" fill="#fff">
+<text x="207" y="78">AAOS burst</text>
+<text x="323" y="78">Cluster</text>
+<text x="439" y="78">AAOS</text>
+<text x="497" y="78">Cluster</text>
+<text x="613" y="78">AAOS</text>
+<text x="163" y="174">Cluster 3 ms</text>
+<text x="236" y="174">Backend</text>
+<text x="337" y="174">AAOS 5 ms</text>
+<text x="453" y="174">Cluster 3 ms</text>
+<text x="526" y="174">Backend</text>
+<text x="627" y="174">AAOS 5 ms</text>
+</g>
+<g stroke="#A93226" stroke-width="1.5" stroke-dasharray="4 3">
+<line x1="265" y1="44" x2="265" y2="96"/>
+<line x1="555" y1="44" x2="555" y2="96"/>
+<line x1="265" y1="146" x2="265" y2="194"/>
+<line x1="555" y1="146" x2="555" y2="194"/>
+</g>
+<g font-size="9.5" fill="#A93226" text-anchor="middle">
+<text x="265" y="40">deadline</text>
+<text x="555" y="40">deadline</text>
+</g>
+<line x1="265" y1="100" x2="352" y2="100" stroke="#A93226" stroke-width="3"/>
+<text x="120" y="116" font-size="10" fill="#A93226">Frame 1: cluster xong muộn 3 ms so với deadline · Frame 2: kịp — timing phụ thuộc tải của AAOS</text>
+<text x="120" y="206" font-size="10" fill="#174C43">Cluster luôn chạy trong cửa sổ 0–3 ms của mỗi frame → xong trước deadline 5 ms</text>
+<text x="120" y="221" font-size="10" fill="#A64E32">AAOS dùng hết 5 ms thì bị throttle tới frame sau, không lấn cửa sổ của cluster</text>
+<line x1="120" y1="238" x2="700" y2="238" stroke="#596966" stroke-width="1.2"/>
+<g stroke="#596966" stroke-width="1.2">
+<line x1="120" y1="234" x2="120" y2="242"/><line x1="265" y1="234" x2="265" y2="242"/><line x1="410" y1="234" x2="410" y2="242"/><line x1="555" y1="234" x2="555" y2="242"/><line x1="700" y1="234" x2="700" y2="242"/>
+</g>
+<g text-anchor="middle" font-size="10" fill="#596966">
+<text x="120" y="256">0</text><text x="265" y="256">5</text><text x="410" y="256">10</text><text x="555" y="256">15</text><text x="700" y="256">20 ms</text>
+</g>
+<text x="410" y="278" text-anchor="middle" font-size="10" fill="#596966">Một core dùng chung · major frame 10 ms · task cluster cần 2 ms, deadline 5 ms sau mỗi lần release</text>
+</svg>
+<figcaption>Hàng trên: không có reservation, response time của cluster thay đổi theo tải AAOS. Hàng dưới: cửa sổ cố định làm worst-case của cluster không phụ thuộc bên kia (vẫn phải đo thêm interference qua cache, bus).</figcaption>
+</figure>
+
+<h4>c) Fault containment: phát hiện, phản ứng, phục hồi</h4>
+<ul>
+<li><b>Phát hiện</b>: hardware watchdog, health monitor, kiểm tra nội dung telltale.</li>
+<li><b>Phản ứng</b>: phát hiện + phản ứng gọn trong <span class="term">FTTI</span>; restart cả guest thường quá chậm.</li>
+<li><b>Degraded mode và tuyến cuối</b>: mỗi fault có trạng thái suy giảm; SoC hay hypervisor hỏng thì <span class="term">safety island</span> hoặc MCU giữ chức năng tối thiểu.</li>
+</ul>
+<div class="table-scroll"><table><thead><tr><th>Fault</th><th>Degraded mode mong đợi</th><th>Recovery / data loss (giả định minh họa)</th></tr></thead><tbody>
+<tr><td>AAOS crash</td><td>Cluster giữ tốc độ, telltale</td><td>Restart ≤ 30 s; mất playlist</td></tr>
+<tr><td>VirtIO block backend crash</td><td>Cluster đệm DTC trong RAM</td><td>Restart ≤ 5 s; không mất DTC</td></tr>
+<tr><td>GPU hang</td><td>Telltale vẫn trên plane riêng</td><td>GPU reset; cluster không reboot</td></tr>
+<tr><td>Hypervisor / SoC lỗi</td><td>Safety island / MCU giữ telltale tối thiểu</td><td>Theo FTTI của safety goal</td></tr>
+</tbody></table></div>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p><b>Fault containment</b> giữ lỗi trong một partition, chứng minh bằng fault injection; <b>timing isolation</b> giữ response time khi bên kia tải nặng, chứng minh bằng WCRT/P99 dưới cross-load; <b>resource reservation</b> giữ tài nguyên tối thiểu, chứng minh bằng review budget. Reservation cần nhưng chưa đủ cho timing.</p>
+</div>
+
+<!-- 2.6 -->
+<h3 id="p2-6">2.6 Trade-off giữa utilization, latency, determinism, flexibility và certification</h3>
+<p>Không có điểm tối ưu chung: phần safety ưu tiên <b>determinism và certification</b>, phần infotainment ưu tiên <b>utilization và flexibility</b> trong cap đã duyệt.</p>
+
+<h4>a) Năm hướng tối ưu xung đột nhau</h4>
+<div class="table-scroll"><table><thead><tr><th>Hướng tối ưu</th><th>Cách đạt</th><th>Được</th><th>Mất / rủi ro</th></tr></thead><tbody>
+<tr><td><b>Utilization</b> cao</td><td>Chia sẻ động</td><td>Cost thấp</td><td>Interference tăng, worst-case khó đoán</td></tr>
+<tr><td><b>Latency</b> thấp</td><td>Passthrough, zero-copy</td><td>Gần native</td><td>Boundary mỏng, rủi ro DMA</td></tr>
+<tr><td><b>Determinism</b> cao</td><td>Static partition, core riêng</td><td>Worst-case phân tích được</td><td>Tài nguyên để không</td></tr>
+<tr><td><b>Flexibility</b> cao</td><td>Container, cấp phát động</td><td>Thêm feature nhanh</td><td>Đổi cấu hình làm evidence mất hiệu lực</td></tr>
+<tr><td>Dễ <b>certification</b></td><td>TCB nhỏ, cấu hình tĩnh</td><td>Phạm vi phân tích hẹp</td><td>Ít tính năng</td></tr>
+</tbody></table></div>
+
+<h4>b) Mỗi partition một điểm cân bằng</h4>
+<div class="table-scroll"><table><thead><tr><th>Partition</th><th class="c">Utilization</th><th class="c">Latency</th><th class="c">Determinism</th><th class="c">Flexibility</th><th class="c">Certification</th></tr></thead><tbody>
+<tr><td>VM cluster (safety)</td><td class="c">thấp</td><td class="c">vừa</td><td class="c">cao nhất</td><td class="c">thấp</td><td class="c">cao nhất</td></tr>
+<tr><td>Backend VM</td><td class="c">vừa</td><td class="c">cao</td><td class="c">cao</td><td class="c">thấp</td><td class="c">vừa–cao</td></tr>
+<tr><td>VM AAOS (QM)</td><td class="c">cao</td><td class="c">cao (UX)</td><td class="c">thấp</td><td class="c">cao nhất</td><td class="c">không yêu cầu</td></tr>
+</tbody></table></div>
+<p>Ví dụ (giả định minh họa): giữ 2 core cho cluster tải ~30% thì khoảng <code>2 × 70% = 1.4 core</code> nhàn rỗi; đó là chi phí <b>có chủ đích</b>, không phải lãng phí.</p>
+
+<h4>c) Cách ra quyết định trade-off</h4>
+<ol class="steps">
+<li><b>Khóa ràng buộc cứng</b>: deadline safety, FTTI, FFI, assumptions of use của hypervisor; không đánh đổi.</li>
+<li><b>Chọn điểm cân bằng theo partition</b>, không một chính sách cho cả SoC.</li>
+<li><b>Ghi cái mất bằng số đo trên target</b> vào ADR, kèm điều kiện xem xét lại.</li>
+</ol>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Năm hướng này xung đột nên chọn <b>điểm cân bằng theo từng partition</b>: VM cluster ưu tiên determinism và certification, VM AAOS ưu tiên utilization và flexibility trong cap. Khóa ràng buộc cứng (deadline, FTTI, FFI) trước, rồi ghi cái mất bằng số đo vào ADR.</p>
+</div>
+
+<!-- 2.7 -->
+<h3 id="p2-7">2.7 Làm sao workload không critical không ảnh hưởng workload critical?</h3>
+<p>Không cơ chế đơn lẻ nào đủ; phải <b>xếp nhiều lớp bảo vệ</b>, mỗi lớp chặn một kiểu ảnh hưởng.</p>
+
+<h4>a) Sáu lớp bảo vệ</h4>
+<ol class="steps">
+<li><b>Tách boundary</b>: khác criticality thì khác VM/partition.</li>
+<li><b>Reserve và cap</b>: core, memory, bandwidth, GPU time, network queue.</li>
+<li><b>Kiểm soát đường chia sẻ</b>: IOMMU/SMMU, IPC có validation, backend có quota.</li>
+<li><b>Phụ thuộc một chiều</b>: critical không block chờ non-critical; dữ liệu nhận có timeout, plausibility check, giá trị mặc định an toàn.</li>
+<li><b>Giám sát</b>: watchdog, health monitor, restart độc lập từng guest.</li>
+<li><b>Chứng minh</b>: cross-load test và fault injection trên target (2.8).</li>
+</ol>
+
+<h4>b) Đường interference → cơ chế → test</h4>
+<div class="table-scroll"><table><thead><tr><th>Đường ảnh hưởng</th><th>Cơ chế chặn</th><th>Test chứng minh</th></tr></thead><tbody>
+<tr><td>CPU</td><td>Pinning, time budget, interrupt routing</td><td>Stress CPU AAOS, đo WCRT cluster</td></tr>
+<tr><td>Cache, DRAM</td><td>Cache coloring / MPAM, bandwidth regulation</td><td>Bandwidth stress, đo execution time</td></tr>
+<tr><td>GPU</td><td>Display plane riêng, preemption, timeout job</td><td>Render nặng + GPU hang, đo thời gian telltale</td></tr>
+<tr><td>DMA</td><td>IOMMU/SMMU</td><td>DMA trỏ vào RAM cluster phải bị chặn</td></tr>
+<tr><td>Device backend</td><td>Quota, hàng đợi ưu tiên</td><td>Flood storage, kill backend khi ghi DTC</td></tr>
+<tr><td>IPC / shared memory</td><td>Schema, E2E, epoch, quyền một chiều</td><td>Message sai, lặp, trễ; restart producer</td></tr>
+<tr><td>Network</td><td>VLAN, QoS, rate limit</td><td>Flood traffic, đo latency dữ liệu xe</td></tr>
+</tbody></table></div>
+
+<h4>c) IPC contract giữa cluster và AAOS</h4>
+<p>Message IPC dễ kiểm soát nhưng tốn copy; shared memory nhanh nhưng zero-copy không tự an toàn. Contract phải ghi:</p>
+<ul>
+<li><b>Dữ liệu</b>: schema, version, ownership và lifetime của buffer.</li>
+<li><b>Thứ tự</b>: memory ordering, queue depth, backpressure.</li>
+<li><b>Độ tươi</b>: sequence counter và <span class="term">producer epoch</span> để nhận ra dữ liệu cũ.</li>
+<li><b>Sự cố</b>: timeout, hành vi khi dữ liệu sai, recovery.</li>
+<li><b>E2E protection</b> cho dữ liệu safety: CRC, counter, timeout.</li>
+</ul>
+<p><b>Safety và security đi cùng nhau</b>: kẻ tấn công có thể dùng chính đường quá tải để phá timing. Cùng cơ chế phục vụ cả hai, nên phân tích ISO/SAE 21434 phải tham chiếu chéo với FFI.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Bằng cách <b>xếp nhiều lớp bảo vệ</b>: tách VM theo criticality, reserve và cap, kiểm soát đường chia sẻ, phụ thuộc một chiều, giám sát và restart độc lập, rồi chứng minh trên target. Mỗi đường interference phải có cơ chế chặn và test tương ứng.</p>
+</div>
+
+<!-- 2.8 -->
+<h3 id="p2-8">2.8 Isolation được chứng minh bằng thiết kế, test và evidence như thế nào?</h3>
+<p>Isolation chỉ được chấp nhận khi có chuỗi <b>thiết kế → cấu hình → test trên target → evidence</b> truy ngược được; thiếu một mắt xích thì vẫn là giả định.</p>
+
+<figure class="fig">
+<svg viewBox="0 0 720 230" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Chuỗi bằng chứng isolation từ thiết kế, cấu hình, test, evidence đến giữ hiệu lực">
+<defs>
+<marker id="a6-arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Chuỗi bằng chứng isolation: thiếu một mắt xích thì chỉ còn giả định</text>
+<g filter="url(#a6-sh)">
+<rect x="20" y="44" width="120" height="116" rx="9" fill="#174C43"/>
+<rect x="160" y="44" width="120" height="116" rx="9" fill="#2A6F66"/>
+<rect x="300" y="44" width="120" height="116" rx="9" fill="#2A8C8C"/>
+<rect x="440" y="44" width="120" height="116" rx="9" fill="#A64E32"/>
+<rect x="580" y="44" width="120" height="116" rx="9" fill="#596966"/>
+</g>
+<g text-anchor="middle" font-size="12" font-weight="700" fill="#fff">
+<text x="80" y="66">1. Thiết kế</text>
+<text x="220" y="66">2. Cấu hình</text>
+<text x="360" y="66">3. Test target</text>
+<text x="500" y="66">4. Evidence</text>
+<text x="640" y="66">5. Giữ hiệu lực</text>
+</g>
+<g text-anchor="middle" font-size="9.5" fill="#fff" opacity="0.95">
+<text x="80" y="88">Partition spec</text><text x="80" y="106">Budget reserve/cap</text><text x="80" y="124">Đường interference</text><text x="80" y="142">DFA · phân tích FFI</text>
+<text x="220" y="88">Hypervisor config</text><text x="220" y="106">SMMU · memory map</text><text x="220" y="124">IRQ routing</text><text x="220" y="142">Baseline có version</text>
+<text x="360" y="88">Baseline idle</text><text x="360" y="106">Cross-load</text><text x="360" y="124">Fault injection</text><text x="360" y="142">Long-run · P99/WC</text>
+<text x="500" y="88">Req → cơ chế → test</text><text x="500" y="106">Kết quả + version</text><text x="500" y="124">Review độc lập</text><text x="500" y="142">Vào safety case</text>
+<text x="640" y="88">Change impact</text><text x="640" y="106">Regression</text><text x="640" y="124">Assumptions of use</text><text x="640" y="142">Field monitoring</text>
+</g>
+<g stroke="#596966" stroke-width="1.6" marker-end="url(#a6-arr4)">
+<line x1="141" y1="102" x2="158" y2="102"/>
+<line x1="281" y1="102" x2="298" y2="102"/>
+<line x1="421" y1="102" x2="438" y2="102"/>
+<line x1="561" y1="102" x2="578" y2="102"/>
+</g>
+<path d="M640,160 L640,184 L80,184 L80,163" fill="none" stroke="#B7791F" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#a6-arr4)"/>
+<text x="360" y="204" text-anchor="middle" font-size="10" fill="#1c2928">Đổi hypervisor, BSP, budget, guest image → đánh giá impact, quay lại bước 1–3 cho phần bị ảnh hưởng</text>
+<text x="360" y="222" text-anchor="middle" font-size="10" font-style="italic" fill="#596966">Evidence chỉ có hiệu lực cho đúng cấu hình đã test</text>
+</svg>
+<figcaption>Mỗi mũi tên là một chỗ phải truy vết được: requirement nào dẫn tới cơ chế nào, cấu hình nào hiện thực nó, test nào chứng minh, trên version nào.</figcaption>
+</figure>
+
+<h4>a) Thiết kế và cấu hình</h4>
+<ul>
+<li><b>Partition spec và budget</b>: tổng ≤ capacity có headroom; mỗi đường interference có cơ chế và test.</li>
+<li><span class="term">DFA</span>: cascading failure (AAOS panic treo backend chung) và common cause failure (hypervisor, SoC, nguồn). Dùng <span class="term">ASIL decomposition</span> giữa hai VM thì phải chứng minh độc lập đủ dù chung SoC.</li>
+<li><b>Review cấu hình so với spec</b> (SMMU, memory map, interrupt routing), lưu baseline có version.</li>
+</ul>
+
+<h4>b) Test catalogue trên target</h4>
+<div class="table-scroll"><table><thead><tr><th>Loại test</th><th>Tác động phía non-critical</th><th>Đo phía critical</th><th>Tiêu chí đạt (viết trước khi test)</th></tr></thead><tbody>
+<tr><td>Baseline</td><td>Idle</td><td>Response time</td><td>Chỉ tham chiếu, không kết luận FFI</td></tr>
+<tr><td>Cross-load CPU</td><td>Stress vCPU 100%</td><td>WCRT / P99 cluster</td><td>≤ deadline với margin</td></tr>
+<tr><td>Cross-load memory</td><td>Stress DRAM, cache thrash</td><td>Execution time cluster</td><td>Không vượt WCET đã phân tích</td></tr>
+<tr><td>Cross-load GPU</td><td>Render 3D nặng</td><td>Thời gian hiện telltale</td><td>≤ requirement hiển thị</td></tr>
+<tr><td>Cross-load I/O, network</td><td>Flood storage, traffic</td><td>Hạn ghi DTC, latency</td><td>Không lỡ hạn, không mất DTC</td></tr>
+<tr><td>Fault injection</td><td>Crash, panic, message sai, DMA trái phép, kill backend</td><td>Cluster không reset theo</td><td>Degraded mode, recovery đúng spec</td></tr>
+<tr><td>Long-run</td><td>Tải hỗn hợp nhiều giờ, nhiều chu kỳ nhiệt</td><td>Phân phối response time</td><td>Đuôi phân phối ổn định</td></tr>
+</tbody></table></div>
+
+<h4>c) Hypervisor có chứng nhận: SEooC và assumptions of use</h4>
+<p>Hypervisor thương mại thường là <span class="term">SEooC</span> kèm safety manual và <span class="term">assumptions of use</span>. Chứng nhận là <b>đầu vào</b>, không thay evidence dự án. Assumption điển hình phải kiểm:</p>
+<ul>
+<li>Mọi bus master có DMA của guest QM đi qua SMMU.</li>
+<li>Cấu hình partition tĩnh, không đổi VM lúc runtime.</li>
+<li>Có watchdog ngoài; người tích hợp chịu trách nhiệm safe state.</li>
+<li>Toolchain, BSP, build option đúng safety manual.</li>
+<li>Interference qua cache, bus do người tích hợp đo.</li>
+</ul>
+
+<h4>d) Giữ evidence còn hiệu lực</h4>
+<div class="table-scroll"><table><thead><tr><th>Thay đổi</th><th>Evidence bị ảnh hưởng</th><th>Phải làm</th></tr></thead><tbody>
+<tr><td>Phiên bản hypervisor hoặc BSP</td><td>Gần như toàn bộ</td><td>Impact analysis, chạy lại cross-load và fault injection chính</td></tr>
+<tr><td>Budget, pinning, priority</td><td>Timing các partition liên quan</td><td>Chạy lại cross-load timing</td></tr>
+<tr><td>Update image AAOS</td><td>Giới hạn nếu boundary giữ nguyên</td><td>Regression FFI rút gọn</td></tr>
+</tbody></table></div>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Bằng chuỗi truy vết <b>requirement → cơ chế → cấu hình → test trên target → evidence có version</b>, gồm DFA, review cấu hình, cross-load và fault injection với tiêu chí viết trước. Chứng nhận SEooC chỉ là đầu vào; dự án phải kiểm từng assumption of use và chạy lại test khi hypervisor, BSP hay budget đổi.</p>
+</div>
+
+<!-- 2.9 -->
+<h3 id="p2-9">2.9 Khi resource bị tranh chấp, policy nào quyết định ưu tiên?</h3>
+<p>Ưu tiên khi thiếu tài nguyên do <span class="term">contention policy</span> viết và duyệt <b>trước</b> quyết định; mặc định của OS hay hypervisor không dự đoán được.</p>
+
+<figure class="fig">
+<svg viewBox="0 0 720 280" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Thang ưu tiên ba tầng criticality và thứ tự cắt giảm khi quá tải">
+<defs>
+<marker id="a6-arr5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="360" y="22" text-anchor="middle" font-size="13.5" font-weight="700" fill="#174C43">Khi tài nguyên thiếu: thứ tự ưu tiên và thứ tự cắt giảm (giả định minh họa)</text>
+<g filter="url(#a6-sh)">
+<rect x="20" y="40" width="340" height="60" rx="10" fill="#174C43"/>
+<rect x="20" y="108" width="340" height="60" rx="10" fill="#2A6F66"/>
+<rect x="20" y="176" width="340" height="60" rx="10" fill="#A64E32"/>
+</g>
+<g font-size="12.5" font-weight="700" fill="#fff">
+<text x="34" y="64">1 · Safety-critical — RESERVE</text>
+<text x="34" y="132">2 · Mission-critical — BUDGET TỐI THIỂU</text>
+<text x="34" y="200">3 · Non-critical — CAP</text>
+</g>
+<g font-size="10" fill="#fff" opacity="0.92">
+<text x="34" y="84">Telltale, cảnh báo: budget cố định, không bao giờ bị cắt</text>
+<text x="34" y="152">OTA, diagnostic, DTC: có sàn tối thiểu trong cap của VM</text>
+<text x="34" y="220">Nav 3D, media, app, analytics: nhận phần còn lại</text>
+</g>
+<text x="20" y="258" font-size="10.5" fill="#1c2928">Vượt budget → bị throttle, không mượn budget của tầng trên</text>
+<text x="390" y="50" font-size="12" font-weight="700" fill="#174C43">Thứ tự cắt giảm khi quá tải</text>
+<g stroke-width="1.3">
+<rect x="404" y="62" width="296" height="30" rx="7" fill="#E5EFEB" stroke="#2A8C8C"/>
+<rect x="404" y="98" width="296" height="30" rx="7" fill="#E5EFEB" stroke="#2A8C8C"/>
+<rect x="404" y="134" width="296" height="30" rx="7" fill="#E5EFEB" stroke="#2A8C8C"/>
+<rect x="404" y="170" width="296" height="30" rx="7" fill="#E2BD69" stroke="#B7791F"/>
+<rect x="404" y="206" width="296" height="30" rx="7" fill="#fff" stroke="#A93226"/>
+</g>
+<g font-size="10.5" fill="#1c2928">
+<text x="416" y="81">1. Tắt animation, hiệu ứng chuyển cảnh</text>
+<text x="416" y="117">2. Giảm frame rate nav 3D, media</text>
+<text x="416" y="153">3. Tạm dừng analytics, upload log</text>
+<text x="416" y="189">4. Hoãn tải OTA nền (giữ trạng thái)</text>
+<text x="416" y="225">5. Sau cùng: giới hạn mission, vẫn giữ DTC</text>
+</g>
+<line x1="390" y1="64" x2="390" y2="234" stroke="#596966" stroke-width="1.6" marker-end="url(#a6-arr5)"/>
+<text x="552" y="258" text-anchor="middle" font-size="10" fill="#596966">Tải tăng → đi xuống từng bước; tải giảm → khôi phục ngược lại</text>
+</svg>
+<figcaption>Tầng safety không xuất hiện trong danh sách cắt giảm: nó được reserve, không tham gia tranh chấp.</figcaption>
+</figure>
+
+<h4>a) Năm nguyên tắc của contention policy</h4>
+<ol class="steps">
+<li><b>Criticality trước</b>: safety → mission → non-critical; cùng mức thì theo deadline/priority, không theo "ai đến trước".</li>
+<li><b>Budget enforcement</b>: vượt budget thì bị throttle, không lấy budget bên khác, trừ khi policy cho mượn phần dư có giới hạn.</li>
+<li><b>Shedding order</b>: thứ tự cắt giảm viết sẵn, có ngưỡng kích hoạt, khôi phục và hysteresis.</li>
+<li><b>Admission control</b>: không chạy workload mới vượt budget.</li>
+<li><b>Change control</b>: architect và safety owner duyệt; đổi budget thì chạy lại test.</li>
+</ol>
+
+<h4>b) Ai thắng ở từng tài nguyên</h4>
+<div class="table-scroll"><table><thead><tr><th>Tài nguyên</th><th>Khi tranh chấp, ai thắng</th><th>Cơ chế thực thi</th></tr></thead><tbody>
+<tr><td>CPU</td><td>Cluster; trong AAOS: OTA/diag &gt; media &gt; analytics</td><td>Pinning, time budget, cgroups</td></tr>
+<tr><td>Băng thông DRAM</td><td>Cluster giữ phần reserve</td><td>MPAM / bandwidth regulation</td></tr>
+<tr><td>GPU</td><td>Telltale trước mọi job IVI</td><td>Plane riêng, priority, preemption</td></tr>
+<tr><td>Storage</td><td>DTC trước log ứng dụng</td><td>Hàng đợi ưu tiên, quota theo VM</td></tr>
+<tr><td>Network</td><td>Dữ liệu xe trước streaming</td><td>QoS, rate limit theo VM</td></tr>
+</tbody></table></div>
+
+<h4>c) Policy mẫu (giả định minh họa)</h4>
+<pre><code>contention_policy:            # version 1.2 · duyệt: SA + safety owner
+  tiers:
+    safety:   {vm: cluster, mode: reserve, cpu: core[0,1], gpu: plane_1, preempt: never}
+    mission:  {vm: aaos, apps: [ota, diag], mode: min_budget, cpu_min: 10%, io_prio: high}
+    non_crit: {vm: aaos, apps: [nav3d, media, 3rd_party, analytics], mode: cap}
+  shedding:   # kích hoạt khi tải GPU &gt; 90% trong 2 s; khôi phục khi &lt; 70% trong 5 s
+    - disable_animations
+    - limit_fps: {nav3d: 30, media: 24}
+    - pause: [analytics, log_upload]
+    - defer: ota_download        # giữ trạng thái, không mất gói
+  admission:  reject_if_over_budget: true
+  change:     requires: [impact_analysis, timing_regression]</code></pre>
+
+<p>Policy cũng phải test (từng bước shedding, app vượt cap, workload mới khi sát budget), và mỗi lần throttle được log có timestamp.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p>
+<p>Một <b>contention policy viết và duyệt trước</b> quyết định, không phải mặc định của OS hay hypervisor. Policy đặt criticality trước, thực thi budget, cắt giảm theo shedding order có hysteresis, kiểm soát admission và đi qua change control. Tầng safety được reserve nên không bị cắt giảm.</p>
+</div>
+
+<div class="next-prev"><a href="7_System_Software_Stack_Linux_Android_Automotive_QNX_AUTOSAR.html">← 7 · System Software Stack Deep Dive</a><a href="10_SA_Role_Complexity_Lifecycle_Governance.html">10 · SA Role, Complexity &amp; Lifecycle Governance →</a></div>
+</article>
+  <footer class="article-footer"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></footer>
+  </main>
+</div>
+<script src="../assets/glossary-data.js"></script>
+<script src="../assets/term-glossary.js" data-unit="A.6"></script>
+</body>
+</html>

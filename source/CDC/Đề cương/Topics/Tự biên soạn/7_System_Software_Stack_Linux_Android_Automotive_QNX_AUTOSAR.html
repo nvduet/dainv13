@@ -1,0 +1,896 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="../assets/site-ui.js" data-site-ui></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đề cương · System Software Stack Deep Dive</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f3f0e8;
+  --surface: #f9f7f1;
+  --ink: #2a3431;
+  --muted: #62706b;
+  --line: #dbd7cb;
+  --forest: #174c43;
+  --forest-soft: #e3ece6;
+  --copper: #a64e32;
+  --gold: #e2bd69;
+  --code: #ebe7dd;
+  --focus: #b34d31;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--copper); }
+a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.reader-header {
+  min-height: 74px;
+  padding: 12px clamp(20px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--forest);
+  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.reader-header a { color: white; text-decoration: none; }
+.reader-header nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; font-size: 0.9rem; }
+
+/* Navigation buttons: same shape/order as the AI library (secondary links | ← Quay lại | ⌂ Trang chủ) */
+.nav-link { padding: 6px 4px; color: #d4e4de; font-weight: 500; white-space: nowrap; }
+.reader-header a.nav-link:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+.nav-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(255, 255, 255, 0.3); }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.nav-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.nav-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.nav-ico { flex: none; width: 16px; height: 16px; }
+.reader-header .nav-btn { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+.reader-header .nav-btn:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.reader-header .nav-btn--primary { color: var(--forest); border-color: var(--gold); background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); }
+.reader-header .nav-btn--primary:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.article-footer .nav-btn { color: var(--forest); border-color: var(--forest); background: transparent; }
+.article-footer .nav-btn:hover { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary:hover { border-color: var(--copper); background: var(--copper); }
+.reader-header nav a:hover { color: var(--gold); }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; line-height: 1.12; }
+.brand small { color: #d4e4de; font-size: 0.75rem; font-weight: 400; }
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  border-radius: 2px;
+}
+
+.reader-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+
+.contents-panel {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 32px 20px 28px clamp(20px, 4vw, 48px);
+  border-right: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--copper);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contents-panel ul { margin: 0; padding: 0; list-style: none; }
+.contents-panel li { margin: 0; padding: 0; }
+.contents-panel a {
+  display: block;
+  padding: 7px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.contents-panel a:hover { color: var(--forest); text-decoration: underline; }
+.contents-panel .toc-level-3 { padding-left: 14px; border-left: 1px solid var(--line); }
+
+.article {
+  min-width: 0;
+  padding: 26px clamp(22px, 5vw, 76px) 70px;
+}
+
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+article { max-width: 900px; }
+article h1, article h2, article h3, .library-intro h1 {
+  color: light-dark(#26403d, #c5e8e4);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  line-height: 1.18;
+}
+article h1 { margin: 0 0 28px; font-size: 2.35rem; }
+article h2 {
+  margin: 48px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+}
+article h3 { margin: 32px 0 12px; color: var(--forest); font-size: 1.24rem; }
+article p { margin: 0 0 18px; }
+article li { margin: 6px 0; padding-left: 4px; }
+article ul, article ol { margin: 0 0 22px; padding-left: 26px; }
+article strong { color: light-dark(#26403c, #c3e9e3); }
+
+blockquote {
+  margin: 22px 0;
+  padding: 15px 20px;
+  border-left: 4px solid var(--copper);
+  background: light-dark(#f8eee8, #31231a);
+  color: light-dark(#543e35, #d4c2bb);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+.table-scroll { width: 100%; margin: 22px 0 26px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.92rem; }
+th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--forest-soft); color: light-dark(#26403c, #c3e9e3); font-weight: 700; }
+tr:nth-child(even) td { background: light-dark(#f9f7f2, #2c2918); }
+
+code, pre { font-family: Consolas, "Courier New", monospace; }
+code { padding: 0.1em 0.28em; background: var(--code); color: light-dark(#24433e, #c3dfda); font-size: 0.9em; }
+pre {
+  max-width: 100%;
+  margin: 20px 0 26px;
+  padding: 18px 20px;
+  overflow: auto;
+  border-left: 3px solid var(--forest);
+  background: light-dark(#e9eeea, #222c25);
+  color: light-dark(#26403d, #d0e6e4);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; color: inherit; }
+hr { margin: 36px 0; border: 0; border-top: 1px solid var(--line); }
+
+.audit-item { margin: 14px 0; }
+
+.audit-item details {
+  margin-top: 9px;
+  border-left: 3px solid #86a99e;
+  background: var(--forest-soft);
+}
+.audit-item summary {
+  padding: 9px 13px;
+  color: var(--forest);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.answer-body { padding: 0 14px 10px; }
+.answer-body p { margin: 4px 0 10px; }
+.answer-body ul { margin: -4px 0 12px; padding-left: 22px; }
+.answer-body li { margin: 3px 0; line-height: 1.55; }
+/* Key questions: map 1-1 to the Learning Plan "Unit Detail" requirements of the topic */
+details.audit-reveal { margin: 8px 0 18px; border-left: 3px solid #86a99e; background: var(--forest-soft); }
+details.audit-reveal > summary { padding: 9px 13px; color: var(--forest); cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.audit-key-intro { margin: 18px 0 28px; padding: 16px 20px 14px; border: 1px solid light-dark(#e6cf95, #62542f); border-left: 6px solid var(--gold); background: light-dark(#fff7e0, #312b1a); }
+.audit-key-intro p { margin: 0 0 8px; }
+.audit-key-intro ol { margin: 0; padding-left: 22px; }
+.audit-key-intro li { margin: 4px 0; }
+.audit-key-intro .req-tag { color: var(--muted); font-size: 0.8rem; }
+.audit-question-heading.audit-key { padding: 10px 14px; border-left: 6px solid var(--copper); background: light-dark(#fbeee4, #31251a); }
+.audit-question-heading.audit-key::after {
+  content: "Tr\1ECDng t\00E2m";
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--copper);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+details.audit-key-reveal, .audit-item details.audit-key-reveal { border-left: 6px solid var(--copper); background: light-dark(#f9f7f2, #2c2317); }
+details.audit-key-reveal > summary, .audit-item details.audit-key-reveal summary { color: var(--copper); }
+
+.article-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 54px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.library-main { width: min(1120px, 100%); margin: 0 auto; padding: 50px clamp(20px, 5vw, 72px) 76px; }
+.library-intro { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+.library-intro h1 { margin: 0; font-size: 3rem; }
+.library-intro h1 span { color: var(--copper); }
+
+.search-label { display: block; margin: 0 0 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#topic-search {
+  width: min(520px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-intro { max-width: 740px; color: var(--muted); }
+.qa-filter { margin: 26px 0 34px; }
+.qa-filter label { display: block; margin-bottom: 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#qa-search {
+  width: min(640px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-filter p { margin: 7px 0 0; color: var(--muted); font-size: 0.82rem; }
+.qa-topic { margin-top: 40px; }
+.qa-topic-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.qa-topic-heading h2 { flex: 1; }
+.qa-topic-heading a { flex: none; font-size: 0.86rem; }
+.qa-question[hidden], .qa-topic[hidden] { display: none; }
+.search-status { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.topic-list { margin-top: 8px; border-top: 1px solid var(--line); }
+.topic-link {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 15px;
+  min-height: 72px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topic-link:hover { background: light-dark(#e8eee9, #222d23); color: var(--forest); }
+.topic-number { color: var(--copper); font-family: Georgia, serif; font-size: 1.1rem; }
+.topic-title { font-weight: 650; }
+.topic-arrow { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.source-note { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.87rem; }
+
+@media (max-width: 860px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .contents-panel {
+    position: static;
+    max-height: none;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contents-panel nav { max-height: 210px; overflow: auto; }
+  .article { padding-top: 22px; }
+}
+
+@media (max-width: 560px) {
+  .reader-header { align-items: flex-start; padding: 12px 17px; }
+  .reader-header { flex-wrap: wrap; }
+  .reader-header nav { gap: 6px 8px; }
+  .nav-sep { display: none; }
+  .nav-btn { min-height: 34px; padding: 6px 12px; }
+  .library-intro h1 { font-size: 2.25rem; }
+  article h1 { font-size: 1.9rem; }
+  article h2 { font-size: 1.4rem; }
+  .topic-link { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .topic-arrow { display: none; }
+  .qa-topic-heading { align-items: flex-start; flex-direction: column; gap: 0; }
+  th, td { min-width: 130px; padding: 9px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* Highlight non-AI (CDC/SDV) topics in the library index */
+.topic-link.topic-core { background: var(--forest-soft); box-shadow: inset 5px 0 0 var(--forest); }
+.topic-link.topic-core .topic-title { color: var(--forest); }
+.topic-link.topic-core .topic-number { color: var(--forest); font-weight: 700; }
+.topic-link.topic-core:hover { background: light-dark(#d4e5de, #233930); }
+.topic-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 18px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.legend-swatch { display: inline-block; width: 18px; height: 14px; margin-right: -10px; border: 1px solid var(--line); vertical-align: -2px; }
+.legend-swatch.legend-core { background: var(--forest-soft); box-shadow: inset 4px 0 0 var(--forest); }
+
+/* Non-learning items (assignment / review / OJT) among CDC/SDV topics: red text */
+.topic-link.topic-task .topic-title, .topic-link.topic-task .topic-number { color: light-dark(#b3261e, #e9847e); }
+.topic-link.topic-task:hover .topic-title { color: light-dark(#8c1d18, #ed9794); }
+.legend-task { color: light-dark(#b3261e, #e9847e); font-weight: 600; }
+/* Study-time note per topic (from Fast_Track_CDC_Weekly_Checklist.xlsx) */
+.topic-time { display: block; margin-top: 3px; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.topic-link.topic-task .topic-time { color: light-dark(#b3261e, #e9847e); opacity: 0.85; }
+.legend-time { flex-basis: 100%; color: var(--muted); }
+
+/* ---- Thuật ngữ: bấm để xem giải nghĩa ---- */
+.gl {
+  border-bottom: 1.5px dotted #6f9a8e;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color .12s;
+}
+.gl:hover { background: var(--forest-soft); }
+.gl:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.gl.is-open { background: var(--forest-soft); border-bottom-style: solid; border-bottom-color: var(--forest); }
+.gl-pop {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(28, 41, 40, .16);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gl-term { display: block; margin-bottom: 2px; color: var(--forest); font-weight: 700; font-size: .82rem; }
+.gl-hint { color: var(--muted); font-size: .85rem; }
+.gl-hint .gl-demo { border-bottom: 1.5px dotted #6f9a8e; }
+
+/* ---- Checklist đầu ra (tick được, lưu trên trình duyệt) ---- */
+.checklist { margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 16px 14px; }
+.checklist > h3 { margin-top: 18px; }
+.cl-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--muted); font-size: .9rem; }
+.cl-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 99px; background: var(--forest-soft); overflow: hidden; }
+.cl-bar > i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s; }
+.cl-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.cl-item { padding: 9px 0 10px; border-top: 1px dashed var(--line); }
+.cl-item:first-child { border-top: 0; }
+.cl-item > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.cl-item input[type="checkbox"] { margin-top: .35em; width: 17px; height: 17px; accent-color: var(--forest); flex: none; }
+.cl-item.is-done > label > span { color: var(--muted); text-decoration: line-through; text-decoration-color: light-dark(#9fb3ad, #495c56); }
+.cl-pass, .cl-src { margin: 4px 0 0 27px; font-size: .9rem; }
+.cl-pass { color: var(--ink); }
+.cl-src { color: var(--muted); font-size: .82rem; }
+.cl-reset { margin-left: auto; border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 2px 9px; color: var(--muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.cl-reset:hover { color: var(--copper); border-color: var(--copper); }
+
+/* Lesson style for CDC/SDV topics — mirrors the teaching layout of the AI library
+   (bài đọc: hook → giải thích → ví dụ → vì sao quan trọng → nghiền ngẫm → thực hành → tự kiểm)
+   while keeping the CDC palette of reader.css. Load AFTER reader.css. */
+:root {
+  --teal: #2A8C8C; --teal-soft: #EEF7F6;
+  --violet: #6A4FC0; --violet-soft: #F5F2FD;
+  --green: #2E7D4F; --green-soft: #EFF8F2;
+  --amber: #B7791F; --amber-soft: #FFF7E8;
+  --red: #A93226; --red-soft: #FCEFEC;
+}
+
+body.lesson-page article { max-width: 800px; }
+body.lesson-page article p, body.lesson-page article li { line-height: 1.75; }
+body.lesson-page article h2 { margin-top: 44px; }
+body.lesson-page article h2 .sec-no { color: var(--copper); font-weight: 700; margin-right: 6px; }
+
+/* Bài nav (pill row, like .tapnav in the AI library) */
+.bai-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+.bai-nav a { font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--surface); }
+.bai-nav a:hover { border-color: var(--forest); color: var(--forest); }
+.bai-nav a.cur { background: var(--forest); border-color: var(--forest); color: #fff; }
+.bai-nav .grp { font-size: 0.7rem; font-weight: 700; color: var(--copper); align-self: center; margin: 0 2px 0 6px; letter-spacing: .06em; }
+
+.lesson-kicker { margin: 0 0 6px; color: var(--copper); font-size: 0.78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+body.lesson-page article h1 { margin-bottom: 10px; }
+.lesson-meta { margin: 0 0 18px; font-weight: 600; color: light-dark(#2c4b46, #bfdad5); font-size: 0.95rem; }
+
+/* Bản đồ bài — chuỗi khái niệm */
+.roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 24px; font-size: 0.86rem; }
+.roadmap span { background: var(--forest-soft); color: var(--forest); border: 1px solid light-dark(#c9ddd5, #314e42); border-radius: 8px; padding: 5px 10px; font-weight: 600; }
+.roadmap i { color: var(--muted); font-style: normal; }
+
+/* Figure card for SVG diagrams */
+.fig { margin: 24px 0; background: light-dark(#f9f7f2, #202819); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 12px; box-shadow: 0 1px 3px rgba(23,76,67,.06); overflow-x: auto; }
+.fig svg { width: 100%; height: auto; display: block; min-width: 560px; }
+.fig figcaption, .fig .cap { margin-top: 8px; color: var(--muted); font-size: 0.84rem; text-align: center; font-style: italic; }
+
+/* Opening question of a section */
+.hook { font-size: 1.04rem; color: light-dark(#26403c, #c6e2de); border-left: 3px solid var(--copper); padding: 4px 0 4px 14px; margin: 6px 0 18px; }
+
+/* Plain-language explanation */
+.plain { background: var(--forest-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0 18px; }
+.plain .ttl { color: var(--forest); }
+
+/* Generic box header */
+.box { border-radius: 12px; padding: 14px 18px; margin: 20px 0; }
+.box > .ttl, .plain > .ttl { margin: 0 0 7px; font-weight: 700; font-size: 0.86rem; }
+.box p { margin: 6px 0; }
+.box ul, .box ol { margin: 6px 0; padding-left: 22px; }
+.box li { margin: 4px 0; }
+
+.ex { background: var(--teal-soft); border: 1px solid var(--teal); }
+.ex > .ttl { color: light-dark(#1d6b6b, #a8e7e7); }
+.case { background: light-dark(#f9f7f2, #2c2117); border: 1px solid light-dark(#EBB28F, #63432f); border-left: 4px solid var(--copper); }
+.case > .ttl { color: var(--copper); font-size: 0.74rem; text-transform: uppercase; letter-spacing: .05em; }
+.pitfall { background: var(--amber-soft); border: 1px solid light-dark(#EBC77A, #695833); }
+.pitfall > .ttl { color: light-dark(#8A5A00, #ffd88f); }
+.why { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--forest); }
+.why > .ttl { color: var(--forest); }
+
+.practice { background: var(--green-soft); border: 1px solid var(--green); }
+.practice > .ttl { color: light-dark(#1F6340, #ade5c9); }
+.remember { background: var(--forest); color: #E4EFEB; }
+.remember > .ttl { color: var(--gold); }
+.remember b, .remember strong { color: #fff; }
+
+/* Sai vs đúng */
+.contrast { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.contrast > div { border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; }
+.contrast .bad { background: var(--red-soft); border: 1px solid light-dark(#E3A79F, #60342e); }
+.contrast .good { background: var(--green-soft); border: 1px solid light-dark(#9CCFB0, #326747); }
+.contrast .ttl { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
+.contrast .bad .ttl { color: var(--red); }
+.contrast .good .ttl { color: var(--green); }
+.contrast p { margin: 4px 0; }
+
+/* Step-by-step anatomy */
+.steps { list-style: none; counter-reset: st; padding-left: 0 !important; }
+.steps > li { counter-increment: st; position: relative; padding: 2px 0 2px 42px !important; margin: 12px 0 !important; }
+.steps > li::before { content: counter(st); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+
+/* Small term chips inline */
+.term { font-weight: 650; color: light-dark(#26403c, #c3e9e3); }
+.term-gloss { color: var(--muted); font-size: 0.92em; }
+
+/* Lesson prev/next */
+.next-prev { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .contrast { grid-template-columns: 1fr; }
+  .fig svg { min-width: 520px; }
+}
+
+/* ---------- Learning reflection + Unit assessment (assets/assessment.js) ---------- */
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.refl-intro { color: light-dark(#2c4b46, #bfdad5); }
+.refl-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--violet); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.refl-label { margin: 0 0 4px !important; font-weight: 700; color: light-dark(#3f2c86, #a99ade); }
+.refl-hint { color: light-dark(#41506B, #aeb9ce); font-size: 0.93rem; margin-bottom: 8px; }
+.refl-hint ul { margin: 4px 0 0; padding-left: 20px; }
+.refl-hint li { margin: 2px 0; }
+#reflection-app textarea, #quiz-app textarea, #workshop-app textarea { width: 100%; font: inherit; font-size: 0.95rem; line-height: 1.55; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); color: var(--ink); resize: vertical; }
+#reflection-app textarea:focus, #quiz-app textarea:focus, #workshop-app textarea:focus { outline: 2px solid var(--gold); border-color: var(--forest); }
+.refl-sample { margin-top: 8px; }
+.refl-sample summary { cursor: pointer; color: var(--forest); font-size: 0.86rem; font-weight: 600; }
+.refl-sample-body { margin: 6px 0; padding: 8px 12px; background: var(--forest-soft); border-radius: 6px; font-size: 0.92rem; }
+.refl-sample-body ul { margin: 4px 0; padding-left: 20px; }
+.refl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 6px; }
+.refl-tools p { flex-basis: 100%; margin: 2px 0 0; }
+.tool-msg { color: var(--green); font-size: 0.86rem; }
+.act-btn, .mini-btn { font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1.5px solid var(--forest); }
+.act-btn { background: var(--forest); color: #fff; }
+.act-btn:hover { background: var(--copper); border-color: var(--copper); }
+.mini-btn { background: transparent; color: var(--forest); padding: 5px 12px; font-size: 0.82rem; }
+.mini-btn:hover { background: var(--forest-soft); }
+.mini-btn.danger { color: var(--red); border-color: light-dark(#E3A79F, #60342e); }
+.assess-note { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; }
+.assess-note.small { background: transparent; padding: 0; }
+
+table.rubric select { font: inherit; font-size: 0.86rem; padding: 4px 6px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ws-col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.ws-h { margin: 0 0 4px !important; font-weight: 700; color: var(--forest); font-size: 0.9rem; }
+.ws-col ol, .ws-col ul { margin: 0 !important; padding-left: 20px !important; font-size: 0.93rem; }
+table.rubric td.num { text-align: center; font-weight: 700; color: var(--copper); }
+table.rubric td { font-size: 0.9rem; }
+table.rubric textarea { min-width: 180px; }
+.rub-pts { font-size: 0.82rem; color: var(--forest); font-weight: 600; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.dash-card.pass { border-color: light-dark(#9CCFB0, #326747); background: var(--green-soft); }
+.dash-card.fail { border-color: light-dark(#E3A79F, #60342e); background: var(--red-soft); }
+.dash-h { margin: 0 !important; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-v { margin: 2px 0 !important; font-size: 1.6rem; font-weight: 700; color: var(--forest); }
+.dash-sub { margin: 0 !important; font-size: 0.84rem; color: var(--muted); }
+
+/* ---------- Knowledge questions (open questions, self-rated) ---------- */
+.kq-howto { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kq-toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.kq-filter { font-size: 0.88rem; color: var(--forest); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.kq-progress { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; }
+.kq-track { flex: 1; height: 8px; border-radius: 99px; background: light-dark(#E3E8E2, #272f25); overflow: hidden; display: flex; }
+.kq-track .seg { height: 100%; }
+.seg-yes { background: var(--green); } .seg-part { background: light-dark(#D9A441, #665027); } .seg-no { background: light-dark(#C0504D, #6a2a28); }
+.kq-count { font-size: 0.84rem; color: var(--muted); white-space: nowrap; }
+.kq-group { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; border-bottom: 1px dashed var(--line); }
+.kq-group-title { margin: 0 0 6px !important; font-size: 1.08rem !important; }
+.kq-back { font-size: 0.82rem; white-space: nowrap; }
+.kq-list { padding-left: 26px !important; margin-top: 8px !important; }
+.kq-item { margin: 12px 0 !important; padding: 10px 14px !important; border: 1px solid var(--line); border-left: 4px solid light-dark(#C9D3CF, #3b4843); border-radius: 10px; background: var(--surface); }
+.kq-item[data-rate="yes"] { border-left-color: var(--green); }
+.kq-item[data-rate="part"] { border-left-color: #D9A441; }
+.kq-item[data-rate="no"] { border-left-color: #C0504D; }
+.only-weak .kq-item[data-rate="yes"] { display: none; }
+.kq-q { margin: 0 0 6px !important; font-weight: 600; line-height: 1.6 !important; }
+.kq-type { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 4px; background: var(--forest-soft); color: var(--forest); font-size: 0.72rem; font-weight: 700; letter-spacing: .03em; vertical-align: 2px; text-transform: uppercase; }
+.kq-mine, .kq-answer { margin: 6px 0; }
+.kq-mine summary, .kq-answer summary { cursor: pointer; font-size: 0.86rem; font-weight: 600; color: var(--forest); }
+.kq-mine textarea { margin-top: 6px; width: 100%; font: inherit; font-size: 0.95rem; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; resize: vertical; }
+.kq-answer-body { margin-top: 6px; padding: 10px 14px; background: light-dark(#F4F8F6, #1b2a22); border: 1px solid light-dark(#D5E3DD, #2f473d); border-radius: 8px; font-size: 0.95rem; }
+.kq-answer-body p { margin: 4px 0 8px !important; }
+.kq-answer-body ul, .kq-answer-body ol { margin: 4px 0 8px !important; padding-left: 20px !important; }
+.kq-answer-body li { margin: 2px 0 !important; }
+.kq-refs { font-size: 0.84rem; color: var(--muted); border-top: 1px dashed light-dark(#D5E3DD, #2f473d); padding-top: 6px; margin-top: 8px !important; }
+.kq-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.kq-rate-l { font-size: 0.8rem; color: var(--muted); }
+.kq-rbtn { font: inherit; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid light-dark(#C9D3CF, #3b4843); background: light-dark(#f9f7f2, #192320); color: var(--muted); cursor: pointer; }
+.kq-rbtn[aria-pressed="true"].r-yes { background: var(--green); border-color: var(--green); color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-part { background: light-dark(#D9A441, #665027); border-color: #D9A441; color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-no { background: light-dark(#C0504D, #6a2a28); border-color: #C0504D; color: #fff; }
+
+
+  </style>
+  <style>
+    article h4 { margin: 22px 0 8px; color: var(--forest); font-size: 1.02rem; }
+    td.c, th.c { text-align: center; }
+    tr.total td { font-weight: 700; background: var(--forest-soft) !important; }
+    .fig svg .hit:hover { opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="../assets/dark.css">
+</head>
+<body class="topic-page lesson-page">
+<header class="reader-header">
+    <a class="brand" href="../../dainv13.html"><span class="brand-mark">Đ</span><span>Đề cương<br><small>System Software Stack Deep Dive</small></span></a>
+    <nav aria-label="Page actions"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></nav>
+</header>
+<div class="reader-layout">
+  <aside class="contents-panel">
+    <p class="eyebrow">Nội dung trang</p>
+    <nav aria-label="Topic contents"><ul>
+<li class="toc-level-2"><a href="#p1">Phần 1 · Giải thích chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-2">1.2 Tổng quan về chủ đề</a></li>
+<li class="toc-level-2"><a href="#p2">Phần 2 · Nội dung chi tiết</a></li>
+<li class="toc-level-3"><a href="#p2-1">2.1 Các lớp trong software stack của xe</a></li>
+<li class="toc-level-3"><a href="#p2-2">2.2 Application → hardware: vai trò từng lớp</a></li>
+<li class="toc-level-3"><a href="#p2-3">2.3 Interface, API, IPC, resource management</a></li>
+<li class="toc-level-3"><a href="#p2-4">2.4 Boot, shutdown, diagnostics, logging</a></li>
+<li class="toc-level-3"><a href="#p2-5">2.5 Dependency, versioning, performance budget</a></li>
+<li class="toc-level-3"><a href="#p2-6">2.6 Một feature đi qua nhiều lớp</a></li>
+<li class="toc-level-3"><a href="#p2-7">2.7 Lỗi ở lớp nào, biểu hiện ở lớp nào?</a></li>
+<li class="toc-level-3"><a href="#p2-8">2.8 Interface contract cần mô tả gì?</a></li>
+<li class="toc-level-3"><a href="#p2-9">2.9 Xác định ownership khi sự cố đa lớp</a></li>
+</ul></nav>
+  </aside>
+  <main class="article">
+    <article>
+<p class="lesson-kicker">Đề cương tự biên soạn</p>
+<h1 id="top">System Software Stack Deep Dive</h1>
+<p class="lesson-meta">Chồng phần mềm hệ thống trong CDC · đọc ~20 phút</p>
+
+<h2 id="p1"><span class="sec-no">1 ·</span> Giải thích chủ đề</h2>
+<h3 id="p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</h3>
+<ul>
+<li><b>System Software</b>: phần mềm nền tảng nằm dưới ứng dụng, gồm OS, driver, middleware, bootloader và các service hệ thống. Trên CDC, đây là những thứ phải chạy đúng trước khi bất kỳ app nào hiện lên màn hình.</li>
+<li><b>Stack</b>: các lớp phần mềm xếp chồng lên nhau, lớp trên dùng dịch vụ của lớp dưới qua interface. Stack của CDC thường không chỉ có một cột: QNX cho cluster, Android Automotive hoặc Linux cho IVI, AUTOSAR Classic trên MCU, có khi thêm AUTOSAR Adaptive cho các service xe, tất cả đứng trên một hypervisor và một SoC.</li>
+<li><b>Deep Dive</b>: đi sâu vào từng lớp, cách chúng phối hợp và cách lỗi lan truyền giữa chúng.</li>
+</ul>
+<h3 id="p1-2">1.2 Tổng quan về chủ đề</h3>
+<p>Trên CDC, một tính năng nhìn đơn giản như hiển thị tốc độ phải đi qua nhiều lớp: tín hiệu từ mạng xe, middleware, service, OS, có khi cả hypervisor, rồi mới đến GPU và màn hình. Các OS phổ biến là Linux, Android Automotive, QNX, cùng AUTOSAR Classic trên MCU và AUTOSAR Adaptive trên SoC.</p>
+<p>Mỗi OS được chọn vì một thế mạnh riêng. QNX là RTOS microkernel có phiên bản được chứng nhận safety. Linux linh hoạt và có hệ sinh thái driver rất lớn. Android Automotive mang sẵn framework ứng dụng và trải nghiệm người dùng quen thuộc. AUTOSAR Classic lo phần điều khiển thời gian thực trên MCU, còn AUTOSAR Adaptive cung cấp nền tảng service trên SoC.</p>
+<p>Chủ đề đi từ cấu trúc các lớp và vai trò của từng lớp, tới cách các lớp nói chuyện và chia tài nguyên, vòng đời boot và shutdown cùng diagnostics và logging, rồi version và ngân sách hiệu năng. Phần sau dùng các kiến thức đó để lần theo một feature qua stack, suy ra nguyên nhân từ triệu chứng, viết interface contract và phân định ownership khi sự cố đi qua nhiều lớp.</p>
+<h2 id="p2"><span class="sec-no">2 ·</span> Nội dung chi tiết</h2>
+<h3 id="p2-1">2.1 Các lớp trong software stack của hệ thống xe</h3>
+<h4>a) Các lớp từ dưới lên</h4>
+<p>Một stack CDC điển hình, tính từ dưới lên:</p>
+<ol>
+<li>Hardware: SoC, MCU phụ, bộ nhớ, display, mạng.</li>
+<li>Firmware và bootloader.</li>
+<li>Hypervisor, nếu có nhiều OS chạy chung.</li>
+<li>OS: QNX hoặc RTOS cho cluster, Android Automotive hoặc Linux cho IVI.</li>
+<li>Middleware và runtime.</li>
+<li>Service hệ thống.</li>
+<li>Application và HMI.</li>
+</ol>
+<p>Bên cạnh SoC thường có một MCU chạy AUTOSAR Classic, lo giao tiếp CAN, quản lý nguồn và đánh thức hệ thống.</p>
+<figure class="fig"><svg viewBox="0 0 720 312" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Stack phần mềm CDC bảy lớp trên SoC, bên cạnh MCU chạy AUTOSAR Classic, nối qua SPI hoặc IPC"><defs><marker id="s7-stk-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A64E32"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Stack CDC: cột SoC và cột MCU</text><text x="260" y="44" font-size="11" fill="#596966" text-anchor="middle" font-weight="700">SoC: tính toán, đồ họa</text><text x="630" y="44" font-size="11" fill="#596966" text-anchor="middle" font-weight="700">MCU: giao tiếp xe</text><rect x="20" y="52" width="480" height="30" rx="8" fill="#A64E32"/><text x="260" y="70.8" font-size="11" fill="#fff" text-anchor="middle">7 · Application và HMI</text><rect x="20" y="88" width="480" height="30" rx="8" fill="#2A8C8C"/><text x="260" y="106.8" font-size="11" fill="#fff" text-anchor="middle">6 · Service hệ thống</text><rect x="20" y="124" width="480" height="30" rx="8" fill="#2A6F66"/><text x="260" y="142.8" font-size="11" fill="#fff" text-anchor="middle">5 · Middleware và runtime</text><rect x="20" y="160" width="236" height="30" rx="8" fill="#174C43"/><text x="138" y="178.8" font-size="11" fill="#fff" text-anchor="middle">4 · OS cluster: QNX / RTOS</text><rect x="264" y="160" width="236" height="30" rx="8" fill="#174C43"/><text x="382" y="178.8" font-size="11" fill="#fff" text-anchor="middle">4 · OS IVI: Android Automotive / Linux</text><rect x="20" y="196" width="480" height="30" rx="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2" stroke-dasharray="5 4"/><text x="260" y="214.8" font-size="11" fill="#1c2928" text-anchor="middle">3 · Hypervisor (nếu có nhiều OS)</text><rect x="20" y="232" width="480" height="30" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="260" y="250.8" font-size="11" fill="#1c2928" text-anchor="middle">2 · Firmware và bootloader</text><rect x="20" y="268" width="480" height="30" rx="8" fill="#1c2928"/><text x="260" y="286.9" font-size="11" fill="#fff" text-anchor="middle">1 · Hardware: SoC, bộ nhớ, display, mạng</text><rect x="560" y="124" width="140" height="30" rx="8" fill="#174C43"/><text x="630" y="142.8" font-size="11" fill="#fff" text-anchor="middle">AUTOSAR Classic</text><rect x="560" y="162" width="140" height="64" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="630" y="184" font-size="10.5" fill="#1c2928" text-anchor="middle">Giao tiếp CAN</text><text x="630" y="197.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Quản lý nguồn</text><text x="630" y="211.3" font-size="10.5" fill="#1c2928" text-anchor="middle">Đánh thức hệ thống</text><rect x="560" y="268" width="140" height="30" rx="8" fill="#1c2928"/><text x="630" y="286.9" font-size="11" fill="#fff" text-anchor="middle">MCU hardware</text><line x1="630" y1="226" x2="630" y2="266" stroke="#2A6F66" stroke-width="1.2" stroke-dasharray="5 4"/><line x1="630" y1="154" x2="630" y2="162" stroke="#2A6F66" stroke-width="1.2"/><line x1="503" y1="175" x2="557" y2="175" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s7-stk-c)" marker-start="url(#s7-stk-c)"/><text x="530" y="167" font-size="10" fill="#A64E32" text-anchor="middle">SPI / IPC</text></svg><figcaption>Mỗi lớp chỉ dùng dịch vụ của lớp ngay dưới nó, còn MCU chạy song song để lo phần giao tiếp với xe.</figcaption></figure>
+<h4>b) Vì sao phải chia lớp</h4>
+<p>Mỗi lớp che giấu chi tiết của lớp bên dưới. Nhờ vậy có thể thay một lớp mà không phải sửa cả stack, ví dụ đổi SoC thế hệ mới mà app vẫn giữ nguyên. Chia lớp cũng giúp chia việc: nhóm HMI, nhóm platform, nhà cung cấp OS và nhà cung cấp SoC có thể làm song song.</p>
+<p>Cái giá là mỗi lớp thêm một chút độ trễ, tốn thêm bộ nhớ, và tạo ra thêm một interface phải giữ ổn định. Stack càng nhiều lớp thì đường đi của lỗi càng dài.</p>
+<h4>c) OS nào nằm ở đâu</h4>
+<div class="table-scroll"><table>
+<thead><tr><th>OS / nền tảng</th><th>Đặc điểm</th><th>Thường dùng trên CDC cho</th><th>Điểm cần cân nhắc</th></tr></thead>
+<tbody>
+<tr><td>QNX</td><td>RTOS microkernel, driver chạy ở user space, có phiên bản chứng nhận ISO 26262</td><td>Cluster, phần có ASIL, nền cho QNX Hypervisor</td><td>License thương mại, hệ sinh thái app nhỏ hơn</td></tr>
+<tr><td>Linux</td><td>Kernel mã nguồn mở, nhiều driver, có các nền như Automotive Grade Linux hoặc Yocto</td><td>IVI, gateway, service nền</td><td>Kernel lớn nên khó chứng minh safety, phải quản lý bản vá dài hạn</td></tr>
+<tr><td>Android Automotive</td><td>Android chạy trên Linux kernel, có car service và Vehicle HAL</td><td>IVI, HMI, app bên thứ ba</td><td>Tốn tài nguyên, boot lâu, phải theo kịp các phiên bản Android</td></tr>
+<tr><td>AUTOSAR Classic</td><td>Chuẩn phần mềm cho MCU, cấu hình tĩnh lúc build</td><td>MCU trong CDC: CAN, network management, nguồn</td><td>Đổi cấu hình phải build lại, không hợp cho logic thay đổi nhiều</td></tr>
+<tr><td>AUTOSAR Adaptive</td><td>Nền tảng trên OS chuẩn POSIX, giao tiếp theo service qua ara::com</td><td>Service xe trên SoC, cập nhật và cấu hình</td><td>Phức tạp, ít dùng cho phần HMI</td></tr>
+</tbody></table></div>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Stack đi từ phần cứng lên ứng dụng, mỗi lớp có trách nhiệm riêng và che giấu lớp dưới. Trên CDC thường có hai cột song song: SoC chạy QNX, Android Automotive hoặc Linux cho tính toán, và MCU chạy AUTOSAR Classic cho giao tiếp xe.</p></div>
+<h3 id="p2-2">2.2 Application, service, middleware, runtime, OS, hypervisor và hardware</h3>
+<div class="table-scroll"><table>
+<thead><tr><th>Lớp</th><th>Vai trò</th><th>Ví dụ trên CDC</th><th>Thường do ai cung cấp</th></tr></thead>
+<tbody>
+<tr><td>Application</td><td>Chức năng người dùng thấy</td><td>Media app, navigation, HMI cluster</td><td>OEM, nhà phát triển app</td></tr>
+<tr><td>Service</td><td>Cung cấp chức năng dùng chung</td><td>Car service của Android, audio manager</td><td>OEM, Tier 1</td></tr>
+<tr><td>Middleware</td><td>Truyền dữ liệu giữa các khối</td><td>SOME/IP, DDS, Binder</td><td>Tier 1, nhà cung cấp stack</td></tr>
+<tr><td>Runtime</td><td>Môi trường thực thi</td><td>ART của Android, AUTOSAR Adaptive Execution Management</td><td>Nhà cung cấp OS hoặc nền tảng</td></tr>
+<tr><td>OS</td><td>Lập lịch, bộ nhớ, driver</td><td>QNX, Linux kernel</td><td>Nhà cung cấp OS, BSP từ hãng SoC</td></tr>
+<tr><td>Hypervisor</td><td>Chia phần cứng cho nhiều VM</td><td>QNX Hypervisor, COQOS, Xen</td><td>Nhà cung cấp hypervisor</td></tr>
+<tr><td>Hardware</td><td>Tài nguyên vật lý</td><td>CPU, GPU, DSP, display controller</td><td>Hãng SoC, Tier 1 làm board</td></tr>
+</tbody></table></div>
+<p>Phân công ở cột cuối là kiểu thường gặp, mỗi dự án có thể chia khác.</p>
+<h4>a) Ba lớp phía trên</h4>
+<p><b>Application</b> là nơi người dùng tương tác. Trên Android Automotive, app được đóng gói thành APK. Trên cluster QNX, HMI thường được dựng bằng công cụ như Qt hoặc Kanzi. App tốt không chứa logic phụ thuộc phần cứng, mà gọi xuống service.</p>
+<p><b>Service</b> là tiến trình chạy lâu, phục vụ nhiều app cùng lúc. Nó giữ trạng thái và phân xử khi nhiều bên tranh nhau, ví dụ audio focus quyết định app nào được phát tiếng khi navigation cần đọc chỉ dẫn.</p>
+<p><b>Middleware</b> chỉ chuyển dữ liệu: tìm bên nhận, đóng gói, gửi, báo khi mất kết nối. Nó không hiểu ý nghĩa nghiệp vụ của dữ liệu. Đây là điểm khác cơ bản với service.</p>
+<h4>b) Ba lớp nền</h4>
+<p><b>Runtime</b> quyết định code chạy thế nào: cấp phát và thu hồi bộ nhớ, nạp thư viện, khởi chạy process. ART có garbage collector, nên một lần dọn bộ nhớ dài có thể làm animation giật. Execution Management của AUTOSAR Adaptive khởi chạy và dừng process theo trạng thái của máy.</p>
+<p><b>OS</b> lập lịch CPU, quản lý bộ nhớ, driver, file system và bảo mật, ví dụ SELinux trên Android. <b>Hypervisor</b> nằm dưới OS: chia core, vùng nhớ và thiết bị cho từng VM, cung cấp thiết bị ảo, kênh giao tiếp giữa VM, và theo dõi VM nào bị treo.</p>
+<p><b>Hardware</b> không chỉ là CPU. SoC của CDC còn có GPU, DSP cho audio, NPU cho AI, ISP cho camera, display controller nhiều layer, và thường có một vùng safety island hoặc MCU đi kèm.</p>
+<h4>c) Ranh giới dễ nhầm</h4>
+<ul>
+<li><b>Service và middleware</b>: service biết "nhiệt độ cabin là 22 độ", middleware chỉ biết "có một message 4 byte cần gửi tới bên đăng ký".</li>
+<li><b>Runtime và OS</b>: OS quyết định process nào được chạy trên core nào, runtime quyết định bên trong process đó code được thực thi và dọn bộ nhớ ra sao.</li>
+<li><b>Hypervisor và OS</b>: OS quản lý process, hypervisor quản lý cả OS. Một OS sập không kéo hypervisor theo, nhưng hypervisor sập thì mọi VM cùng sập.</li>
+</ul>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Mỗi lớp giải quyết một loại vấn đề và thường do một bên khác nhau cung cấp. Phân biệt rõ service với middleware, runtime với OS, hypervisor với OS giúp trao đổi giữa các nhóm rõ ràng và tìm lỗi nhanh hơn.</p></div>
+<h3 id="p2-3">2.3 Interface, API, IPC, communication và resource management</h3>
+<h4>a) Interface</h4>
+<p>Interface là điểm gặp nhau giữa hai khối. Nó gồm hai phần: cú pháp, tức hàm, message và kiểu dữ liệu, và ngữ nghĩa, tức khi nào gọi, đơn vị gì, lỗi thì sao. Interface thường được mô tả bằng một ngôn ngữ IDL để sinh code tự động, như AIDL trên Android, ARXML trong AUTOSAR, Franca IDL hoặc IDL của DDS.</p>
+<h4>b) API, IPC và communication</h4>
+<p>Các lớp nói chuyện qua interface. Interface có thể ở nhiều dạng:</p>
+<ul>
+<li><b>API</b>: hàm hoặc lớp gọi trực tiếp trong cùng process.</li>
+<li><b>IPC</b>: giao tiếp giữa các process trên cùng OS, như Binder trên Android hoặc message passing trên QNX.</li>
+<li><b>Communication</b>: giao tiếp giữa các ECU hoặc VM, như SOME/IP trên Ethernet, CAN, hoặc virtio giữa VM.</li>
+</ul>
+<p>IPC có nhiều cơ chế: Binder, message passing đồng bộ của QNX, Unix domain socket, và shared memory. Với dữ liệu lớn như khung hình video, shared memory cho phép zero-copy, tức hai bên cùng nhìn vào một vùng nhớ thay vì sao chép. Mỗi lần IPC tốn ít nhất một lần chuyển ngữ cảnh, và cần kiểm tra quyền để process lạ không gọi được service nhạy cảm.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Dạng</th><th>Phạm vi</th><th>Chi phí</th><th>Lỗi đặc trưng</th></tr></thead>
+<tbody>
+<tr><td>API</td><td>Cùng process</td><td>Rất thấp, chỉ là một lời gọi hàm</td><td>Lỗi bên được gọi có thể làm sập cả process</td></tr>
+<tr><td>IPC</td><td>Giữa process trên cùng OS</td><td>Chuyển ngữ cảnh, có thể sao chép dữ liệu</td><td>Bên kia chết hoặc treo, deadlock khi gọi vòng</td></tr>
+<tr><td>Communication</td><td>Giữa VM hoặc giữa ECU</td><td>Serialization, độ trễ mạng hoặc hypervisor</td><td>Mất gói, đối tác chưa sẵn sàng, lệch version</td></tr>
+</tbody></table></div>
+<h4>c) Resource management</h4>
+<p>Resource management là việc chia CPU, RAM, GPU, băng thông cho các bên. OS dùng priority và cgroups, hypervisor dùng CPU pinning và memory partition.</p>
+<ul>
+<li><b>CPU</b>: priority và scheduling policy trong OS. QNX có adaptive partitioning, cấp cho mỗi nhóm process một tỉ lệ thời gian CPU tối thiểu.</li>
+<li><b>Bộ nhớ</b>: giới hạn theo cgroups trên Linux. Android có lmkd để đóng app nền khi thiếu bộ nhớ.</li>
+<li><b>GPU</b>: context có priority, chia thời gian giữa các VM hoặc process.</li>
+<li><b>Băng thông</b>: QoS trên mạng, giới hạn băng thông bộ nhớ cho VM ít quan trọng.</li>
+</ul>
+<p>Cấp phát tĩnh dễ dự đoán nhưng lãng phí khi tải thấp. Cấp phát động tiết kiệm hơn nhưng khó bảo đảm trường hợp xấu nhất. Phần critical thường được cấp tĩnh, phần còn lại cấp động.</p>
+<p>Ví dụ: app media trên Android gọi API audio, đi qua Binder đến audio HAL, rồi qua virtio tới audio DSP do VM khác quản lý.</p>
+<figure class="fig"><svg viewBox="0 0 720 300" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Media app gọi API audio, qua Binder tới audio HAL, rồi qua virtio tới audio DSP ở VM khác"><defs><marker id="s7-ipc-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A64E32"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Một lệnh phát nhạc đi qua ba loại interface</text><rect x="20" y="40" width="450" height="132" rx="10" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="34" y="58" font-size="11" fill="#2A8C8C" font-weight="700">VM Android Automotive</text><rect x="36" y="68" width="220" height="90" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1" stroke-dasharray="5 4"/><text x="146" y="84" font-size="10.5" fill="#596966" text-anchor="middle" font-weight="700">Process media app</text><rect x="46" y="96" width="80" height="44" rx="8" fill="#A64E32"/><text x="86" y="121.8" font-size="11" fill="#fff" text-anchor="middle">Media app</text><rect x="156" y="96" width="90" height="44" rx="8" fill="#2A6F66"/><text x="201" y="121.8" font-size="11" fill="#fff" text-anchor="middle">Audio API</text><rect x="300" y="68" width="154" height="90" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1" stroke-dasharray="5 4"/><text x="377" y="84" font-size="10.5" fill="#596966" text-anchor="middle" font-weight="700">Process HAL</text><rect x="316" y="96" width="122" height="44" rx="8" fill="#2A6F66"/><text x="377" y="121.8" font-size="11" fill="#fff" text-anchor="middle">Audio HAL</text><rect x="520" y="40" width="180" height="132" rx="10" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="534" y="58" font-size="11" fill="#174C43" font-weight="700">VM khác</text><rect x="540" y="96" width="140" height="44" rx="8" fill="#174C43"/><text x="610" y="121.8" font-size="11" fill="#fff" text-anchor="middle">Audio DSP</text><line x1="126" y1="118" x2="154" y2="118" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s7-ipc-c)"/><line x1="246" y1="118" x2="314" y2="118" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s7-ipc-c)"/><line x1="438" y1="118" x2="538" y2="118" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s7-ipc-c)"/><circle cx="141" cy="104" r="9" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="141" y="108" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">1</text><circle cx="278" cy="104" r="9" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="278" y="108" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">2</text><circle cx="495" cy="104" r="9" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="495" y="108" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">3</text><rect x="20" y="184" width="680" height="32" rx="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="360" y="203.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Resource management: OS chia bằng priority và cgroups · hypervisor chia bằng CPU pinning và memory partition</text><circle cx="32" cy="238" r="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="32" y="241.5" font-size="10" fill="#1c2928" text-anchor="middle" font-weight="700">1</text><text x="48" y="242" font-size="11" fill="#1c2928">API: gọi hàm trong cùng process</text><circle cx="32" cy="258" r="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="32" y="261.5" font-size="10" fill="#1c2928" text-anchor="middle" font-weight="700">2</text><text x="48" y="262" font-size="11" fill="#1c2928">IPC: Binder giữa các process trên cùng OS</text><circle cx="32" cy="278" r="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="32" y="281.5" font-size="10" fill="#1c2928" text-anchor="middle" font-weight="700">3</text><text x="48" y="282" font-size="11" fill="#1c2928">Communication: virtio giữa các VM (hoặc SOME/IP, CAN giữa các ECU)</text></svg><figcaption>Càng đi xa khỏi process ban đầu, interface càng đổi dạng: API, rồi IPC, rồi communication giữa VM.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Interface quyết định các lớp phối hợp ra sao, dưới dạng API, IPC hay communication với chi phí và kiểu lỗi khác nhau. Resource management quyết định ai được bao nhiêu CPU, bộ nhớ, GPU và băng thông. Cả hai cần được thiết kế rõ.</p></div>
+<h3 id="p2-4">2.4 Boot flow, startup, shutdown, diagnostics và logging</h3>
+<h4>a) Boot flow</h4>
+<p>Boot flow trên CDC thường như sau: ROM code chạy bootloader, bootloader kiểm tra chữ ký và nạp hypervisor, hypervisor khởi động VM cluster trước, sau đó mới đến VM IVI.</p>
+<p>Lý do: cluster phải hiển thị đèn cảnh báo và camera lùi rất sớm, trong khi Android cần nhiều thời gian hơn để sẵn sàng.</p>
+<figure class="fig"><svg viewBox="0 0 720 272" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Dòng thời gian boot: ROM code, bootloader kiểm tra chữ ký, hypervisor, VM cluster lên trước, VM IVI sau; ba bước shutdown"><defs><marker id="s7-boot-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Thứ tự boot và shutdown trên CDC</text><text x="20" y="68" font-size="11" fill="#174C43" font-weight="700">Chuỗi boot</text><text x="20" y="112" font-size="11" fill="#174C43" font-weight="700">VM cluster</text><text x="20" y="156" font-size="11" fill="#174C43" font-weight="700">VM IVI</text><rect x="130" y="48" width="80" height="32" rx="8" fill="#1c2928"/><text x="170" y="67.8" font-size="11" fill="#fff" text-anchor="middle">ROM code</text><rect x="214" y="48" width="170" height="32" rx="8" fill="#174C43"/><text x="299" y="67.8" font-size="11" fill="#fff" text-anchor="middle">Bootloader: kiểm tra chữ ký</text><rect x="388" y="48" width="100" height="32" rx="8" fill="#2A6F66"/><text x="438" y="67.8" font-size="11" fill="#fff" text-anchor="middle">Hypervisor</text><rect x="492" y="92" width="208" height="32" rx="8" fill="#A64E32"/><text x="596" y="111.8" font-size="11" fill="#fff" text-anchor="middle">QNX: cảnh báo, camera lùi</text><rect x="510" y="136" width="110" height="32" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="565" y="155.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Android khởi động</text><rect x="624" y="136" width="76" height="32" rx="8" fill="#2A8C8C"/><text x="662" y="155.8" font-size="11" fill="#fff" text-anchor="middle">Sẵn sàng</text><line x1="488" y1="80" x2="494" y2="90" stroke="#596966" stroke-width="1.2" marker-end="url(#s7-boot-m)"/><line x1="130" y1="186" x2="700" y2="186" stroke="#596966" stroke-width="1.2" marker-end="url(#s7-boot-m)"/><text x="700" y="202" font-size="10" fill="#596966" text-anchor="end">thời gian</text><line x1="20" y1="210" x2="700" y2="210" stroke="#c9d8d3" stroke-width="1"/><text x="20" y="243" font-size="11" fill="#174C43" font-weight="700">Shutdown</text><rect x="130" y="222" width="170" height="34" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="215" y="242.8" font-size="11" fill="#1c2928" text-anchor="middle">1. Ghi dữ liệu xuống flash</text><rect x="340" y="222" width="170" height="34" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="425" y="242.8" font-size="11" fill="#1c2928" text-anchor="middle">2. Đóng file system an toàn</text><rect x="550" y="222" width="150" height="34" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="625" y="242.8" font-size="11" fill="#1c2928" text-anchor="middle">3. Báo MCU cắt nguồn</text><line x1="300" y1="239" x2="338" y2="239" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-boot-m)"/><line x1="510" y1="239" x2="548" y2="239" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-boot-m)"/></svg><figcaption>Cluster được khởi động trước để cảnh báo và camera lùi có sớm, còn Android sẵn sàng muộn hơn.</figcaption></figure>
+<p>Mỗi tầng kiểm tra chữ ký của tầng kế tiếp trước khi trao quyền, tạo thành chuỗi tin cậy bắt đầu từ khóa lưu trong phần cứng. Thời gian boot là yêu cầu có thật: ở Mỹ, FMVSS 111 yêu cầu hình camera lùi xuất hiện trong vòng 2 giây kể từ khi bắt đầu lùi. Vì vậy đường camera lùi thường được đưa vào VM khởi động sớm, hoặc xử lý ngay trong bootloader hay MCU, không chờ Android.</p>
+<h4>b) Startup</h4>
+<p>Sau khi kernel chạy, các service khởi động theo dependency: init và file init.rc trên Android, systemd trên nhiều bản Linux, SLM hoặc script khởi động trên QNX, Execution Management và State Management trên AUTOSAR Adaptive. Service nào không phụ thuộc nhau thì khởi động song song để rút ngắn thời gian.</p>
+<p>Khởi động thường do MCU kích hoạt: MCU nhận tín hiệu đánh thức từ CAN, ví dụ khi mở khóa cửa, rồi cấp nguồn cho SoC. Nhiều CDC dùng suspend-to-RAM: giữ nguồn cho RAM khi xe tắt, để lần sau màn hình sáng gần như ngay lập tức.</p>
+<h4>c) Shutdown</h4>
+<p>Shutdown cũng quan trọng: ghi dữ liệu xuống flash, đóng file system an toàn, báo MCU cắt nguồn.</p>
+<p>MCU thường là bên quyết định: khi tắt máy và mạng CAN không còn hoạt động, MCU báo SoC chuẩn bị tắt. SoC dừng app, lưu trạng thái, rồi trả lời MCU. Nếu SoC không trả lời trong thời gian quy định, MCU vẫn cắt nguồn, và dữ liệu chưa ghi có thể hỏng. Suspend-to-RAM đổi tốc độ khởi động lấy một lượng tiêu thụ pin nhỏ khi xe đỗ lâu.</p>
+<figure class="fig"><svg viewBox="0 0 720 300" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Máy trạng thái nguồn: Off, Boot, Running, Chuẩn bị tắt, Suspend-to-RAM; MCU cắt nguồn khi SoC trả lời xong hoặc khi hết thời hạn"><defs><marker id="s7-pwr-f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#174C43"/></marker><marker id="s7-pwr-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker><marker id="s7-pwr-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker><marker id="s7-pwr-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Vòng đời nguồn của CDC do MCU điều phối</text><rect x="20" y="120" width="80" height="44" rx="8" fill="#1c2928"/><text x="60" y="146" font-size="11.5" fill="#fff" text-anchor="middle">Off</text><rect x="170" y="120" width="100" height="44" rx="8" fill="#2A6F66"/><text x="220" y="138.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Boot</text><text x="220" y="153" font-size="10.5" fill="#fff" text-anchor="middle">bootloader, VM</text><rect x="330" y="120" width="110" height="44" rx="8" fill="#174C43"/><text x="385" y="138.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Running</text><text x="385" y="153" font-size="10.5" fill="#fff" text-anchor="middle">đủ chức năng</text><rect x="510" y="120" width="130" height="44" rx="8" fill="#A64E32"/><text x="575" y="138.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Chuẩn bị tắt</text><text x="575" y="153" font-size="10.5" fill="#fff" text-anchor="middle">lưu, unmount</text><rect x="330" y="210" width="110" height="44" rx="8" fill="#2A8C8C"/><text x="385" y="228.9" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Suspend-to-RAM</text><text x="385" y="242.5" font-size="10" fill="#fff" text-anchor="middle">RAM vẫn có nguồn</text><line x1="100" y1="142" x2="168" y2="142" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-pwr-m)"/><text x="134" y="122" font-size="9.5" fill="#596966" text-anchor="middle">wake-up:</text><text x="134" y="134" font-size="9.5" fill="#596966" text-anchor="middle">CAN, mở cửa</text><line x1="270" y1="142" x2="328" y2="142" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-pwr-m)"/><text x="299" y="134" font-size="9.5" fill="#596966" text-anchor="middle">sẵn sàng</text><line x1="440" y1="142" x2="508" y2="142" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-pwr-m)"/><text x="474" y="122" font-size="9.5" fill="#596966" text-anchor="middle">tắt máy,</text><text x="474" y="134" font-size="9.5" fill="#596966" text-anchor="middle">CAN im</text><path d="M575,120 L575,72 L60,72 L60,118" fill="none" stroke="#174C43" stroke-width="1.6" marker-end="url(#s7-pwr-f)"/><text x="318" y="64" font-size="10.5" fill="#174C43" text-anchor="middle" font-weight="700">SoC trả lời xong → MCU cắt nguồn an toàn</text><path d="M640,142 L690,142 L690,284 L60,284 L60,166" fill="none" stroke="#A93226" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#s7-pwr-r)"/><text x="560" y="276" font-size="10" fill="#A93226" text-anchor="middle">hết thời hạn: MCU vẫn cắt nguồn, có thể mất dữ liệu</text><line x1="366" y1="164" x2="366" y2="208" stroke="#2A8C8C" stroke-width="1.6" marker-end="url(#s7-pwr-t)"/><text x="358" y="192" font-size="9.5" fill="#2A8C8C" text-anchor="end">tắt, giữ RAM</text><line x1="404" y1="208" x2="404" y2="166" stroke="#2A8C8C" stroke-width="1.6" marker-end="url(#s7-pwr-t)"/><text x="412" y="192" font-size="9.5" fill="#2A8C8C">mở cửa: sáng ngay</text></svg><figcaption>MCU giữ quyền bật tắt nguồn: tắt an toàn khi SoC đã xong việc, cắt cưỡng bức khi quá hạn, hoặc giữ RAM để lần sau sáng ngay.</figcaption></figure>
+<h4>d) Diagnostics</h4>
+<p>Diagnostics gồm DTC và UDS để xưởng dịch vụ đọc lỗi. UDS theo ISO 14229, chạy trên CAN hoặc trên Ethernet qua DoIP theo ISO 13400. Các dịch vụ thường dùng: đọc và xóa DTC, đọc dữ liệu theo DID, chạy routine kiểm tra, reset ECU, và nạp phần mềm. Mỗi DTC thường kèm snapshot dữ liệu tại thời điểm lỗi. Trên CDC, stack UDS thường nằm ở MCU hoặc phía AUTOSAR, chuyển tiếp những yêu cầu riêng của SoC sang phía SoC. Chức năng nhạy cảm như ghi cấu hình cần bước security access.</p>
+<h4>e) Logging</h4>
+<p>Logging gồm log từng OS, cần đồng bộ thời gian giữa các VM để dựng lại sự cố. DLT của AUTOSAR là định dạng log phổ biến.</p>
+<p>Mỗi OS có công cụ riêng: logcat trên Android, slog2 trên QNX, journald hoặc syslog trên Linux. Log thường ghi vào ring buffer trong RAM, chỉ lưu xuống flash khi có crash hoặc theo yêu cầu, vì flash có giới hạn số lần ghi. Log không được chứa dữ liệu cá nhân như vị trí hay danh bạ nếu không có lý do và sự đồng ý.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Boot có chuỗi tin cậy và ưu tiên chức năng quan trọng trước, startup đi theo dependency, shutdown do MCU điều phối với thời hạn rõ ràng. Diagnostics theo UDS và logging có thời gian đồng bộ phải được thiết kế từ đầu, không phải thêm vào sau.</p></div>
+<h3 id="p2-5">2.5 Dependency, versioning, compatibility và performance budget</h3>
+<h4>a) Dependency</h4>
+<p>Một thành phần phụ thuộc vào thành phần khác theo nhiều cách:</p>
+<ul>
+<li><b>Lúc build</b>: thư viện, SDK, toolchain, file IDL sinh code.</li>
+<li><b>Lúc chạy</b>: service phải sẵn sàng trước client, file cấu hình phải có mặt.</li>
+<li><b>Phần cứng và firmware</b>: driver GPU cần đúng bản firmware của GPU.</li>
+<li><b>Dữ liệu</b>: calibration, cấu hình biến thể xe, bản đồ.</li>
+</ul>
+<p>Dependency nguy hiểm nhất là dependency ẩn, ví dụ HMI ngầm giả định service dữ liệu xe luôn lên trong 3 giây (giả định minh họa). Danh sách đầy đủ các thành phần và version của chúng thường được ghi trong SBOM, vừa phục vụ quản lý dependency vừa phục vụ cybersecurity.</p>
+<figure class="fig"><svg viewBox="0 0 720 268" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="HMI cluster phụ thuộc service dữ liệu xe, IPC driver và MCU firmware, Qt runtime, GPU driver và firmware, cùng cấu hình biến thể; một dependency ẩn về thời gian"><defs><marker id="s7-dpg-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker><marker id="s7-dpg-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Dependency của HMI cluster</text><rect x="20" y="50" width="120" height="168" rx="8" fill="#174C43"/><text x="80" y="130.6" font-size="11.5" fill="#fff" text-anchor="middle" font-weight="700">Cluster HMI</text><text x="80" y="145.5" font-size="11" fill="#fff" text-anchor="middle">trên QNX</text><rect x="190" y="50" width="140" height="44" rx="8" fill="#2A8C8C"/><text x="260" y="68.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Vehicle data</text><text x="260" y="82.5" font-size="10" fill="#fff" text-anchor="middle">service</text><rect x="370" y="50" width="140" height="44" rx="8" fill="#2A8C8C"/><text x="440" y="68.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">IPC driver</text><text x="440" y="82.5" font-size="10" fill="#fff" text-anchor="middle">MCU - SoC</text><line x1="330" y1="72" x2="368" y2="72" stroke="#596966" stroke-width="1.5" marker-end="url(#s7-dpg-m)"/><rect x="550" y="50" width="140" height="44" rx="8" fill="#E2BD69"/><text x="620" y="68.8" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">MCU firmware</text><text x="620" y="82.5" font-size="10" fill="#1c2928" text-anchor="middle">AUTOSAR</text><line x1="510" y1="72" x2="548" y2="72" stroke="#596966" stroke-width="1.5" marker-end="url(#s7-dpg-m)"/><line x1="140" y1="72" x2="188" y2="72" stroke="#A93226" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#s7-dpg-r)"/><rect x="190" y="112" width="140" height="44" rx="8" fill="#2A6F66"/><text x="260" y="130.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Qt runtime</text><text x="260" y="144.5" font-size="10" fill="#fff" text-anchor="middle">thư viện HMI</text><rect x="370" y="112" width="140" height="44" rx="8" fill="#2A8C8C"/><text x="440" y="130.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">GPU driver</text><text x="440" y="144.5" font-size="10" fill="#fff" text-anchor="middle">trên QNX</text><line x1="330" y1="134" x2="368" y2="134" stroke="#596966" stroke-width="1.5" marker-end="url(#s7-dpg-m)"/><rect x="550" y="112" width="140" height="44" rx="8" fill="#E2BD69"/><text x="620" y="130.8" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">GPU firmware</text><text x="620" y="144.5" font-size="10" fill="#1c2928" text-anchor="middle">của SoC</text><line x1="510" y1="134" x2="548" y2="134" stroke="#596966" stroke-width="1.5" marker-end="url(#s7-dpg-m)"/><line x1="140" y1="134" x2="188" y2="134" stroke="#596966" stroke-width="1.5" marker-end="url(#s7-dpg-m)"/><rect x="190" y="174" width="140" height="44" rx="8" fill="#A64E32"/><text x="260" y="192.9" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Cấu hình</text><text x="260" y="206.5" font-size="10" fill="#fff" text-anchor="middle">biến thể xe</text><line x1="140" y1="196" x2="188" y2="196" stroke="#596966" stroke-width="1.5" marker-end="url(#s7-dpg-m)"/><text x="560" y="210" font-size="10" fill="#596966" text-anchor="middle">thêm firmware, calibration, bản đồ...</text><rect x="20" y="238" width="14" height="14" rx="3" fill="#2A8C8C"/><text x="40" y="250" font-size="10.5" fill="#596966">lúc chạy</text><rect x="99.48" y="238" width="14" height="14" rx="3" fill="#2A6F66"/><text x="119.48" y="250" font-size="10.5" fill="#596966">lúc build và chạy</text><rect x="218.965" y="238" width="14" height="14" rx="3" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="238.965" y="250" font-size="10.5" fill="#596966">firmware</text><rect x="307.79" y="238" width="14" height="14" rx="3" fill="#A64E32"/><text x="327.79" y="250" font-size="10.5" fill="#596966">dữ liệu</text><line x1="383.29" y1="245" x2="409.29" y2="245" stroke="#A93226" stroke-width="1.8" stroke-dasharray="5 4"/><text x="415.29" y="250" font-size="10.5" fill="#A93226">ẩn: HMI ngầm chờ service lên trong 3 s</text></svg><figcaption>Một màn hình cluster kéo theo cả chuỗi dependency lúc build, lúc chạy, firmware và dữ liệu, kể cả những giả định chưa ai viết ra.</figcaption></figure>
+<h4>b) Versioning</h4>
+<ul>
+<li><b>Versioning</b>: đánh số theo kiểu major.minor.patch, tăng major khi interface thay đổi không tương thích.</li>
+</ul>
+<p>Minor tăng khi thêm chức năng mà không phá cái cũ, patch tăng khi chỉ sửa lỗi. Nên tách version của interface khỏi version của sản phẩm: bản IVI 5.0 có thể vẫn dùng interface VehicleSpeed 2.1. Android có API level cho app, AUTOSAR ghi version của interface trong ARXML.</p>
+<h4>c) Compatibility</h4>
+<ul>
+<li><b>Compatibility</b>: lớp trên cần chạy được với một dải version của lớp dưới, không chỉ một version.</li>
+</ul>
+<p>Backward compatible nghĩa là bản mới vẫn phục vụ được client cũ. Forward compatible nghĩa là client cũ bỏ qua được phần mới mà nó không hiểu. Android Treble là ví dụ thực tế: framework và phần vendor nói chuyện qua vendor interface có compatibility matrix, nên framework có thể được nâng cấp mà không viết lại HAL của vendor.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Ma trận tương thích (giả định minh họa)</th><th>MCU firmware 1.2</th><th>MCU firmware 1.3</th></tr></thead>
+<tbody>
+<tr><td>IVI 4.0</td><td>Chạy được</td><td>Chạy được</td></tr>
+<tr><td>IVI 4.1</td><td>Chạy được, tắt tính năng mới</td><td>Chạy được</td></tr>
+<tr><td>IVI 5.0</td><td>Không, cần interface mới</td><td>Chạy được</td></tr>
+</tbody></table></div>
+<h4>d) Performance budget</h4>
+<ul>
+<li><b>Performance budget</b>: mỗi lớp được giao một phần thời gian, CPU và RAM.</li>
+</ul>
+<pre><code>Độ trễ end-to-end = mạng + middleware + service + render + display
+Ví dụ: 10 + 5 + 10 + 16 + 16 = 57 ms (giả định minh họa)</code></pre>
+<p>Nếu một lớp vượt phần của nó, cả chuỗi vượt yêu cầu dù các lớp khác vẫn đúng.</p>
+<figure class="fig"><svg viewBox="0 0 720 190" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Thanh độ trễ end-to-end 57 ms chia cho năm lớp; nếu service vượt phần của mình thì cả chuỗi vượt giới hạn"><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Performance budget cộng dồn theo lớp</text><text x="20" y="84" font-size="11" fill="#174C43" font-weight="700">Theo budget</text><rect x="120" y="64" width="80" height="32" rx="4" fill="#174C43" stroke="#fff" stroke-width="1.5"/><text x="160" y="84" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">10 ms</text><text x="160" y="56" font-size="10.5" fill="#596966" text-anchor="middle">mạng</text><rect x="200" y="64" width="40" height="32" rx="4" fill="#2A6F66" stroke="#fff" stroke-width="1.5"/><text x="220" y="84" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">5 ms</text><text x="220" y="56" font-size="10.5" fill="#596966" text-anchor="middle">middleware</text><rect x="240" y="64" width="80" height="32" rx="4" fill="#2A8C8C" stroke="#fff" stroke-width="1.5"/><text x="280" y="84" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">10 ms</text><text x="280" y="56" font-size="10.5" fill="#596966" text-anchor="middle">service</text><rect x="320" y="64" width="128" height="32" rx="4" fill="#1c2928" stroke="#fff" stroke-width="1.5"/><text x="384" y="84" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">16 ms</text><text x="384" y="56" font-size="10.5" fill="#596966" text-anchor="middle">render</text><rect x="448" y="64" width="128" height="32" rx="4" fill="#596966" stroke="#fff" stroke-width="1.5"/><text x="512" y="84" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">16 ms</text><text x="512" y="56" font-size="10.5" fill="#596966" text-anchor="middle">display</text><text x="20" y="132" font-size="11" fill="#A93226" font-weight="700">Service vượt</text><text x="20" y="146" font-size="10.5" fill="#596966">phần của nó</text><rect x="120" y="120" width="80" height="32" rx="4" fill="#174C43" stroke="#fff" stroke-width="1.5"/><text x="160" y="140" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">10 ms</text><rect x="200" y="120" width="40" height="32" rx="4" fill="#2A6F66" stroke="#fff" stroke-width="1.5"/><text x="220" y="140" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">5 ms</text><rect x="240" y="120" width="200" height="32" rx="4" fill="#A93226" stroke="#fff" stroke-width="1.5"/><text x="340" y="140" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">25 ms</text><rect x="440" y="120" width="128" height="32" rx="4" fill="#1c2928" stroke="#fff" stroke-width="1.5"/><text x="504" y="140" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">16 ms</text><rect x="568" y="120" width="128" height="32" rx="4" fill="#596966" stroke="#fff" stroke-width="1.5"/><text x="632" y="140" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">16 ms</text><line x1="600" y1="36" x2="600" y2="160" stroke="#A93226" stroke-width="1.5" stroke-dasharray="5 4"/><text x="596" y="40" font-size="10" fill="#A93226" text-anchor="end">giới hạn tổng (giả định)</text><text x="608" y="85" font-size="11" fill="#174C43" font-weight="700">= 57 ms</text><text x="696" y="176" font-size="11" fill="#A93226" text-anchor="end" font-weight="700">= 72 ms: cả chuỗi vượt yêu cầu</text></svg><figcaption>Chỉ cần một lớp vượt phần của nó là tổng độ trễ vượt yêu cầu, dù các lớp khác vẫn đúng.</figcaption></figure>
+<p>Ngoài độ trễ còn có budget cho thời gian boot, phần trăm CPU, RAM, thời gian vẽ một khung hình trên GPU và dung lượng flash. Budget cần được đo tự động trong CI, và nên chừa biên dự phòng cho các bản cập nhật sau.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Dependency phải được liệt kê, kể cả loại ẩn. Version rõ ràng và ma trận tương thích giúp kiểm soát khi các lớp được cập nhật lệch nhau. Performance budget chia yêu cầu tổng thành phần việc đo được cho từng lớp.</p></div>
+<h3 id="p2-6">2.6 Cách một feature đi qua nhiều lớp của stack</h3>
+<h4>a) Chiều đi lên: dữ liệu xe tới màn hình</h4>
+<p>Lấy ví dụ hiển thị cảnh báo cửa mở trên cluster:</p>
+<ol>
+<li>Cảm biến cửa gửi tín hiệu tới body controller.</li>
+<li>Body controller gửi trạng thái lên mạng xe qua CAN.</li>
+<li>MCU trong CDC nhận frame CAN, AUTOSAR COM giải mã tín hiệu.</li>
+<li>MCU chuyển dữ liệu sang SoC qua SPI hoặc IPC.</li>
+<li>Service trên QNX nhận và đưa vào model dữ liệu của HMI.</li>
+<li>HMI vẽ biểu tượng, GPU render, display controller xuất hình.</li>
+</ol>
+<p>Đồng thời, IVI trên Android có thể đọc cùng trạng thái qua VHAL để hiện thông báo trên màn hình giữa.</p>
+<figure class="fig"><svg viewBox="0 0 720 230" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Cảnh báo cửa mở đi từ cảm biến, body controller, CAN, MCU, SPI, service QNX, HMI tới GPU và display; IVI đọc song song qua VHAL"><defs><marker id="s7-door-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker><marker id="s7-door-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Đường đi của cảnh báo cửa mở</text><rect x="20" y="62" width="100" height="48" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="70" y="82.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Cảm biến</text><text x="70" y="97" font-size="10.5" fill="#1c2928" text-anchor="middle">cửa</text><line x1="120" y1="86" x2="134" y2="86" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-door-m)"/><rect x="136" y="62" width="100" height="48" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="186" y="82.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Body</text><text x="186" y="97" font-size="10.5" fill="#1c2928" text-anchor="middle">controller</text><line x1="236" y1="86" x2="250" y2="86" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-door-m)"/><rect x="252" y="62" width="100" height="48" rx="8" fill="#2A6F66"/><text x="302" y="82.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">MCU</text><text x="302" y="97" font-size="10.5" fill="#fff" text-anchor="middle">AUTOSAR COM</text><line x1="352" y1="86" x2="366" y2="86" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-door-m)"/><rect x="368" y="62" width="100" height="48" rx="8" fill="#174C43"/><text x="418" y="82.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Service</text><text x="418" y="97" font-size="10.5" fill="#fff" text-anchor="middle">trên QNX</text><line x1="468" y1="86" x2="482" y2="86" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-door-m)"/><rect x="484" y="62" width="100" height="48" rx="8" fill="#174C43"/><text x="534" y="82.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">HMI</text><text x="534" y="97" font-size="10.5" fill="#fff" text-anchor="middle">cluster</text><line x1="584" y1="86" x2="598" y2="86" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-door-m)"/><rect x="600" y="62" width="100" height="48" rx="8" fill="#A64E32"/><text x="650" y="82.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">GPU +</text><text x="650" y="97" font-size="10.5" fill="#fff" text-anchor="middle">display</text><text x="242" y="126" font-size="10" fill="#A64E32" text-anchor="middle" font-weight="700">CAN</text><text x="358" y="126" font-size="10" fill="#A64E32" text-anchor="middle" font-weight="700">SPI / IPC</text><line x1="20" y1="50" x2="236" y2="50" stroke="#596966" stroke-width="2"/><line x1="20" y1="50" x2="20" y2="56" stroke="#596966" stroke-width="2"/><line x1="236" y1="50" x2="236" y2="56" stroke="#596966" stroke-width="2"/><text x="128" y="44" font-size="10.5" fill="#596966" text-anchor="middle" font-weight="700">Ngoài CDC</text><line x1="252" y1="50" x2="352" y2="50" stroke="#2A6F66" stroke-width="2"/><line x1="252" y1="50" x2="252" y2="56" stroke="#2A6F66" stroke-width="2"/><line x1="352" y1="50" x2="352" y2="56" stroke="#2A6F66" stroke-width="2"/><text x="302" y="44" font-size="10.5" fill="#2A6F66" text-anchor="middle" font-weight="700">MCU trong CDC</text><line x1="368" y1="50" x2="700" y2="50" stroke="#174C43" stroke-width="2"/><line x1="368" y1="50" x2="368" y2="56" stroke="#174C43" stroke-width="2"/><line x1="700" y1="50" x2="700" y2="56" stroke="#174C43" stroke-width="2"/><text x="534" y="44" font-size="10.5" fill="#174C43" text-anchor="middle" font-weight="700">SoC: VM cluster QNX</text><path d="M302,110 L302,176 L326,176" fill="none" stroke="#2A8C8C" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#s7-door-t)"/><text x="310" y="150" font-size="10" fill="#2A8C8C">đồng thời</text><rect x="330" y="158" width="190" height="36" rx="8" fill="#2A8C8C"/><text x="425" y="179.8" font-size="11" fill="#fff" text-anchor="middle">VM IVI Android: đọc qua VHAL</text><line x1="520" y1="176" x2="546" y2="176" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-door-m)"/><rect x="550" y="158" width="150" height="36" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="625" y="179.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Thông báo màn hình giữa</text></svg><figcaption>Một biểu tượng cửa mở trên cluster đi qua sáu chặng và ba khối phần cứng khác nhau.</figcaption></figure>
+<h4>b) Chiều đi xuống: lệnh của người dùng tới xe</h4>
+<p>Ví dụ đặt nhiệt độ điều hòa từ màn hình IVI:</p>
+<ol>
+<li>Người dùng chạm nút trong app HVAC.</li>
+<li>App gọi CarPropertyManager để đặt property nhiệt độ.</li>
+<li>Car service kiểm tra quyền của app rồi chuyển lệnh xuống VHAL.</li>
+<li>Phần hiện thực VHAL gửi lệnh sang MCU, hoặc tới zone controller qua SOME/IP.</li>
+<li>Lệnh đến ECU điều hòa qua CAN hoặc qua zone.</li>
+<li>ECU điều hòa thực hiện và báo trạng thái mới. Trạng thái đó đi ngược lên để app cập nhật giao diện.</li>
+</ol>
+<p>App không nên coi lệnh đã thành công ngay khi gửi. Giao diện có thể hiện giá trị mới ở trạng thái "đang áp dụng", và chỉ chốt khi trạng thái xác nhận quay về.</p>
+<figure class="fig"><svg viewBox="0 0 720 240" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Lệnh đặt nhiệt độ đi từ app HVAC qua CarPropertyManager, car service, VHAL, MCU hoặc zone tới ECU điều hòa; trạng thái xác nhận đi ngược về app"><defs><marker id="s7-hvac-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A64E32"/></marker><marker id="s7-hvac-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Đặt nhiệt độ từ IVI: lệnh đi xuống, trạng thái đi lên</text><rect x="20" y="60" width="100" height="50" rx="8" fill="#A64E32"/><text x="70" y="81.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">App</text><text x="70" y="95.5" font-size="10" fill="#fff" text-anchor="middle">HVAC</text><line x1="120" y1="80" x2="134" y2="80" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s7-hvac-c)"/><rect x="136" y="60" width="100" height="50" rx="8" fill="#2A8C8C"/><text x="186" y="81.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Car API</text><text x="186" y="95.5" font-size="10" fill="#fff" text-anchor="middle">đặt property</text><line x1="236" y1="80" x2="250" y2="80" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s7-hvac-c)"/><rect x="252" y="60" width="100" height="50" rx="8" fill="#2A8C8C"/><text x="302" y="81.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Car service</text><text x="302" y="95.5" font-size="10" fill="#fff" text-anchor="middle">kiểm tra quyền</text><line x1="352" y1="80" x2="366" y2="80" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s7-hvac-c)"/><rect x="368" y="60" width="100" height="50" rx="8" fill="#2A6F66"/><text x="418" y="81.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">VHAL</text><text x="418" y="95.5" font-size="10" fill="#fff" text-anchor="middle">hiện thực OEM</text><line x1="468" y1="80" x2="482" y2="80" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s7-hvac-c)"/><rect x="484" y="60" width="100" height="50" rx="8" fill="#2A6F66"/><text x="534" y="81.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">MCU</text><text x="534" y="95.5" font-size="10" fill="#fff" text-anchor="middle">hoặc zone</text><line x1="584" y1="80" x2="598" y2="80" stroke="#A64E32" stroke-width="1.8" marker-end="url(#s7-hvac-c)"/><rect x="600" y="60" width="100" height="50" rx="8" fill="#E5EFEB" stroke="#A64E32" stroke-width="1.2"/><text x="650" y="81.8" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">ECU</text><text x="650" y="95.5" font-size="10" fill="#1c2928" text-anchor="middle">điều hòa</text><line x1="20" y1="48" x2="468" y2="48" stroke="#2A8C8C" stroke-width="2"/><line x1="20" y1="48" x2="20" y2="54" stroke="#2A8C8C" stroke-width="2"/><line x1="468" y1="48" x2="468" y2="54" stroke="#2A8C8C" stroke-width="2"/><text x="244" y="42" font-size="10.5" fill="#2A8C8C" text-anchor="middle" font-weight="700">VM IVI: Android Automotive</text><line x1="484" y1="48" x2="584" y2="48" stroke="#2A6F66" stroke-width="2"/><line x1="484" y1="48" x2="484" y2="54" stroke="#2A6F66" stroke-width="2"/><line x1="584" y1="48" x2="584" y2="54" stroke="#2A6F66" stroke-width="2"/><text x="534" y="42" font-size="10.5" fill="#2A6F66" text-anchor="middle" font-weight="700">CDC / zone</text><line x1="600" y1="48" x2="700" y2="48" stroke="#596966" stroke-width="2"/><line x1="600" y1="48" x2="600" y2="54" stroke="#596966" stroke-width="2"/><line x1="700" y1="48" x2="700" y2="54" stroke="#596966" stroke-width="2"/><text x="650" y="42" font-size="10.5" fill="#596966" text-anchor="middle" font-weight="700">Ngoài CDC</text><path d="M650,110 L650,140 L70,140 L70,112" fill="none" stroke="#2A8C8C" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#s7-hvac-t)"/><text x="360" y="156" font-size="10.5" fill="#2A8C8C" text-anchor="middle" font-weight="700">trạng thái mới đi ngược lên, app mới chốt giá trị</text><rect x="20" y="180" width="330" height="40" rx="8" fill="#E2BD69"/><text x="185" y="196.9" font-size="10.5" fill="#1c2928" text-anchor="middle">Lúc gửi: hiện 22 độ ở trạng thái</text><text x="185" y="210.5" font-size="10.5" fill="#1c2928" text-anchor="middle">"đang áp dụng"</text><rect x="370" y="180" width="330" height="40" rx="8" fill="#2A8C8C"/><text x="535" y="196.9" font-size="10.5" fill="#fff" text-anchor="middle">Khi trạng thái quay về:</text><text x="535" y="210.5" font-size="10.5" fill="#fff" text-anchor="middle">chốt giá trị, hoặc báo lỗi nếu quá hạn</text></svg><figcaption>Lệnh đi xuống qua sáu chặng, nhưng app chỉ chốt giá trị khi trạng thái xác nhận đi ngược lên.</figcaption></figure>
+<h4>c) Mỗi chặng cần được nắm rõ</h4>
+<div class="table-scroll"><table>
+<thead><tr><th>Chặng</th><th>Thường do ai sở hữu</th><th>Quan sát ở đâu</th></tr></thead>
+<tbody>
+<tr><td>ECU ngoài CDC và CAN</td><td>Nhóm body, supplier ECU</td><td>CAN trace</td></tr>
+<tr><td>MCU và AUTOSAR COM</td><td>Nhóm MCU của CDC</td><td>Log MCU, DLT</td></tr>
+<tr><td>Đường MCU sang SoC</td><td>Nhóm platform</td><td>Log driver IPC, đếm message</td></tr>
+<tr><td>Service và HMI</td><td>Nhóm service, nhóm HMI</td><td>slog2, logcat, timestamp trong app</td></tr>
+<tr><td>GPU và display</td><td>Nhóm graphics, hãng SoC</td><td>Profiler GPU, đếm khung hình</td></tr>
+</tbody></table></div>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Một feature nhỏ đi qua sáu đến bảy lớp và nhiều nhóm, theo cả chiều đi lên lẫn đi xuống. Vẽ được đường đi, biết owner và điểm quan sát của từng chặng là bước đầu để thiết kế, test và debug.</p></div>
+<h3 id="p2-7">2.7 Lỗi ở lớp nào sẽ biểu hiện ở lớp nào?</h3>
+<p>Lỗi thường sinh ở lớp dưới nhưng hiện ra ở lớp trên, nơi người dùng nhìn thấy.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Lớp sinh lỗi</th><th>Nguyên nhân</th><th>Triệu chứng người dùng thấy</th></tr></thead>
+<tbody>
+<tr><td>Hardware</td><td>SoC quá nhiệt nên tự giảm xung</td><td>Giao diện chậm dần sau khi xe đỗ ngoài nắng</td></tr>
+<tr><td>Firmware, bootloader</td><td>Cấu hình bộ nhớ sai sau cập nhật</td><td>Màn hình đen, máy khởi động lại liên tục</td></tr>
+<tr><td>Hypervisor</td><td>Chia thời gian CPU giữa VM sai</td><td>Cluster giật khi IVI tải nặng</td></tr>
+<tr><td>OS</td><td>Driver GPU bị treo</td><td>Màn hình đứng hình</td></tr>
+<tr><td>Runtime</td><td>Garbage collector dọn bộ nhớ lâu</td><td>Animation IVI khựng từng nhịp</td></tr>
+<tr><td>Middleware</td><td>Middleware mất kết nối</td><td>Cluster hiện giá trị cũ hoặc trống</td></tr>
+<tr><td>Service</td><td>Service crash và được khởi động lại</td><td>App báo không có dữ liệu trong vài giây</td></tr>
+<tr><td>Tài nguyên chung</td><td>VM khác chiếm băng thông bộ nhớ</td><td>Animation IVI giật</td></tr>
+<tr><td>Application</td><td>Lỗi logic trong app</td><td>Sai hiển thị chỉ trong app đó</td></tr>
+</tbody></table></div>
+<p>Ngược lại, lỗi ở lớp trên cũng có thể đẩy xuống dưới: một app rò rỉ bộ nhớ khiến OS kích hoạt cơ chế diệt process, làm service khác bị khởi động lại.</p>
+<p>Lỗi còn lan theo chiều ngang, qua tài nguyên dùng chung: VM này chiếm băng thông bộ nhớ hoặc GPU, VM kia bị chậm dù không có lỗi gì trong phần mềm của nó.</p>
+<figure class="fig"><svg viewBox="0 0 720 384" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Lỗi lan lên từ driver GPU tới app, lan xuống từ app rò rỉ bộ nhớ tới OS rồi service, và lan ngang qua băng thông bộ nhớ chung từ VM IVI sang VM cluster"><defs><marker id="s7-prop-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A64E32"/></marker><marker id="s7-prop-l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B7791F"/></marker><marker id="s7-prop-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Lỗi lan theo ba chiều trong stack</text><text x="230" y="44" font-size="11" fill="#2A8C8C" text-anchor="middle" font-weight="700">VM IVI</text><text x="530" y="44" font-size="11" fill="#174C43" text-anchor="middle" font-weight="700">VM cluster</text><rect x="120" y="52" width="220" height="34" rx="8" fill="#2A8C8C"/><text x="230" y="72.8" font-size="11" fill="#fff" text-anchor="middle">App</text><rect x="420" y="52" width="220" height="34" rx="8" fill="#174C43"/><text x="530" y="72.8" font-size="11" fill="#fff" text-anchor="middle">HMI cluster</text><rect x="120" y="98" width="220" height="34" rx="8" fill="#2A8C8C"/><text x="230" y="118.8" font-size="11" fill="#fff" text-anchor="middle">Service</text><rect x="420" y="98" width="220" height="34" rx="8" fill="#174C43"/><text x="530" y="118.8" font-size="11" fill="#fff" text-anchor="middle">Service</text><rect x="120" y="144" width="220" height="34" rx="8" fill="#2A8C8C"/><text x="230" y="164.8" font-size="11" fill="#fff" text-anchor="middle">Runtime ART</text><rect x="420" y="144" width="220" height="34" rx="8" fill="#174C43"/><text x="530" y="164.8" font-size="11" fill="#fff" text-anchor="middle">Runtime Qt</text><rect x="120" y="190" width="220" height="34" rx="8" fill="#2A6F66"/><text x="230" y="210.8" font-size="11" fill="#fff" text-anchor="middle">OS: Linux kernel</text><rect x="420" y="190" width="220" height="34" rx="8" fill="#2A6F66"/><text x="530" y="210.8" font-size="11" fill="#fff" text-anchor="middle">OS: QNX</text><rect x="120" y="240" width="520" height="32" rx="8" fill="#E2BD69"/><text x="380" y="259.9" font-size="11" fill="#1c2928" text-anchor="middle">Hypervisor</text><rect x="120" y="280" width="520" height="32" rx="8" fill="#1c2928"/><text x="380" y="299.9" font-size="11" fill="#fff" text-anchor="middle">Hardware: CPU, GPU, bộ nhớ dùng chung</text><path d="M118,207 L100,207 L100,69 L116,69" fill="none" stroke="#A93226" stroke-width="2" marker-end="url(#s7-prop-r)"/><path d="M342,64 L358,64 L358,200 L344,200" fill="none" stroke="#A64E32" stroke-width="2" marker-end="url(#s7-prop-c)"/><path d="M342,214 L378,214 L378,118 L344,118" fill="none" stroke="#A64E32" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#s7-prop-c)"/><line x1="230" y1="222" x2="230" y2="278" stroke="#B7791F" stroke-width="2.2" marker-end="url(#s7-prop-l)"/><path d="M642,296 L664,296 L664,69 L644,69" fill="none" stroke="#B7791F" stroke-width="2.2" marker-end="url(#s7-prop-l)"/><circle cx="100" cy="140" r="9" fill="#fff" stroke="#A93226" stroke-width="1.2"/><text x="100" y="144" font-size="10.5" fill="#A93226" text-anchor="middle" font-weight="700">1</text><circle cx="368" cy="160" r="9" fill="#fff" stroke="#A64E32" stroke-width="1.2"/><text x="368" y="164" font-size="10.5" fill="#A64E32" text-anchor="middle" font-weight="700">2</text><circle cx="664" cy="180" r="9" fill="#fff" stroke="#B7791F" stroke-width="1.2"/><text x="664" y="184" font-size="10.5" fill="#B7791F" text-anchor="middle" font-weight="700">3</text><circle cx="30" cy="334" r="8" fill="#fff" stroke="#A93226" stroke-width="1.2"/><text x="30" y="337.5" font-size="10" fill="#A93226" text-anchor="middle" font-weight="700">1</text><text x="46" y="338" font-size="10.5" fill="#1c2928">Lên: driver GPU treo ở OS, app đứng hình</text><circle cx="30" cy="352" r="8" fill="#fff" stroke="#A64E32" stroke-width="1.2"/><text x="30" y="355.5" font-size="10" fill="#A64E32" text-anchor="middle" font-weight="700">2</text><text x="46" y="356" font-size="10.5" fill="#1c2928">Xuống: app rò rỉ bộ nhớ, OS diệt process, service khác khởi động lại</text><circle cx="30" cy="370" r="8" fill="#fff" stroke="#B7791F" stroke-width="1.2"/><text x="30" y="373.5" font-size="10" fill="#B7791F" text-anchor="middle" font-weight="700">3</text><text x="46" y="374" font-size="10.5" fill="#1c2928">Ngang: VM IVI chiếm băng thông bộ nhớ, HMI cluster giật dù không có lỗi</text></svg><figcaption>Nơi lỗi hiện ra hiếm khi là nơi lỗi sinh ra: lỗi có thể đi lên, đi xuống, hoặc sang hẳn một VM khác qua tài nguyên chung.</figcaption></figure>
+<p>Một mẹo khoanh vùng: nếu cả cluster và IVI cùng có triệu chứng, nghi lớp dùng chung như hardware, hypervisor hoặc MCU. Nếu chỉ một VM có triệu chứng, tìm trong VM đó trước. Nếu chỉ một app, bắt đầu từ app và service nó dùng.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Triệu chứng và nguyên nhân thường nằm ở lớp khác nhau, và lỗi lan theo ba chiều: lên, xuống và ngang qua tài nguyên chung. Debug cần đi theo đường dữ liệu chứ không dừng ở nơi lỗi hiện ra.</p></div>
+<h3 id="p2-8">2.8 Interface contract cần mô tả những gì?</h3>
+<p>Interface contract là thỏa thuận giữa bên cung cấp và bên sử dụng. Một contract đủ dùng nên có:</p>
+<ul>
+<li>Danh sách hàm, event, field và kiểu dữ liệu.</li>
+<li>Đơn vị, dải giá trị, giá trị khi không hợp lệ.</li>
+<li>Thời gian: chu kỳ gửi, độ trễ tối đa, timeout.</li>
+<li>Hành vi khi lỗi: bên cung cấp không phản hồi thì bên dùng làm gì.</li>
+<li>Version và quy tắc tương thích.</li>
+<li>Vòng đời: service sẵn sàng khi nào, khi xe ngủ hoặc service khởi động lại thì báo cho client ra sao.</li>
+<li>Đồng thời: nhiều client cùng gọi thì sao, thứ tự message có được giữ không, gọi lặp lại có an toàn không.</li>
+<li>Quyền truy cập: ai được đọc, ai được ghi.</li>
+<li>Giới hạn tài nguyên: tần suất gọi tối đa, kích thước dữ liệu tối đa.</li>
+<li>Mức safety: dữ liệu có ASIL không, có được bảo vệ đầu cuối bằng AUTOSAR E2E không.</li>
+</ul>
+<p>Ví dụ: service tốc độ xe phải ghi rõ đơn vị km/h, chu kỳ cập nhật, và trạng thái "invalid" khi mất tín hiệu, để cluster biết hiện gạch ngang thay vì số 0.</p>
+<pre><code>Service  VehicleSpeed  v2.1
+Field    speed   uint16, đơn vị 0.01 km/h, dải 0..30000
+         status  VALID | INVALID | NOT_AVAILABLE
+Timing   gửi mỗi 20 ms, client coi là mất sau 100 ms
+Lỗi      mất tín hiệu nguồn: status = INVALID, giữ speed cuối
+Quyền    đọc: cluster, IVI · ghi: không ai
+Safety   ASIL B, có E2E counter và CRC
+(giả định minh họa)</code></pre>
+<p>Phần cú pháp nên được viết bằng IDL để sinh code. Phần hành vi được viết thành tài liệu và thành contract test chạy tự động, để mỗi bên tự kiểm tra mình còn đúng contract trước khi tích hợp. Mọi thay đổi contract đi qua owner của interface và được đánh version.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Contract tốt mô tả dữ liệu, thời gian, hành vi khi lỗi, vòng đời, quyền truy cập, giới hạn và mức safety, kèm version. Thiếu phần lỗi và vòng đời là nguồn gốc của nhiều sự cố tích hợp.</p></div>
+<h3 id="p2-9">2.9 Làm thế nào xác định ownership khi sự cố đi qua nhiều lớp?</h3>
+<h4>a) Chuẩn bị từ trước</h4>
+<p>Ownership dễ xác định nếu đã chuẩn bị trước khi có sự cố: bảng owner cho từng lớp và từng interface, log có timestamp chung giữa MCU và các VM, và contract được lưu ở một nơi mọi nhóm cùng đọc. Công cụ trace như Perfetto trên Android, DLT Viewer và QNX System Profiler giúp dựng dòng thời gian xuyên lớp.</p>
+<h4>b) Quy trình khi sự cố xảy ra</h4>
+<p>Khi sự cố đi qua nhiều lớp, mỗi nhóm dễ cho rằng lỗi thuộc về nhóm khác. Cách xác định ownership:</p>
+<ol>
+<li>Thu log có timestamp đồng bộ từ mọi lớp liên quan.</li>
+<li>Đi theo đường dữ liệu, tìm điểm đầu tiên dữ liệu sai hoặc chậm.</li>
+<li>So hành vi thực tế với interface contract tại điểm đó.</li>
+<li>Bên vi phạm contract là owner chính. Nếu contract không nói rõ, owner là người quản lý contract.</li>
+</ol>
+<p>Ví dụ CDC: cluster hiện tốc độ chậm 1 giây. Log cho thấy MCU gửi đúng hạn nhưng service trên QNX xử lý muộn, vậy owner là nhóm service, không phải nhóm HMI hay supplier MCU.</p>
+<figure class="fig"><svg viewBox="0 0 720 306" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Từ sự cố, thu log đồng bộ, tìm điểm sai đầu tiên, so với contract; ba kết quả: bên vi phạm, người quản lý contract, hoặc nhóm tích hợp khi tài nguyên chung quá tải"><defs><marker id="s7-own-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Xác định owner theo dữ liệu và contract</text><rect x="20" y="40" width="110" height="40" rx="8" fill="#A93226"/><text x="75" y="63.9" font-size="11" fill="#fff" text-anchor="middle">Sự cố</text><rect x="160" y="40" width="160" height="40" rx="8" fill="#2A6F66"/><text x="240" y="63.9" font-size="11" fill="#fff" text-anchor="middle">Log đồng bộ mọi lớp</text><rect x="350" y="40" width="170" height="40" rx="8" fill="#2A8C8C"/><text x="435" y="63.9" font-size="11" fill="#fff" text-anchor="middle">Tìm điểm sai đầu tiên</text><rect x="550" y="40" width="150" height="40" rx="8" fill="#E2BD69"/><text x="625" y="63.9" font-size="11" fill="#1c2928" text-anchor="middle">So với contract</text><line x1="130" y1="60" x2="158" y2="60" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-own-m)"/><line x1="320" y1="60" x2="348" y2="60" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-own-m)"/><line x1="520" y1="60" x2="548" y2="60" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-own-m)"/><line x1="625" y1="80" x2="625" y2="104" stroke="#596966" stroke-width="1.6"/><line x1="120" y1="104" x2="625" y2="104" stroke="#596966" stroke-width="1.6"/><line x1="120" y1="104" x2="120" y2="118" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-own-m)"/><rect x="20" y="120" width="200" height="44" rx="8" fill="#E5EFEB" stroke="#596966" stroke-width="1.2"/><text x="120" y="138.9" font-size="10.5" fill="#1c2928" text-anchor="middle">Có bên</text><text x="120" y="152.5" font-size="10.5" fill="#1c2928" text-anchor="middle">vi phạm contract</text><line x1="120" y1="164" x2="120" y2="186" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-own-m)"/><text x="128" y="180" font-size="9.5" fill="#596966">owner</text><rect x="20" y="188" width="200" height="48" rx="8" fill="#174C43"/><text x="120" y="208.9" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Bên vi phạm</text><text x="120" y="222.5" font-size="10" fill="#fff" text-anchor="middle">sửa phần của mình</text><line x1="360" y1="104" x2="360" y2="118" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-own-m)"/><rect x="260" y="120" width="200" height="44" rx="8" fill="#E5EFEB" stroke="#596966" stroke-width="1.2"/><text x="360" y="138.9" font-size="10.5" fill="#1c2928" text-anchor="middle">Contract</text><text x="360" y="152.5" font-size="10.5" fill="#1c2928" text-anchor="middle">không nói rõ</text><line x1="360" y1="164" x2="360" y2="186" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-own-m)"/><text x="368" y="180" font-size="9.5" fill="#596966">owner</text><rect x="260" y="188" width="200" height="48" rx="8" fill="#2A8C8C"/><text x="360" y="208.9" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Người quản lý contract</text><text x="360" y="222.5" font-size="10" fill="#fff" text-anchor="middle">bổ sung contract</text><line x1="600" y1="104" x2="600" y2="118" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-own-m)"/><rect x="500" y="120" width="200" height="44" rx="8" fill="#E5EFEB" stroke="#596966" stroke-width="1.2"/><text x="600" y="138.9" font-size="10.5" fill="#1c2928" text-anchor="middle">Cả hai đúng contract,</text><text x="600" y="152.5" font-size="10.5" fill="#1c2928" text-anchor="middle">tổng tải vượt khả năng</text><line x1="600" y1="164" x2="600" y2="186" stroke="#596966" stroke-width="1.6" marker-end="url(#s7-own-m)"/><text x="608" y="180" font-size="9.5" fill="#596966">owner</text><rect x="500" y="188" width="200" height="48" rx="8" fill="#2A6F66"/><text x="600" y="208.9" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Nhóm tích hợp</text><text x="600" y="222.5" font-size="10" fill="#fff" text-anchor="middle">cấu hình lại partition</text><rect x="20" y="254" width="680" height="36" rx="8" fill="#fff" stroke="#174C43" stroke-width="1.2" stroke-dasharray="5 4"/><text x="360" y="275.9" font-size="11" fill="#174C43" text-anchor="middle">Ticket chỉ được chuyển sang nhóm khác khi có bằng chứng từ log hoặc trace</text></svg><figcaption>Owner được quyết định ở điểm so với contract, nên contract thiếu cũng có owner rõ ràng: người quản lý contract.</figcaption></figure>
+<h4>c) Những trường hợp khó</h4>
+<ul>
+<li><b>Hai bên cùng đúng contract mà vẫn lỗi</b>: contract thiếu. Owner là người quản lý contract hoặc system architect, và việc đầu tiên là sửa contract.</li>
+<li><b>Lỗi do tài nguyên chung</b>: không bên nào vi phạm interface, nhưng tổng tải vượt khả năng. Owner là nhóm tích hợp hoặc nhóm cấu hình partition.</li>
+<li><b>Phần mềm của supplier không có mã nguồn</b>: cần log và công cụ debug mà supplier đã cam kết cung cấp, cùng thời hạn phản hồi ghi trong hợp đồng.</li>
+</ul>
+<h4>d) Tránh chuyền bóng</h4>
+<p>Một ticket nên có một người điều phối, thường từ nhóm tích hợp, giữ ticket tới khi tìm ra root cause. Ticket chỉ được chuyển sang nhóm khác khi có bằng chứng từ log hoặc trace, không chỉ vì "chắc không phải phần của mình".</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Ownership được xác định bằng dữ liệu và contract, không bằng phỏng đoán. Bảng owner, log đồng bộ và contract rõ phải có trước sự cố, còn khi contract thiếu hoặc lỗi nằm ở tài nguyên chung thì owner là người quản lý contract hoặc nhóm tích hợp.</p></div>
+<div class="next-prev"><a href="6_Modern_Vehicle_Architecture_SDV.html">← 6 · Modern Vehicle Architecture &amp; SDV</a><a href="8_Virtualization_Mixed_Criticality_Systems.html">8 · Virtualization &amp; Mixed Criticality Systems →</a></div>
+</article>
+  <footer class="article-footer"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></footer>
+  </main>
+</div>
+<script src="../assets/glossary-data.js"></script>
+<script src="../assets/term-glossary.js" data-unit="A.5"></script>
+</body>
+</html>

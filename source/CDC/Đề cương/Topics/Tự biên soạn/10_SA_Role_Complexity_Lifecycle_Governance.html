@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="../assets/site-ui.js" data-site-ui></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đề cương · SA Role, Complexity &amp; Lifecycle Governance</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f3f0e8;
+  --surface: #f9f7f1;
+  --ink: #2a3431;
+  --muted: #62706b;
+  --line: #dbd7cb;
+  --forest: #174c43;
+  --forest-soft: #e3ece6;
+  --copper: #a64e32;
+  --gold: #e2bd69;
+  --code: #ebe7dd;
+  --focus: #b34d31;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--copper); }
+a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.reader-header {
+  min-height: 74px;
+  padding: 12px clamp(20px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--forest);
+  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.reader-header a { color: white; text-decoration: none; }
+.reader-header nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; font-size: 0.9rem; }
+
+/* Navigation buttons: same shape/order as the AI library (secondary links | ← Quay lại | ⌂ Trang chủ) */
+.nav-link { padding: 6px 4px; color: #d4e4de; font-weight: 500; white-space: nowrap; }
+.reader-header a.nav-link:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+.nav-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(255, 255, 255, 0.3); }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.nav-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.nav-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.nav-ico { flex: none; width: 16px; height: 16px; }
+.reader-header .nav-btn { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+.reader-header .nav-btn:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.reader-header .nav-btn--primary { color: var(--forest); border-color: var(--gold); background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); }
+.reader-header .nav-btn--primary:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.article-footer .nav-btn { color: var(--forest); border-color: var(--forest); background: transparent; }
+.article-footer .nav-btn:hover { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary:hover { border-color: var(--copper); background: var(--copper); }
+.reader-header nav a:hover { color: var(--gold); }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; line-height: 1.12; }
+.brand small { color: #d4e4de; font-size: 0.75rem; font-weight: 400; }
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  border-radius: 2px;
+}
+
+.reader-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+
+.contents-panel {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 32px 20px 28px clamp(20px, 4vw, 48px);
+  border-right: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--copper);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contents-panel ul { margin: 0; padding: 0; list-style: none; }
+.contents-panel li { margin: 0; padding: 0; }
+.contents-panel a {
+  display: block;
+  padding: 7px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.contents-panel a:hover { color: var(--forest); text-decoration: underline; }
+.contents-panel .toc-level-3 { padding-left: 14px; border-left: 1px solid var(--line); }
+
+.article {
+  min-width: 0;
+  padding: 26px clamp(22px, 5vw, 76px) 70px;
+}
+
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+article { max-width: 900px; }
+article h1, article h2, article h3, .library-intro h1 {
+  color: light-dark(#26403d, #c5e8e4);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  line-height: 1.18;
+}
+article h1 { margin: 0 0 28px; font-size: 2.35rem; }
+article h2 {
+  margin: 48px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+}
+article h3 { margin: 32px 0 12px; color: var(--forest); font-size: 1.24rem; }
+article p { margin: 0 0 18px; }
+article li { margin: 6px 0; padding-left: 4px; }
+article ul, article ol { margin: 0 0 22px; padding-left: 26px; }
+article strong { color: light-dark(#26403c, #c3e9e3); }
+
+blockquote {
+  margin: 22px 0;
+  padding: 15px 20px;
+  border-left: 4px solid var(--copper);
+  background: light-dark(#f8eee8, #31231a);
+  color: light-dark(#543e35, #d4c2bb);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+.table-scroll { width: 100%; margin: 22px 0 26px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.92rem; }
+th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--forest-soft); color: light-dark(#26403c, #c3e9e3); font-weight: 700; }
+tr:nth-child(even) td { background: light-dark(#f9f7f2, #2c2918); }
+
+code, pre { font-family: Consolas, "Courier New", monospace; }
+code { padding: 0.1em 0.28em; background: var(--code); color: light-dark(#24433e, #c3dfda); font-size: 0.9em; }
+pre {
+  max-width: 100%;
+  margin: 20px 0 26px;
+  padding: 18px 20px;
+  overflow: auto;
+  border-left: 3px solid var(--forest);
+  background: light-dark(#e9eeea, #222c25);
+  color: light-dark(#26403d, #d0e6e4);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; color: inherit; }
+hr { margin: 36px 0; border: 0; border-top: 1px solid var(--line); }
+
+.audit-item { margin: 14px 0; }
+
+.audit-item details {
+  margin-top: 9px;
+  border-left: 3px solid #86a99e;
+  background: var(--forest-soft);
+}
+.audit-item summary {
+  padding: 9px 13px;
+  color: var(--forest);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.answer-body { padding: 0 14px 10px; }
+.answer-body p { margin: 4px 0 10px; }
+.answer-body ul { margin: -4px 0 12px; padding-left: 22px; }
+.answer-body li { margin: 3px 0; line-height: 1.55; }
+/* Key questions: map 1-1 to the Learning Plan "Unit Detail" requirements of the topic */
+details.audit-reveal { margin: 8px 0 18px; border-left: 3px solid #86a99e; background: var(--forest-soft); }
+details.audit-reveal > summary { padding: 9px 13px; color: var(--forest); cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.audit-key-intro { margin: 18px 0 28px; padding: 16px 20px 14px; border: 1px solid light-dark(#e6cf95, #62542f); border-left: 6px solid var(--gold); background: light-dark(#fff7e0, #312b1a); }
+.audit-key-intro p { margin: 0 0 8px; }
+.audit-key-intro ol { margin: 0; padding-left: 22px; }
+.audit-key-intro li { margin: 4px 0; }
+.audit-key-intro .req-tag { color: var(--muted); font-size: 0.8rem; }
+.audit-question-heading.audit-key { padding: 10px 14px; border-left: 6px solid var(--copper); background: light-dark(#fbeee4, #31251a); }
+.audit-question-heading.audit-key::after {
+  content: "Tr\1ECDng t\00E2m";
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--copper);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+details.audit-key-reveal, .audit-item details.audit-key-reveal { border-left: 6px solid var(--copper); background: light-dark(#f9f7f2, #2c2317); }
+details.audit-key-reveal > summary, .audit-item details.audit-key-reveal summary { color: var(--copper); }
+
+.article-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 54px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.library-main { width: min(1120px, 100%); margin: 0 auto; padding: 50px clamp(20px, 5vw, 72px) 76px; }
+.library-intro { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+.library-intro h1 { margin: 0; font-size: 3rem; }
+.library-intro h1 span { color: var(--copper); }
+
+.search-label { display: block; margin: 0 0 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#topic-search {
+  width: min(520px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-intro { max-width: 740px; color: var(--muted); }
+.qa-filter { margin: 26px 0 34px; }
+.qa-filter label { display: block; margin-bottom: 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#qa-search {
+  width: min(640px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-filter p { margin: 7px 0 0; color: var(--muted); font-size: 0.82rem; }
+.qa-topic { margin-top: 40px; }
+.qa-topic-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.qa-topic-heading h2 { flex: 1; }
+.qa-topic-heading a { flex: none; font-size: 0.86rem; }
+.qa-question[hidden], .qa-topic[hidden] { display: none; }
+.search-status { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.topic-list { margin-top: 8px; border-top: 1px solid var(--line); }
+.topic-link {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 15px;
+  min-height: 72px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topic-link:hover { background: light-dark(#e8eee9, #222d23); color: var(--forest); }
+.topic-number { color: var(--copper); font-family: Georgia, serif; font-size: 1.1rem; }
+.topic-title { font-weight: 650; }
+.topic-arrow { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.source-note { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.87rem; }
+
+@media (max-width: 860px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .contents-panel {
+    position: static;
+    max-height: none;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contents-panel nav { max-height: 210px; overflow: auto; }
+  .article { padding-top: 22px; }
+}
+
+@media (max-width: 560px) {
+  .reader-header { align-items: flex-start; padding: 12px 17px; }
+  .reader-header { flex-wrap: wrap; }
+  .reader-header nav { gap: 6px 8px; }
+  .nav-sep { display: none; }
+  .nav-btn { min-height: 34px; padding: 6px 12px; }
+  .library-intro h1 { font-size: 2.25rem; }
+  article h1 { font-size: 1.9rem; }
+  article h2 { font-size: 1.4rem; }
+  .topic-link { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .topic-arrow { display: none; }
+  .qa-topic-heading { align-items: flex-start; flex-direction: column; gap: 0; }
+  th, td { min-width: 130px; padding: 9px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* Highlight non-AI (CDC/SDV) topics in the library index */
+.topic-link.topic-core { background: var(--forest-soft); box-shadow: inset 5px 0 0 var(--forest); }
+.topic-link.topic-core .topic-title { color: var(--forest); }
+.topic-link.topic-core .topic-number { color: var(--forest); font-weight: 700; }
+.topic-link.topic-core:hover { background: light-dark(#d4e5de, #233930); }
+.topic-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 18px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.legend-swatch { display: inline-block; width: 18px; height: 14px; margin-right: -10px; border: 1px solid var(--line); vertical-align: -2px; }
+.legend-swatch.legend-core { background: var(--forest-soft); box-shadow: inset 4px 0 0 var(--forest); }
+
+/* Non-learning items (assignment / review / OJT) among CDC/SDV topics: red text */
+.topic-link.topic-task .topic-title, .topic-link.topic-task .topic-number { color: light-dark(#b3261e, #e9847e); }
+.topic-link.topic-task:hover .topic-title { color: light-dark(#8c1d18, #ed9794); }
+.legend-task { color: light-dark(#b3261e, #e9847e); font-weight: 600; }
+/* Study-time note per topic (from Fast_Track_CDC_Weekly_Checklist.xlsx) */
+.topic-time { display: block; margin-top: 3px; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.topic-link.topic-task .topic-time { color: light-dark(#b3261e, #e9847e); opacity: 0.85; }
+.legend-time { flex-basis: 100%; color: var(--muted); }
+
+/* ---- Thuật ngữ: bấm để xem giải nghĩa ---- */
+.gl {
+  border-bottom: 1.5px dotted #6f9a8e;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color .12s;
+}
+.gl:hover { background: var(--forest-soft); }
+.gl:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.gl.is-open { background: var(--forest-soft); border-bottom-style: solid; border-bottom-color: var(--forest); }
+.gl-pop {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(28, 41, 40, .16);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gl-term { display: block; margin-bottom: 2px; color: var(--forest); font-weight: 700; font-size: .82rem; }
+.gl-hint { color: var(--muted); font-size: .85rem; }
+.gl-hint .gl-demo { border-bottom: 1.5px dotted #6f9a8e; }
+
+/* ---- Checklist đầu ra (tick được, lưu trên trình duyệt) ---- */
+.checklist { margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 16px 14px; }
+.checklist > h3 { margin-top: 18px; }
+.cl-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--muted); font-size: .9rem; }
+.cl-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 99px; background: var(--forest-soft); overflow: hidden; }
+.cl-bar > i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s; }
+.cl-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.cl-item { padding: 9px 0 10px; border-top: 1px dashed var(--line); }
+.cl-item:first-child { border-top: 0; }
+.cl-item > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.cl-item input[type="checkbox"] { margin-top: .35em; width: 17px; height: 17px; accent-color: var(--forest); flex: none; }
+.cl-item.is-done > label > span { color: var(--muted); text-decoration: line-through; text-decoration-color: light-dark(#9fb3ad, #495c56); }
+.cl-pass, .cl-src { margin: 4px 0 0 27px; font-size: .9rem; }
+.cl-pass { color: var(--ink); }
+.cl-src { color: var(--muted); font-size: .82rem; }
+.cl-reset { margin-left: auto; border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 2px 9px; color: var(--muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.cl-reset:hover { color: var(--copper); border-color: var(--copper); }
+
+/* Lesson style for CDC/SDV topics — mirrors the teaching layout of the AI library
+   (bài đọc: hook → giải thích → ví dụ → vì sao quan trọng → nghiền ngẫm → thực hành → tự kiểm)
+   while keeping the CDC palette of reader.css. Load AFTER reader.css. */
+:root {
+  --teal: #2A8C8C; --teal-soft: #EEF7F6;
+  --violet: #6A4FC0; --violet-soft: #F5F2FD;
+  --green: #2E7D4F; --green-soft: #EFF8F2;
+  --amber: #B7791F; --amber-soft: #FFF7E8;
+  --red: #A93226; --red-soft: #FCEFEC;
+}
+
+body.lesson-page article { max-width: 800px; }
+body.lesson-page article p, body.lesson-page article li { line-height: 1.75; }
+body.lesson-page article h2 { margin-top: 44px; }
+body.lesson-page article h2 .sec-no { color: var(--copper); font-weight: 700; margin-right: 6px; }
+
+/* Bài nav (pill row, like .tapnav in the AI library) */
+.bai-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+.bai-nav a { font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--surface); }
+.bai-nav a:hover { border-color: var(--forest); color: var(--forest); }
+.bai-nav a.cur { background: var(--forest); border-color: var(--forest); color: #fff; }
+.bai-nav .grp { font-size: 0.7rem; font-weight: 700; color: var(--copper); align-self: center; margin: 0 2px 0 6px; letter-spacing: .06em; }
+
+.lesson-kicker { margin: 0 0 6px; color: var(--copper); font-size: 0.78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+body.lesson-page article h1 { margin-bottom: 10px; }
+.lesson-meta { margin: 0 0 18px; font-weight: 600; color: light-dark(#2c4b46, #bfdad5); font-size: 0.95rem; }
+
+/* Bản đồ bài — chuỗi khái niệm */
+.roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 24px; font-size: 0.86rem; }
+.roadmap span { background: var(--forest-soft); color: var(--forest); border: 1px solid light-dark(#c9ddd5, #314e42); border-radius: 8px; padding: 5px 10px; font-weight: 600; }
+.roadmap i { color: var(--muted); font-style: normal; }
+
+/* Figure card for SVG diagrams */
+.fig { margin: 24px 0; background: light-dark(#f9f7f2, #202819); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 12px; box-shadow: 0 1px 3px rgba(23,76,67,.06); overflow-x: auto; }
+.fig svg { width: 100%; height: auto; display: block; min-width: 560px; }
+.fig figcaption, .fig .cap { margin-top: 8px; color: var(--muted); font-size: 0.84rem; text-align: center; font-style: italic; }
+
+/* Opening question of a section */
+.hook { font-size: 1.04rem; color: light-dark(#26403c, #c6e2de); border-left: 3px solid var(--copper); padding: 4px 0 4px 14px; margin: 6px 0 18px; }
+
+/* Plain-language explanation */
+.plain { background: var(--forest-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0 18px; }
+.plain .ttl { color: var(--forest); }
+
+/* Generic box header */
+.box { border-radius: 12px; padding: 14px 18px; margin: 20px 0; }
+.box > .ttl, .plain > .ttl { margin: 0 0 7px; font-weight: 700; font-size: 0.86rem; }
+.box p { margin: 6px 0; }
+.box ul, .box ol { margin: 6px 0; padding-left: 22px; }
+.box li { margin: 4px 0; }
+
+.ex { background: var(--teal-soft); border: 1px solid var(--teal); }
+.ex > .ttl { color: light-dark(#1d6b6b, #a8e7e7); }
+.case { background: light-dark(#f9f7f2, #2c2117); border: 1px solid light-dark(#EBB28F, #63432f); border-left: 4px solid var(--copper); }
+.case > .ttl { color: var(--copper); font-size: 0.74rem; text-transform: uppercase; letter-spacing: .05em; }
+.pitfall { background: var(--amber-soft); border: 1px solid light-dark(#EBC77A, #695833); }
+.pitfall > .ttl { color: light-dark(#8A5A00, #ffd88f); }
+.why { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--forest); }
+.why > .ttl { color: var(--forest); }
+
+.practice { background: var(--green-soft); border: 1px solid var(--green); }
+.practice > .ttl { color: light-dark(#1F6340, #ade5c9); }
+.remember { background: var(--forest); color: #E4EFEB; }
+.remember > .ttl { color: var(--gold); }
+.remember b, .remember strong { color: #fff; }
+
+/* Sai vs đúng */
+.contrast { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.contrast > div { border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; }
+.contrast .bad { background: var(--red-soft); border: 1px solid light-dark(#E3A79F, #60342e); }
+.contrast .good { background: var(--green-soft); border: 1px solid light-dark(#9CCFB0, #326747); }
+.contrast .ttl { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
+.contrast .bad .ttl { color: var(--red); }
+.contrast .good .ttl { color: var(--green); }
+.contrast p { margin: 4px 0; }
+
+/* Step-by-step anatomy */
+.steps { list-style: none; counter-reset: st; padding-left: 0 !important; }
+.steps > li { counter-increment: st; position: relative; padding: 2px 0 2px 42px !important; margin: 12px 0 !important; }
+.steps > li::before { content: counter(st); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+
+/* Small term chips inline */
+.term { font-weight: 650; color: light-dark(#26403c, #c3e9e3); }
+.term-gloss { color: var(--muted); font-size: 0.92em; }
+
+/* Lesson prev/next */
+.next-prev { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .contrast { grid-template-columns: 1fr; }
+  .fig svg { min-width: 520px; }
+}
+
+/* ---------- Learning reflection + Unit assessment (assets/assessment.js) ---------- */
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.refl-intro { color: light-dark(#2c4b46, #bfdad5); }
+.refl-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--violet); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.refl-label { margin: 0 0 4px !important; font-weight: 700; color: light-dark(#3f2c86, #a99ade); }
+.refl-hint { color: light-dark(#41506B, #aeb9ce); font-size: 0.93rem; margin-bottom: 8px; }
+.refl-hint ul { margin: 4px 0 0; padding-left: 20px; }
+.refl-hint li { margin: 2px 0; }
+#reflection-app textarea, #quiz-app textarea, #workshop-app textarea { width: 100%; font: inherit; font-size: 0.95rem; line-height: 1.55; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); color: var(--ink); resize: vertical; }
+#reflection-app textarea:focus, #quiz-app textarea:focus, #workshop-app textarea:focus { outline: 2px solid var(--gold); border-color: var(--forest); }
+.refl-sample { margin-top: 8px; }
+.refl-sample summary { cursor: pointer; color: var(--forest); font-size: 0.86rem; font-weight: 600; }
+.refl-sample-body { margin: 6px 0; padding: 8px 12px; background: var(--forest-soft); border-radius: 6px; font-size: 0.92rem; }
+.refl-sample-body ul { margin: 4px 0; padding-left: 20px; }
+.refl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 6px; }
+.refl-tools p { flex-basis: 100%; margin: 2px 0 0; }
+.tool-msg { color: var(--green); font-size: 0.86rem; }
+.act-btn, .mini-btn { font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1.5px solid var(--forest); }
+.act-btn { background: var(--forest); color: #fff; }
+.act-btn:hover { background: var(--copper); border-color: var(--copper); }
+.mini-btn { background: transparent; color: var(--forest); padding: 5px 12px; font-size: 0.82rem; }
+.mini-btn:hover { background: var(--forest-soft); }
+.mini-btn.danger { color: var(--red); border-color: light-dark(#E3A79F, #60342e); }
+.assess-note { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; }
+.assess-note.small { background: transparent; padding: 0; }
+
+table.rubric select { font: inherit; font-size: 0.86rem; padding: 4px 6px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ws-col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.ws-h { margin: 0 0 4px !important; font-weight: 700; color: var(--forest); font-size: 0.9rem; }
+.ws-col ol, .ws-col ul { margin: 0 !important; padding-left: 20px !important; font-size: 0.93rem; }
+table.rubric td.num { text-align: center; font-weight: 700; color: var(--copper); }
+table.rubric td { font-size: 0.9rem; }
+table.rubric textarea { min-width: 180px; }
+.rub-pts { font-size: 0.82rem; color: var(--forest); font-weight: 600; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.dash-card.pass { border-color: light-dark(#9CCFB0, #326747); background: var(--green-soft); }
+.dash-card.fail { border-color: light-dark(#E3A79F, #60342e); background: var(--red-soft); }
+.dash-h { margin: 0 !important; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-v { margin: 2px 0 !important; font-size: 1.6rem; font-weight: 700; color: var(--forest); }
+.dash-sub { margin: 0 !important; font-size: 0.84rem; color: var(--muted); }
+
+/* ---------- Knowledge questions (open questions, self-rated) ---------- */
+.kq-howto { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kq-toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.kq-filter { font-size: 0.88rem; color: var(--forest); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.kq-progress { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; }
+.kq-track { flex: 1; height: 8px; border-radius: 99px; background: light-dark(#E3E8E2, #272f25); overflow: hidden; display: flex; }
+.kq-track .seg { height: 100%; }
+.seg-yes { background: var(--green); } .seg-part { background: light-dark(#D9A441, #665027); } .seg-no { background: light-dark(#C0504D, #6a2a28); }
+.kq-count { font-size: 0.84rem; color: var(--muted); white-space: nowrap; }
+.kq-group { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; border-bottom: 1px dashed var(--line); }
+.kq-group-title { margin: 0 0 6px !important; font-size: 1.08rem !important; }
+.kq-back { font-size: 0.82rem; white-space: nowrap; }
+.kq-list { padding-left: 26px !important; margin-top: 8px !important; }
+.kq-item { margin: 12px 0 !important; padding: 10px 14px !important; border: 1px solid var(--line); border-left: 4px solid light-dark(#C9D3CF, #3b4843); border-radius: 10px; background: var(--surface); }
+.kq-item[data-rate="yes"] { border-left-color: var(--green); }
+.kq-item[data-rate="part"] { border-left-color: #D9A441; }
+.kq-item[data-rate="no"] { border-left-color: #C0504D; }
+.only-weak .kq-item[data-rate="yes"] { display: none; }
+.kq-q { margin: 0 0 6px !important; font-weight: 600; line-height: 1.6 !important; }
+.kq-type { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 4px; background: var(--forest-soft); color: var(--forest); font-size: 0.72rem; font-weight: 700; letter-spacing: .03em; vertical-align: 2px; text-transform: uppercase; }
+.kq-mine, .kq-answer { margin: 6px 0; }
+.kq-mine summary, .kq-answer summary { cursor: pointer; font-size: 0.86rem; font-weight: 600; color: var(--forest); }
+.kq-mine textarea { margin-top: 6px; width: 100%; font: inherit; font-size: 0.95rem; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; resize: vertical; }
+.kq-answer-body { margin-top: 6px; padding: 10px 14px; background: light-dark(#F4F8F6, #1b2a22); border: 1px solid light-dark(#D5E3DD, #2f473d); border-radius: 8px; font-size: 0.95rem; }
+.kq-answer-body p { margin: 4px 0 8px !important; }
+.kq-answer-body ul, .kq-answer-body ol { margin: 4px 0 8px !important; padding-left: 20px !important; }
+.kq-answer-body li { margin: 2px 0 !important; }
+.kq-refs { font-size: 0.84rem; color: var(--muted); border-top: 1px dashed light-dark(#D5E3DD, #2f473d); padding-top: 6px; margin-top: 8px !important; }
+.kq-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.kq-rate-l { font-size: 0.8rem; color: var(--muted); }
+.kq-rbtn { font: inherit; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid light-dark(#C9D3CF, #3b4843); background: light-dark(#f9f7f2, #192320); color: var(--muted); cursor: pointer; }
+.kq-rbtn[aria-pressed="true"].r-yes { background: var(--green); border-color: var(--green); color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-part { background: light-dark(#D9A441, #665027); border-color: #D9A441; color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-no { background: light-dark(#C0504D, #6a2a28); border-color: #C0504D; color: #fff; }
+
+
+  </style>
+  <style>
+    article h4 { margin: 22px 0 8px; color: var(--forest); font-size: 1.02rem; }
+    td.c, th.c { text-align: center; }
+    tr.total td { font-weight: 700; background: var(--forest-soft) !important; }
+    .fig svg .hit:hover { opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="../assets/dark.css">
+</head>
+<body class="topic-page lesson-page">
+<header class="reader-header">
+    <a class="brand" href="../../dainv13.html"><span class="brand-mark">Đ</span><span>Đề cương<br><small>SA Role, Complexity &amp; Lifecycle Governance</small></span></a>
+    <nav aria-label="Page actions"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></nav>
+</header>
+<div class="reader-layout">
+  <aside class="contents-panel">
+    <p class="eyebrow">Nội dung trang</p>
+    <nav aria-label="Topic contents"><ul>
+<li class="toc-level-2"><a href="#p1">Phần 1 · Giải thích chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-2">1.2 Tổng quan về chủ đề</a></li>
+<li class="toc-level-2"><a href="#p2">Phần 2 · Nội dung chi tiết</a></li>
+<li class="toc-level-3"><a href="#p2-1">2.1 Vai trò SA, complexity, governance</a></li>
+<li class="toc-level-3"><a href="#p2-2">2.2 Context, boundary, interface, quality attributes</a></li>
+<li class="toc-level-3"><a href="#p2-3">2.3 Năm nguồn sinh complexity</a></li>
+<li class="toc-level-3"><a href="#p2-4">2.4 Governance, ARB, ownership, escalation</a></li>
+<li class="toc-level-3"><a href="#p2-5">2.5 Giữ kiến trúc khi mọi thứ thay đổi</a></li>
+<li class="toc-level-3"><a href="#p2-6">2.6 Runway, technical debt, migration</a></li>
+<li class="toc-level-3"><a href="#p2-7">2.7 Khi nào giải ở cấp architecture?</a></li>
+<li class="toc-level-3"><a href="#p2-8">2.8 Complexity cần thiết hay loại bỏ được?</a></li>
+<li class="toc-level-3"><a href="#p2-9">2.9 Ai sở hữu quyết định sau vận hành?</a></li>
+</ul></nav>
+  </aside>
+  <main class="article">
+    <article>
+<p class="lesson-kicker">Đề cương tự biên soạn</p>
+<h1 id="top">SA Role, Complexity &amp; Lifecycle Governance</h1>
+<p class="lesson-meta">Vai trò kiến trúc sư, độ phức tạp &amp; quản trị vòng đời · đọc ~25 phút</p>
+
+<h2 id="p1"><span class="sec-no">1 ·</span> Giải thích chủ đề</h2>
+<h3 id="p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</h3>
+<ul>
+<li><b>SA Role</b>: System Architect là người chịu trách nhiệm về hình dạng tổng thể của hệ thống. SA quyết định hệ thống được chia thành phần nào, các phần nói chuyện với nhau ra sao và chất lượng nào phải đạt.</li>
+<li><b>Complexity</b>: Độ phức tạp là số lượng phần tử, quan hệ và biến thể mà đội phải nắm được cùng lúc. Nó tăng nhanh hơn số dòng code rất nhiều. Với n component, số cặp có thể phụ thuộc nhau lên tới n(n-1)/2, nên gấp đôi số component có thể làm số quan hệ tăng gần gấp bốn.</li>
+<li><b>Lifecycle</b>: Vòng đời của hệ thống, từ concept, phát triển, kiểm thử, sản xuất, vận hành OTA cho tới lúc ngừng hỗ trợ. Với phần mềm xe, giai đoạn vận hành thường dài nhiều năm, lâu hơn hẳn giai đoạn phát triển.</li>
+<li><b>Governance</b>: Bộ quy tắc và cơ chế ra quyết định giúp kiến trúc được tuân thủ, được cập nhật có kiểm soát và có người chịu trách nhiệm rõ ràng.</li>
+</ul>
+<p>Ghép lại, tên chủ đề nói về một vai trò, một thứ vai trò đó phải chống lại, khoảng thời gian vai trò đó phải phủ và công cụ để làm việc đó có trật tự.</p>
+<h3 id="p1-2">1.2 Tổng quan về chủ đề</h3>
+<p>Một CDC chạy nhiều OS trên hypervisor, phục vụ IVI, cluster, HUD và kết nối cloud. Không ai trong đội nắm được hết chi tiết. SA tồn tại để giữ một bức tranh nhất quán và ra các quyết định có tác động xuyên nhiều đội.</p>
+<p>Trang này đi theo trình tự sau:</p>
+<ul>
+<li>SA làm gì, và SA chịu trách nhiệm về context, boundary, interface, quality attribute ra sao.</li>
+<li>Độ phức tạp đến từ đâu, phần nào phải chấp nhận và phần nào có thể bỏ.</li>
+<li>Governance: ai quyết, board họp thế nào, bất đồng thì escalate ra sao.</li>
+<li>Giữ kiến trúc khớp với code khi requirement đổi, cùng với runway, technical debt và migration.</li>
+<li>Khi nào một vấn đề là việc của kiến trúc, và ai sở hữu quyết định sau khi xe đã ra thị trường.</li>
+</ul>
+<h2 id="p2"><span class="sec-no">2 ·</span> Nội dung chi tiết</h2>
+<h3 id="p2-1">2.1 Vai trò của System Architect, quản lý độ phức tạp và governance xuyên suốt lifecycle</h3>
+<h4>a) Vai trò của System Architect</h4>
+<p>SA không viết phần lớn code. Việc chính của SA là chia hệ thống thành các khối có trách nhiệm rõ, định nghĩa ranh giới giữa chúng và chọn các cơ chế chung như IPC, logging, update, security.</p>
+<p>Ba nhiệm vụ đan vào nhau:</p>
+<ul>
+<li><b>Thiết kế</b>: tạo ra cấu trúc đáp ứng requirement và quality attribute.</li>
+<li><b>Kiểm soát độ phức tạp</b>: giữ số phụ thuộc và biến thể ở mức đội có thể hiểu và test được.</li>
+<li><b>Governance</b>: đảm bảo quyết định được ghi lại, được review và vẫn còn hiệu lực qua các release.</li>
+</ul>
+<p>Trong công việc hằng ngày, ba nhiệm vụ đó biến thành các việc cụ thể:</p>
+<ul>
+<li><b>Làm việc với stakeholder</b>: dịch mục tiêu của OEM, yêu cầu pháp lý và giới hạn phần cứng thành quyết định kỹ thuật mà các đội làm theo được.</li>
+<li><b>Dẫn dắt kỹ thuật</b>: giải thích lý do của kiến trúc cho các đội, review thiết kế ở những chỗ chạm nhiều domain.</li>
+<li><b>Giữ ngân sách tài nguyên</b>: chia CPU, GPU, RAM, thời gian khởi động và băng thông giữa các VM và các chức năng.</li>
+<li><b>Ghi lại quyết định</b>: mỗi lựa chọn quan trọng có một ADR để người đến sau hiểu vì sao.</li>
+</ul>
+<p>SA cũng không phải người quyết mọi thứ. Chi tiết bên trong một component, như cấu trúc class hay thư viện nội bộ, thuộc về đội sở hữu component đó. SA chỉ can thiệp khi lựa chọn ấy gây ảnh hưởng ra ngoài ranh giới của component.</p>
+<p>Ví dụ CDC: SA quyết định cluster chạy trên một VM riêng với RTOS hoặc safety OS, còn IVI chạy Android Automotive trên VM khác.</p>
+<figure class="fig"><svg viewBox="0 0 720 286" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Kiến trúc CDC: VM Cluster với RTOS và VM IVI với Android Automotive trên hypervisor và SoC, cùng các cơ chế chung IPC, logging, update, security"><rect x="0" y="0" width="720" height="286" fill="#fff"/><text x="360" y="26" font-size="13.5" fill="#174C43" text-anchor="middle" font-weight="700">SA chia CDC thành các khối có ranh giới rõ</text><text x="360" y="44" font-size="10" fill="#A93226" text-anchor="middle">ranh giới</text><line x1="360" y1="50" x2="360" y2="150" stroke="#A93226" stroke-width="1.4" stroke-dasharray="5 4"/><rect x="40" y="50" width="310" height="100" rx="9" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="195" y="70" font-size="12" fill="#174C43" text-anchor="middle" font-weight="700">VM Cluster</text><rect x="56" y="80" width="278" height="24" rx="8" fill="#174C43"/><text x="195.0" y="96.0" font-size="11" fill="#fff" text-anchor="middle">RTOS / safety OS</text><rect x="56" y="112" width="278" height="24" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="195.0" y="128.0" font-size="11" fill="#1c2928" text-anchor="middle">Đồng hồ, cảnh báo</text><rect x="370" y="50" width="310" height="100" rx="9" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="525" y="70" font-size="12" fill="#174C43" text-anchor="middle" font-weight="700">VM IVI</text><rect x="386" y="80" width="278" height="24" rx="8" fill="#2A8C8C"/><text x="525.0" y="96.0" font-size="11" fill="#fff" text-anchor="middle">Android Automotive</text><rect x="386" y="112" width="278" height="24" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="525.0" y="128.0" font-size="11" fill="#1c2928" text-anchor="middle">Media, navigation, app</text><text x="40" y="168" font-size="10.5" fill="#596966" text-anchor="start">Cơ chế chung do SA chọn, dùng cho mọi VM</text><rect x="40" y="176" width="152" height="26" rx="8" fill="#A64E32"/><text x="116.0" y="193.0" font-size="11" fill="#fff" text-anchor="middle">IPC</text><rect x="202" y="176" width="152" height="26" rx="8" fill="#A64E32"/><text x="278.0" y="193.0" font-size="11" fill="#fff" text-anchor="middle">Logging</text><rect x="364" y="176" width="152" height="26" rx="8" fill="#A64E32"/><text x="440.0" y="193.0" font-size="11" fill="#fff" text-anchor="middle">Update</text><rect x="526" y="176" width="152" height="26" rx="8" fill="#A64E32"/><text x="602.0" y="193.0" font-size="11" fill="#fff" text-anchor="middle">Security</text><rect x="40" y="212" width="640" height="26" rx="8" fill="#2A6F66"/><text x="360.0" y="229.0" font-size="11" fill="#fff" text-anchor="middle">Hypervisor: tách các VM với nhau</text><rect x="40" y="246" width="640" height="26" rx="8" fill="#1c2928"/><text x="360.0" y="263.0" font-size="11" fill="#fff" text-anchor="middle">SoC: phần cứng dùng chung</text></svg><figcaption>SA quyết định cách cắt hệ thống và các cơ chế chung, còn code bên trong từng khối do các đội viết.</figcaption></figure>
+<h4>b) Quản lý độ phức tạp</h4>
+<p>SA không thể làm hệ thống đơn giản hơn bài toán. Nhưng SA có thể ngăn độ phức tạp lan từ chỗ này sang chỗ khác. Các công cụ chính:</p>
+<ul>
+<li><b>Phân rã</b>: chia hệ thống thành các khối có trách nhiệm hẹp, mỗi khối có một đội sở hữu.</li>
+<li><b>Che giấu chi tiết</b>: khối khác chỉ thấy interface, không thấy cách làm bên trong. Sửa bên trong không lan ra ngoài.</li>
+<li><b>Phân lớp</b>: app gọi xuống middleware, middleware gọi xuống OS và hypervisor, không ai đi tắt qua lớp.</li>
+<li><b>Chuẩn hóa</b>: một cơ chế IPC, một logging service, một cách update, thay vì mỗi đội một kiểu.</li>
+<li><b>Giới hạn biến thể</b>: gom khác biệt giữa các dòng xe vào cấu hình, không rẽ nhánh code theo từng thị trường.</li>
+</ul>
+<p>Ví dụ CDC: app media không gọi thẳng vào driver audio mà đi qua audio manager. Khi đổi codec hay đổi amplifier, chỉ audio manager phải sửa, các app không bị động tới.</p>
+<h4>c) Governance xuyên suốt lifecycle</h4>
+<p>Kiến trúc không kết thúc ở giai đoạn thiết kế. Mỗi giai đoạn của vòng đời có loại quyết định riêng, nên governance cũng phải đổi trọng tâm theo từng giai đoạn:</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Giai đoạn</th><th>Việc chính của SA</th><th>Governance cần có</th></tr></thead>
+<tbody>
+<tr><td>Concept</td><td>Xác định context và boundary, chọn SoC, hypervisor, cách chia VM</td><td>ADR nền tảng được review board chấp nhận</td></tr>
+<tr><td>Phát triển</td><td>Chốt interface, theo dõi ngân sách tài nguyên, review thay đổi</td><td>Quy trình change request, kiểm tra kiến trúc tự động trong CI</td></tr>
+<tr><td>Tích hợp và test</td><td>Đo quality attribute trên phần cứng thật, xử lý xung đột tài nguyên</td><td>Baseline kiến trúc khớp với từng bản release</td></tr>
+<tr><td>SOP và sản xuất</td><td>Đóng băng interface với các ECU khác, chuẩn bị bàn giao</td><td>Danh sách ADR còn hiệu lực, owner cho giai đoạn sau SOP</td></tr>
+<tr><td>Vận hành OTA</td><td>Đánh giá impact của mỗi bản cập nhật, xử lý lỗ hổng bảo mật</td><td>Cổng duyệt bản OTA, theo dõi lỗ hổng liên tục</td></tr>
+<tr><td>Ngừng hỗ trợ</td><td>Lập kế hoạch dừng cập nhật, giữ hồ sơ</td><td>Quyết định EOL có owner, hồ sơ được lưu theo quy định</td></tr>
+</tbody></table></div>
+<figure class="fig"><svg viewBox="0 0 720 222" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Sáu giai đoạn vòng đời CDC từ concept tới ngừng hỗ trợ, mỗi giai đoạn có việc kiến trúc riêng, và governance chạy suốt bên dưới"><defs><marker id="s10-a1l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1c2928"/></marker></defs><rect x="0" y="0" width="720" height="222" fill="#fff"/><text x="360" y="26" font-size="13.5" fill="#174C43" text-anchor="middle" font-weight="700">Mỗi giai đoạn một loại việc kiến trúc</text><rect x="40" y="44" width="100" height="32" rx="8" fill="#174C43"/><text x="90" y="64" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Concept</text><rect x="148" y="44" width="100" height="32" rx="8" fill="#174C43"/><text x="198" y="64" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Phát triển</text><rect x="256" y="44" width="100" height="32" rx="8" fill="#174C43"/><text x="306" y="64" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Tích hợp, test</text><rect x="364" y="44" width="100" height="32" rx="8" fill="#B7791F"/><text x="414" y="64" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">SOP</text><rect x="472" y="44" width="100" height="32" rx="8" fill="#2A8C8C"/><text x="522" y="64" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Vận hành OTA</text><rect x="580" y="44" width="100" height="32" rx="8" fill="#596966"/><text x="630" y="64" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Ngừng hỗ trợ</text><line x1="40" y1="88" x2="682" y2="88" stroke="#1c2928" stroke-width="1.6" marker-end="url(#s10-a1l)"/><rect x="40" y="98" width="100" height="62" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1"/><text x="90" y="116" font-size="10" fill="#1c2928" text-anchor="middle">Context, boundary</text><text x="90" y="131" font-size="10" fill="#1c2928" text-anchor="middle">Chọn SoC, OS</text><text x="90" y="146" font-size="10" fill="#1c2928" text-anchor="middle">ADR nền tảng</text><rect x="148" y="98" width="100" height="62" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1"/><text x="198" y="116" font-size="10" fill="#1c2928" text-anchor="middle">Chốt interface</text><text x="198" y="131" font-size="10" fill="#1c2928" text-anchor="middle">Review thay đổi</text><text x="198" y="146" font-size="10" fill="#1c2928" text-anchor="middle">Kiểm tra trong CI</text><rect x="256" y="98" width="100" height="62" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1"/><text x="306" y="116" font-size="10" fill="#1c2928" text-anchor="middle">Đo quality</text><text x="306" y="131" font-size="10" fill="#1c2928" text-anchor="middle">attribute thật</text><text x="306" y="146" font-size="10" fill="#1c2928" text-anchor="middle">Chốt baseline</text><rect x="364" y="98" width="100" height="62" rx="8" fill="#fff" stroke="#B7791F" stroke-width="1.4"/><text x="414" y="116" font-size="10" fill="#1c2928" text-anchor="middle">Đóng băng</text><text x="414" y="131" font-size="10" fill="#1c2928" text-anchor="middle">interface ngoài</text><text x="414" y="146" font-size="10" fill="#1c2928" text-anchor="middle">Bàn giao owner</text><rect x="472" y="98" width="100" height="62" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1"/><text x="522" y="116" font-size="10" fill="#1c2928" text-anchor="middle">Impact analysis</text><text x="522" y="131" font-size="10" fill="#1c2928" text-anchor="middle">mỗi bản OTA</text><text x="522" y="146" font-size="10" fill="#1c2928" text-anchor="middle">Vá bảo mật</text><rect x="580" y="98" width="100" height="62" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1"/><text x="630" y="116" font-size="10" fill="#1c2928" text-anchor="middle">Kế hoạch EOL</text><text x="630" y="131" font-size="10" fill="#1c2928" text-anchor="middle">Dừng cập nhật</text><text x="630" y="146" font-size="10" fill="#1c2928" text-anchor="middle">Lưu hồ sơ</text><rect x="40" y="174" width="640" height="34" rx="8" fill="#A64E32"/><text x="360" y="195" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Governance chạy suốt: decision owner · ADR · review board · escalation</text></svg><figcaption>Việc của SA đổi theo giai đoạn, nhưng owner, ADR và review board phải tồn tại từ concept tới lúc ngừng hỗ trợ.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>SA định hình cấu trúc và ngăn độ phức tạp lan rộng bằng phân rã, interface và chuẩn hóa. Governance phải đi cùng hệ thống qua mọi giai đoạn, từ concept tới lúc ngừng hỗ trợ.</p></div>
+<h3 id="p2-2">2.2 Trách nhiệm của SA trong context, boundary, interface và quality attributes</h3>
+<div class="table-scroll"><table>
+<thead><tr><th>Đối tượng</th><th>SA phải trả lời</th><th>Ví dụ trên CDC</th></tr></thead>
+<tbody>
+<tr><td>Context</td><td>Hệ thống giao tiếp với ai bên ngoài?</td><td>Gateway, ADAS ECU, camera, điện thoại, backend OTA</td></tr>
+<tr><td>Boundary</td><td>Cái gì nằm trong, cái gì nằm ngoài phạm vi?</td><td>Xử lý âm thanh nằm trong CDC hay trên amplifier riêng</td></tr>
+<tr><td>Interface</td><td>Hai bên trao đổi gì, theo giao thức và hợp đồng nào?</td><td>SOME/IP service cho tốc độ xe, có version và timing</td></tr>
+<tr><td>Quality attributes</td><td>Hệ thống phải tốt đến mức nào?</td><td>Rear camera hiển thị trong thời gian yêu cầu sau khi vào số lùi</td></tr>
+</tbody></table></div>
+<p>Nếu context hoặc boundary mơ hồ, các đội sẽ tự đoán và thường đoán khác nhau.</p>
+<figure class="fig"><svg viewBox="0 0 720 300" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Sơ đồ context của CDC: gateway, ADAS ECU, camera, điện thoại, backend OTA bên ngoài boundary; amplifier nằm trên ranh giới chưa chốt; interface SOME/IP và quality attribute rear camera"><defs><marker id="s10-a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#2A6F66"/></marker><marker id="s10-a2c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#A64E32"/></marker></defs><rect x="0" y="0" width="720" height="300" fill="#fff"/><text x="360" y="26" font-size="13.5" fill="#174C43" text-anchor="middle" font-weight="700">Context, boundary, interface và quality attribute của CDC</text><rect x="230" y="50" width="260" height="220" rx="12" fill="none" stroke="#A64E32" stroke-width="1.6" stroke-dasharray="6 4"/><text x="360" y="70" font-size="11" fill="#A64E32" text-anchor="middle" font-weight="700">Boundary của CDC</text><text x="105" y="46" font-size="10.5" fill="#596966" text-anchor="middle">Context: bên ngoài</text><text x="615" y="46" font-size="10.5" fill="#596966" text-anchor="middle">Context: bên ngoài</text><line x1="170" y1="78" x2="278" y2="134" stroke="#A64E32" stroke-width="2" marker-end="url(#s10-a2c)"/><line x1="170" y1="158" x2="278" y2="160" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a2)"/><line x1="170" y1="238" x2="278" y2="186" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a2)"/><line x1="550" y1="78" x2="442" y2="134" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a2)"/><line x1="550" y1="158" x2="442" y2="160" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a2)"/><line x1="540" y1="238" x2="442" y2="186" stroke="#596966" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#s10-a2)"/><rect x="280" y="120" width="160" height="80" rx="8" fill="#174C43"/><text x="360.0" y="157.0" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">CDC</text><text x="360.0" y="171.0" font-size="11" fill="#fff" text-anchor="middle">IVI · cluster · HUD</text><rect x="40" y="60" width="130" height="36" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="105.0" y="82.0" font-size="11" fill="#1c2928" text-anchor="middle">Gateway</text><rect x="40" y="140" width="130" height="36" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="105.0" y="162.0" font-size="11" fill="#1c2928" text-anchor="middle">ADAS ECU</text><rect x="40" y="220" width="130" height="36" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="105.0" y="242.0" font-size="11" fill="#1c2928" text-anchor="middle">Camera</text><rect x="550" y="60" width="130" height="36" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="615.0" y="82.0" font-size="11" fill="#1c2928" text-anchor="middle">Điện thoại</text><rect x="550" y="140" width="130" height="36" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="615.0" y="162.0" font-size="11" fill="#1c2928" text-anchor="middle">Backend OTA</text><rect x="540" y="220" width="150" height="40" rx="8" fill="#fff" stroke="#B7791F" stroke-width="1.2" stroke-dasharray="5 4"/><text x="615.0" y="237.1" font-size="10" fill="#1c2928" text-anchor="middle" font-weight="700">Amplifier</text><text x="615.0" y="250.1" font-size="10" fill="#1c2928" text-anchor="middle">audio: trong hay ngoài?</text><text x="40" y="112" font-size="10" fill="#A64E32" text-anchor="start" font-weight="700">Interface: SOME/IP</text><text x="40" y="125" font-size="10" fill="#A64E32" text-anchor="start">tốc độ xe, có version, timing</text><text x="40" y="276" font-size="10" fill="#2A6F66" text-anchor="start" font-weight="700">Quality attribute: lên hình</text><text x="40" y="289" font-size="10" fill="#2A6F66" text-anchor="start">đúng hạn sau khi vào số lùi</text></svg><figcaption>SA vẽ rõ ai ở ngoài, ranh giới nằm đâu và mỗi đường nối mang hợp đồng nào, để các đội không phải tự đoán.</figcaption></figure>
+<h4>a) Context và boundary</h4>
+<p>SA vẽ context diagram: CDC ở giữa, các hệ thống ngoài xung quanh, mỗi đường nối là một luồng dữ liệu hoặc điều khiển. Boundary được chốt bằng một danh sách chức năng nằm trong và nằm ngoài phạm vi, được các bên liên quan đồng ý.</p>
+<p>Boundary cũng là ranh giới trách nhiệm theo hợp đồng. Nếu xử lý âm thanh nằm trên amplifier của một nhà cung cấp khác, thì khi tiếng bị méo phải phân định được bên nào chịu. Vì vậy một boundary chưa chốt, như ô amplifier trong hình, là rủi ro cần đóng càng sớm càng tốt.</p>
+<h4>b) Interface</h4>
+<p>Một interface đủ rõ để hai đội làm song song phải nêu được:</p>
+<ul>
+<li><b>Nội dung</b>: dữ liệu, kiểu, đơn vị, dải giá trị hợp lệ.</li>
+<li><b>Hành vi</b>: request/response, event hay notification, bên nào khởi tạo.</li>
+<li><b>Timing</b>: chu kỳ gửi, độ trễ tối đa, cách xử lý khi mất tín hiệu.</li>
+<li><b>Lỗi</b>: giá trị không hợp lệ được báo ra sao, bên nhận phải phản ứng thế nào.</li>
+<li><b>Version</b>: loại thay đổi nào là tương thích ngược, bản cũ được hỗ trợ bao lâu.</li>
+<li><b>Owner</b>: ai được phép thay đổi interface và phải báo cho ai.</li>
+</ul>
+<p>Ví dụ CDC: service tốc độ xe gửi giá trị theo chu kỳ cố định. Nếu quá một khoảng thời gian định trước mà không nhận được giá trị mới, cluster phải chuyển sang trạng thái "không có dữ liệu" thay vì giữ con số cũ.</p>
+<h4>c) Quality attributes</h4>
+<p>Các từ như "nhanh" hay "an toàn" chỉ có ích khi đo được. Cách phổ biến là viết quality attribute scenario gồm sáu phần: source, stimulus, environment, artifact, response và response measure. Scenario cho phép test và cho phép so sánh các phương án kiến trúc với nhau.</p>
+<figure class="fig"><svg viewBox="0 0 720 250" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Quality attribute scenario rear camera sáu phần: source người lái, stimulus gài số lùi, environment xe vừa bật nguồn, artifact chuỗi camera trong CDC, response hiện hình, response measure trong thời hạn giả định"><defs><marker id="s10-a22" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#2A6F66"/></marker></defs><rect x="0" y="0" width="720" height="250" fill="#fff"/><text x="360" y="26" font-size="13.5" fill="#174C43" text-anchor="middle" font-weight="700">Một quality attribute viết thành scenario đo được</text><rect x="40" y="44" width="200" height="74" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><rect x="40" y="44" width="200" height="24" rx="8" fill="#174C43"/><text x="140" y="61" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">1 · Source</text><text x="140" y="96" font-size="10.5" fill="#1c2928" text-anchor="middle">Người lái</text><line x1="240" y1="81" x2="256" y2="81" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a22)"/><rect x="260" y="44" width="200" height="74" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><rect x="260" y="44" width="200" height="24" rx="8" fill="#174C43"/><text x="360" y="61" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">2 · Stimulus</text><text x="360" y="96" font-size="10.5" fill="#1c2928" text-anchor="middle">Gài số lùi</text><line x1="460" y1="81" x2="476" y2="81" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a22)"/><rect x="480" y="44" width="200" height="74" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><rect x="480" y="44" width="200" height="24" rx="8" fill="#174C43"/><text x="580" y="61" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">3 · Environment</text><text x="580" y="88" font-size="10.5" fill="#1c2928" text-anchor="middle">Xe vừa bật nguồn,</text><text x="580" y="104" font-size="10.5" fill="#1c2928" text-anchor="middle">VM IVI chưa boot xong</text><path d="M580 118 L580 128 L140 128 L140 140" fill="none" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a22)"/><rect x="40" y="144" width="200" height="74" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><rect x="40" y="144" width="200" height="24" rx="8" fill="#2A8C8C"/><text x="140" y="161" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">4 · Artifact</text><text x="140" y="188" font-size="10.5" fill="#1c2928" text-anchor="middle">Chuỗi camera và hiển thị</text><text x="140" y="204" font-size="10.5" fill="#1c2928" text-anchor="middle">trong CDC</text><line x1="240" y1="181" x2="256" y2="181" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a22)"/><rect x="260" y="144" width="200" height="74" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><rect x="260" y="144" width="200" height="24" rx="8" fill="#2A8C8C"/><text x="360" y="161" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">5 · Response</text><text x="360" y="188" font-size="10.5" fill="#1c2928" text-anchor="middle">Hình camera sau hiện</text><text x="360" y="204" font-size="10.5" fill="#1c2928" text-anchor="middle">trên màn hình trung tâm</text><line x1="460" y1="181" x2="476" y2="181" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a22)"/><rect x="480" y="144" width="200" height="74" rx="8" fill="#fff" stroke="#A64E32" stroke-width="1.8"/><rect x="480" y="144" width="200" height="24" rx="8" fill="#A64E32"/><text x="580" y="161" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">6 · Response measure</text><text x="580" y="188" font-size="10.5" fill="#1c2928" text-anchor="middle">≤ 2 s kể từ lúc gài số</text><text x="580" y="204" font-size="10.5" fill="#596966" text-anchor="middle">(giả định minh họa)</text><text x="360" y="240" font-size="10.5" fill="#596966" text-anchor="middle">Thiếu phần 6 thì không test được, thiếu phần 3 thì không biết test trong điều kiện nào</text></svg><figcaption>Sáu phần biến một mong muốn mơ hồ thành một yêu cầu test được và dùng được để so sánh phương án.</figcaption></figure>
+<p>Quality attribute thường xung đột với nhau, ví dụ boot nhanh và kiểm tra chữ ký đầy đủ lúc khởi động. SA là người đưa các xung đột đó ra bàn và chốt thứ tự ưu tiên với stakeholder, thay vì để mỗi đội tự cân.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>SA sở hữu context, boundary, interface và quality attribute vì không đội đơn lẻ nào nhìn thấy trọn vẹn chúng. Interface phải nêu cả timing, lỗi và version; quality attribute phải được viết thành scenario đo được.</p></div>
+<h3 id="p2-3">2.3 Complexity do dependency, variant, stakeholder, technology và lifecycle tạo ra</h3>
+<p>Độ phức tạp hiếm khi đến từ một chỗ. Trên CDC có năm nguồn chính:</p>
+<ul>
+<li><b>Dependency</b>: một service dùng chung như audio manager bị hàng chục app phụ thuộc. Đổi nó là đổi cả chuỗi.</li>
+<li><b>Variant</b>: nhiều thị trường, kích thước màn hình, có hoặc không có HUD. Số tổ hợp tăng theo cấp số nhân.</li>
+<li><b>Stakeholder</b>: OEM, Tier-1, nhà cung cấp SoC, đối tác app, mỗi bên một ưu tiên.</li>
+<li><b>Technology</b>: hypervisor, Linux, Android, RTOS, GPU sharing.</li>
+<li><b>Lifecycle</b>: phần mềm phải được vá bảo mật trong nhiều năm, trong khi SoC và toolchain có thể đã cũ.</li>
+</ul>
+<p>Mỗi nguồn có dấu hiệu riêng và cách kiểm soát riêng:</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Nguồn</th><th>Dấu hiệu đang tăng</th><th>Cách kiểm soát</th><th>Ví dụ CDC</th></tr></thead>
+<tbody>
+<tr><td>Dependency</td><td>Một thay đổi nhỏ buộc nhiều đội build và test lại</td><td>Interface ổn định có version, cấm phụ thuộc vòng, theo dõi số module phụ thuộc vào một module</td><td>App chỉ dùng API công khai của audio manager, không dùng hàm nội bộ</td></tr>
+<tr><td>Variant</td><td>Code đầy nhánh if theo thị trường hay theo dòng xe</td><td>Lõi chung cộng cấu hình, test theo tổ hợp đại diện như pairwise thay vì mọi tổ hợp</td><td>Một image cho mọi dòng xe, HUD bật tắt bằng cấu hình</td></tr>
+<tr><td>Stakeholder</td><td>Yêu cầu mâu thuẫn, một quyết định bị mở lại nhiều lần</td><td>Thứ tự ưu tiên được thống nhất sớm, mỗi loại quyết định có owner</td><td>OEM và đối tác app chốt quy tắc dùng màn hình khi xe đang chạy</td></tr>
+<tr><td>Technology</td><td>Mỗi OS một cách log, debug và update</td><td>Giới hạn số công nghệ, dùng cơ chế chung xuyên các VM</td><td>Một định dạng log chung cho Linux, Android và RTOS</td></tr>
+<tr><td>Lifecycle</td><td>Toolchain cũ không còn build lại được bản vá</td><td>Môi trường build tái tạo được, kế hoạch nâng cấp toolchain và OS</td><td>Lưu môi trường build cùng mỗi release để vá được sau nhiều năm</td></tr>
+</tbody></table></div>
+<p>Các nguồn còn khuếch đại nhau. Một biến thể mới thường kéo theo dependency mới, và một stakeholder mới thường mang theo technology mới. Vì vậy cắt được một nguồn thường giảm cả những nguồn khác.</p>
+<p>Ví dụ: 4 thị trường × 3 cấu hình màn hình × 2 tùy chọn HUD đã cho 24 tổ hợp cần build và test (giả định minh họa).</p>
+<figure class="fig"><svg viewBox="0 0 720 238" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Bốn thị trường nhân ba cấu hình màn hình nhân hai tùy chọn HUD bằng 24 tổ hợp cần build và test, so với 9 nếu chỉ cộng"><rect x="0" y="0" width="720" height="238" fill="#fff"/><text x="360" y="26" font-size="13.5" fill="#174C43" text-anchor="middle" font-weight="700">Biến thể nhân với nhau, không cộng với nhau</text><text x="100" y="52" font-size="11" fill="#174C43" text-anchor="middle" font-weight="700">4 thị trường</text><rect x="40" y="62" width="120" height="24" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="100.0" y="77.8" font-size="10.5" fill="#1c2928" text-anchor="middle">Thị trường A</text><rect x="40" y="92" width="120" height="24" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="100.0" y="107.8" font-size="10.5" fill="#1c2928" text-anchor="middle">Thị trường B</text><rect x="40" y="122" width="120" height="24" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="100.0" y="137.8" font-size="10.5" fill="#1c2928" text-anchor="middle">Thị trường C</text><rect x="40" y="152" width="120" height="24" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="100.0" y="167.8" font-size="10.5" fill="#1c2928" text-anchor="middle">Thị trường D</text><text x="185" y="126" font-size="24" fill="#A64E32" text-anchor="middle" font-weight="700">×</text><text x="270" y="52" font-size="11" fill="#174C43" text-anchor="middle" font-weight="700">3 cấu hình màn hình</text><rect x="210" y="62" width="120" height="24" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="270.0" y="77.8" font-size="10.5" fill="#1c2928" text-anchor="middle">Màn hình 1</text><rect x="210" y="92" width="120" height="24" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="270.0" y="107.8" font-size="10.5" fill="#1c2928" text-anchor="middle">Màn hình 2</text><rect x="210" y="122" width="120" height="24" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="270.0" y="137.8" font-size="10.5" fill="#1c2928" text-anchor="middle">Màn hình 3</text><text x="355" y="126" font-size="24" fill="#A64E32" text-anchor="middle" font-weight="700">×</text><text x="435" y="52" font-size="11" fill="#174C43" text-anchor="middle" font-weight="700">2 tùy chọn HUD</text><rect x="380" y="62" width="110" height="24" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="435.0" y="77.8" font-size="10.5" fill="#1c2928" text-anchor="middle">Có HUD</text><rect x="380" y="92" width="110" height="24" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="435.0" y="107.8" font-size="10.5" fill="#1c2928" text-anchor="middle">Không HUD</text><text x="515" y="126" font-size="24" fill="#A64E32" text-anchor="middle" font-weight="700">=</text><text x="610" y="52" font-size="11" fill="#A64E32" text-anchor="middle" font-weight="700">24 tổ hợp</text><rect x="540" y="62" width="20" height="20" rx="4" fill="#A64E32"/><rect x="564" y="62" width="20" height="20" rx="4" fill="#A64E32"/><rect x="588" y="62" width="20" height="20" rx="4" fill="#A64E32"/><rect x="612" y="62" width="20" height="20" rx="4" fill="#A64E32"/><rect x="636" y="62" width="20" height="20" rx="4" fill="#A64E32"/><rect x="660" y="62" width="20" height="20" rx="4" fill="#A64E32"/><rect x="540" y="86" width="20" height="20" rx="4" fill="#A64E32"/><rect x="564" y="86" width="20" height="20" rx="4" fill="#A64E32"/><rect x="588" y="86" width="20" height="20" rx="4" fill="#A64E32"/><rect x="612" y="86" width="20" height="20" rx="4" fill="#A64E32"/><rect x="636" y="86" width="20" height="20" rx="4" fill="#A64E32"/><rect x="660" y="86" width="20" height="20" rx="4" fill="#A64E32"/><rect x="540" y="110" width="20" height="20" rx="4" fill="#A64E32"/><rect x="564" y="110" width="20" height="20" rx="4" fill="#A64E32"/><rect x="588" y="110" width="20" height="20" rx="4" fill="#A64E32"/><rect x="612" y="110" width="20" height="20" rx="4" fill="#A64E32"/><rect x="636" y="110" width="20" height="20" rx="4" fill="#A64E32"/><rect x="660" y="110" width="20" height="20" rx="4" fill="#A64E32"/><rect x="540" y="134" width="20" height="20" rx="4" fill="#A64E32"/><rect x="564" y="134" width="20" height="20" rx="4" fill="#A64E32"/><rect x="588" y="134" width="20" height="20" rx="4" fill="#A64E32"/><rect x="612" y="134" width="20" height="20" rx="4" fill="#A64E32"/><rect x="636" y="134" width="20" height="20" rx="4" fill="#A64E32"/><rect x="660" y="134" width="20" height="20" rx="4" fill="#A64E32"/><text x="610" y="172" font-size="10" fill="#596966" text-anchor="middle">mỗi ô: 1 build + test</text><rect x="40" y="194" width="300" height="30" rx="8" fill="#E5EFEB" stroke="#596966" stroke-width="1.2"/><text x="190.0" y="213.0" font-size="11" fill="#1c2928" text-anchor="middle">Nếu là tổng: 4 + 3 + 2 = 9</text><rect x="380" y="194" width="300" height="30" rx="8" fill="#A64E32"/><text x="530.0" y="213.0" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Thực tế là tích: 4 × 3 × 2 = 24</text></svg><figcaption>Mỗi nguồn biến thể mới nhân số tổ hợp phải build và test lên, nên cắt một nguồn là giảm cả bảng (số liệu minh họa).</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Độ phức tạp đến từ dependency, variant, stakeholder, technology và lifecycle, và các nguồn này nhân với nhau chứ không cộng. SA cần nhận diện từng nguồn để chọn đúng cách kiểm soát.</p></div>
+<h3 id="p2-4">2.4 Architecture governance, review board, decision ownership và escalation</h3>
+<p>Governance trả lời câu hỏi: quyết định nào cần ai đồng ý, theo quy trình nào, và khi bất đồng thì đưa lên đâu.</p>
+<ul>
+<li><b>Review board</b>: nhóm nhỏ gồm SA chính, đại diện safety, security và các domain lead.</li>
+<li><b>Decision ownership</b>: mỗi loại quyết định có một owner. Quyết định trong một component thuộc về team lead. Interface giữa domain thuộc về SA.</li>
+<li><b>Escalation</b>: khi hai đội không thống nhất trong thời hạn đã định, vấn đề được đưa lên board với các phương án và dữ liệu đã chuẩn bị sẵn.</li>
+</ul>
+<h4>a) Decision ownership theo tầng</h4>
+<p>Governance tốt chia quyết định thành nhiều tầng, để board chỉ nhận những việc thật sự cần board:</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Loại quyết định</th><th>Ai quyết</th><th>Phải hỏi ý kiến</th><th>Khi nào lên board</th></tr></thead>
+<tbody>
+<tr><td>Bên trong một component: thư viện, cấu trúc code</td><td>Team lead</td><td>Không bắt buộc</td><td>Không</td></tr>
+<tr><td>Interface trong cùng một domain</td><td>Domain lead</td><td>SA</td><td>Khi thay đổi không tương thích ngược</td></tr>
+<tr><td>Interface giữa domain, ngân sách tài nguyên</td><td>SA</td><td>Các domain lead liên quan, safety, security</td><td>Khi các bên không thống nhất</td></tr>
+<tr><td>SoC, hypervisor, OS, cơ chế OTA và security</td><td>Review board</td><td>OEM, nhà cung cấp chính, quản lý dự án</td><td>Luôn đi qua board</td></tr>
+</tbody></table></div>
+<h4>b) Review board hoạt động thế nào</h4>
+<ul>
+<li>Họp theo lịch cố định, ví dụ hai tuần một lần (giả định minh họa), và có kênh khẩn cho vấn đề đang chặn tiến độ.</li>
+<li>Đầu vào là đề xuất viết sẵn: vấn đề, các phương án, dữ liệu, khuyến nghị. Vấn đề chưa chuẩn bị thì chưa đưa lên.</li>
+<li>Đầu ra là quyết định ghi thành ADR, có owner và ngày hiệu lực, được thông báo cho các đội bị ảnh hưởng.</li>
+<li>Board có thể duyệt ngoại lệ có thời hạn, ví dụ cho một app dùng tạm API nội bộ tới release kế tiếp, kèm điều kiện phải gỡ.</li>
+</ul>
+<p>Board quá nặng sẽ thành nút cổ chai và các đội sẽ tìm cách đi vòng. Board quá nhẹ thì quyết định quan trọng lọt qua mà không ai xem. Bảng phân tầng ở trên là cách giữ cân bằng giữa hai đầu.</p>
+<h4>c) Escalation</h4>
+<p>Escalation đi theo nhiều cấp: hai đội tự bàn, rồi SA phân xử, rồi review board, cuối cùng là ban điều hành chương trình nếu quyết định chạm tới chi phí hay lịch tổng. Mỗi cấp có thời hạn rõ để vấn đề không bị treo. Escalate không phải là thất bại, mà là cách đưa một xung đột tới người có đủ góc nhìn và quyền quyết.</p>
+<p>Ví dụ CDC: đội navigation muốn tăng phần GPU dành cho map 3D, đội cluster phản đối vì sợ ảnh hưởng frame rate. Đây là xung đột tài nguyên giữa domain, nên đi qua board thay vì để hai đội tự thương lượng. Board có thể chốt một phần GPU cố định cho cluster, phần còn lại chia động cho IVI, và ghi lại thành ADR.</p>
+<figure class="fig"><svg viewBox="0 0 720 236" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Quyết định trong component thuộc team lead, interface giữa domain thuộc SA; bất đồng quá thời hạn được đưa lên review board kèm phương án và dữ liệu"><defs><marker id="s10-a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#2A6F66"/></marker><marker id="s10-a4c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#A64E32"/></marker></defs><rect x="0" y="0" width="720" height="236" fill="#fff"/><text x="360" y="26" font-size="13.5" fill="#174C43" text-anchor="middle" font-weight="700">Ai quyết, và vướng thì đi đường nào</text><text x="40" y="52" font-size="11" fill="#174C43" text-anchor="start" font-weight="700">Decision ownership</text><rect x="40" y="62" width="170" height="32" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="125.0" y="82.0" font-size="11" fill="#1c2928" text-anchor="middle">Trong một component</text><line x1="210" y1="78" x2="236" y2="78" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a4)"/><rect x="240" y="62" width="90" height="32" rx="8" fill="#174C43"/><text x="285.0" y="82.0" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Team lead</text><rect x="40" y="106" width="170" height="32" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="125.0" y="126.0" font-size="11" fill="#1c2928" text-anchor="middle">Interface giữa domain</text><line x1="210" y1="122" x2="236" y2="122" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a4)"/><rect x="240" y="106" width="90" height="32" rx="8" fill="#174C43"/><text x="285.0" y="126.0" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">SA</text><rect x="40" y="158" width="290" height="64" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><text x="185.0" y="180.6" font-size="10" fill="#1c2928" text-anchor="middle">Ví dụ: navigation muốn thêm GPU cho map 3D,</text><text x="185.0" y="193.6" font-size="10" fill="#1c2928" text-anchor="middle">cluster lo giảm frame rate</text><text x="185.0" y="206.6" font-size="10" fill="#1c2928" text-anchor="middle">→ xung đột tài nguyên giữa domain</text><path d="M330 190 L396 199" fill="none" stroke="#A64E32" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#s10-a4c)"/><text x="400" y="52" font-size="11" fill="#174C43" text-anchor="start" font-weight="700">Escalation</text><rect x="400" y="62" width="280" height="30" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="540.0" y="81.0" font-size="11" fill="#1c2928" text-anchor="middle">Hai đội bất đồng</text><line x1="540" y1="92" x2="540" y2="113" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a4)"/><rect x="400" y="116" width="280" height="30" rx="8" fill="#E2BD69"/><text x="540.0" y="135.0" font-size="11" fill="#1c2928" text-anchor="middle">Hết thời hạn mà chưa thống nhất</text><line x1="540" y1="146" x2="540" y2="173" stroke="#A64E32" stroke-width="1.6" marker-end="url(#s10-a4c)"/><text x="548" y="164" font-size="10" fill="#A64E32" text-anchor="start">kèm phương án + dữ liệu</text><rect x="400" y="176" width="280" height="46" rx="8" fill="#174C43"/><text x="540.0" y="196.0" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Review board</text><text x="540.0" y="209.5" font-size="10.5" fill="#fff" text-anchor="middle">SA chính · safety · security · domain lead</text></svg><figcaption>Mỗi loại quyết định có một owner, còn xung đột giữa domain đi thẳng lên board thay vì để hai đội tự thương lượng.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Governance tốt là nhẹ nhưng rõ ràng: quyết định được chia tầng, board chỉ nhận việc xuyên domain hoặc khó đảo ngược, và bất đồng có đường escalate với thời hạn cụ thể.</p></div>
+<h3 id="p2-5">2.5 Cách duy trì architecture khi requirement và implementation thay đổi</h3>
+<p>Kiến trúc trên giấy sẽ lệch khỏi code nếu không ai đối chiếu. Một số cách giữ hai bên khớp nhau:</p>
+<ol>
+<li>Coi mô hình kiến trúc là artifact có version, cập nhật cùng nhịp với release.</li>
+<li>Đánh giá impact của mỗi change request lên interface và quality attribute trước khi chấp nhận.</li>
+<li>Dùng kiểm tra tự động trong pipeline, ví dụ phát hiện component gọi trực tiếp vào một module mà kiến trúc không cho phép.</li>
+</ol>
+<p>Thay đổi đến từ hai hướng, và mỗi hướng cần cách xử lý khác nhau.</p>
+<h4>a) Khi requirement thay đổi</h4>
+<p>Requirement mới có thể đòi kiến trúc phải đổi. Việc cần làm là đánh giá trước khi code, theo các bước:</p>
+<ol>
+<li>Xác định các element bị chạm: component, interface, VM, ngân sách tài nguyên.</li>
+<li>Kiểm tra các quality attribute liên quan như boot time, bộ nhớ, safety, security.</li>
+<li>Ước lượng công sức và liệt kê các đội bị ảnh hưởng.</li>
+<li>Quyết định ở đúng cấp. Nếu là quyết định kiến trúc thì ghi ADR.</li>
+<li>Cập nhật mô hình, interface spec và test trước hoặc cùng lúc với code.</li>
+</ol>
+<p>Ví dụ CDC: requirement mới đòi hỗ trợ thêm một màn hình hành khách. SA kiểm tra lại phân bổ VM và ngân sách bộ nhớ trước khi các đội code.</p>
+<h4>b) Khi implementation lệch khỏi kiến trúc</h4>
+<p>Code có thể đi khác kiến trúc vì hai lý do: kiến trúc sai so với thực tế, hoặc đội đi tắt để kịp tiến độ. Khi phát hiện lệch, phải chọn một trong hai hướng một cách có chủ đích: sửa code cho khớp, hoặc cập nhật kiến trúc và ghi ADR. Điều không được làm là để hai bên lệch nhau mà không ai biết.</p>
+<h4>c) Kiểm chứng liên tục bằng fitness function</h4>
+<p>Architecture fitness function là một phép kiểm tra tự động cho biết hệ thống còn giữ được một đặc tính kiến trúc hay không. Nó chạy trong CI như các test khác. Ví dụ trên CDC:</p>
+<ul>
+<li>Luật dependency: app không được gọi thẳng vào driver, chỉ đi qua middleware.</li>
+<li>Kiểm tra tương thích interface: bản mới của một service không được xóa field mà bản cũ đang dùng.</li>
+<li>Ngân sách tài nguyên: build hằng đêm chạy trên HIL đo thời gian khởi động cluster và RAM của từng VM, báo đỏ khi vượt ngưỡng.</li>
+</ul>
+<figure class="fig"><svg viewBox="0 0 720 232" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Vòng giữ kiến trúc: change request, impact analysis, cập nhật model và ADR, các đội implement, kiểm tra tự động trong CI; khi CI phát hiện lệch thì sửa code hoặc cập nhật model có chủ đích"><defs><marker id="s10-a25" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#2A6F66"/></marker><marker id="s10-a25c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#A64E32"/></marker></defs><rect x="0" y="0" width="720" height="232" fill="#fff"/><text x="360" y="26" font-size="13.5" fill="#174C43" text-anchor="middle" font-weight="700">Vòng giữ kiến trúc và code khớp nhau</text><rect x="40" y="48" width="116" height="50" rx="8" fill="#E2BD69"/><text x="98" y="69" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Change request</text><text x="98" y="84" font-size="10.5" fill="#1c2928" text-anchor="middle">requirement mới</text><line x1="156" y1="73" x2="168" y2="73" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a25)"/><rect x="171" y="48" width="116" height="50" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="229" y="69" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Impact analysis</text><text x="229" y="84" font-size="10.5" fill="#1c2928" text-anchor="middle">interface, QA</text><line x1="287" y1="73" x2="299" y2="73" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a25)"/><rect x="302" y="48" width="116" height="50" rx="8" fill="#174C43"/><text x="360" y="69" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Cập nhật</text><text x="360" y="84" font-size="10.5" fill="#fff" text-anchor="middle">model + ADR</text><line x1="418" y1="73" x2="430" y2="73" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a25)"/><rect x="433" y="48" width="116" height="50" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="491" y="69" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Các đội</text><text x="491" y="84" font-size="10.5" fill="#1c2928" text-anchor="middle">implement</text><line x1="549" y1="73" x2="561" y2="73" stroke="#2A6F66" stroke-width="1.6" marker-end="url(#s10-a25)"/><rect x="564" y="48" width="116" height="50" rx="8" fill="#2A8C8C"/><text x="622" y="69" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Kiểm tra</text><text x="622" y="84" font-size="10.5" fill="#fff" text-anchor="middle">tự động trong CI</text><path d="M622 98 L622 136 L360 136 L360 102" fill="none" stroke="#A64E32" stroke-width="2" marker-end="url(#s10-a25c)"/><text x="491" y="128" font-size="10.5" fill="#A64E32" text-anchor="middle" font-weight="700">phát hiện lệch</text><rect x="196" y="146" width="328" height="30" rx="8" fill="#fff" stroke="#A64E32" stroke-width="1.2"/><text x="360" y="165" font-size="10.5" fill="#1c2928" text-anchor="middle">Chọn có chủ đích: sửa code, hoặc cập nhật model + ADR</text><rect x="40" y="190" width="640" height="30" rx="8" fill="#E5EFEB"/><text x="360" y="209" font-size="10.5" fill="#1c2928" text-anchor="middle">Fitness function trong CI: luật dependency · tương thích interface · ngân sách boot time và RAM</text></svg><figcaption>Mọi thay đổi đi qua impact analysis trước khi code, và CI bắt những chỗ code lệch khỏi kiến trúc sau khi code.</figcaption></figure>
+<p>Ngoài kiểm tra tự động, SA nên so lại mô hình với hệ thống thật theo định kỳ, ví dụ mỗi release lớn. Các chỗ lệch được ghi thành technical debt hoặc thành ADR mới.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Requirement đổi thì đánh giá impact trước khi code. Code lệch thì phát hiện bằng fitness function trong CI rồi chọn có chủ đích: sửa code hay cập nhật kiến trúc.</p></div>
+<h3 id="p2-6">2.6 Architecture runway, technical debt và migration strategy</h3>
+<h4>a) Architecture runway</h4>
+<p><b>Architecture runway</b> là phần nền kỹ thuật được chuẩn bị trước để các feature sắp tới có thể xây lên mà không phải đập lại. Khái niệm này được dùng phổ biến trong SAFe.</p>
+<p>Ví dụ runway trên CDC:</p>
+<ul>
+<li>Bố trí partition A/B cho OTA ngay từ đầu, để sau SOP có thể cập nhật và rollback an toàn.</li>
+<li>IPC framework có service discovery trước khi số service tăng lên.</li>
+<li>Dự phòng một phần RAM, GPU và dung lượng flash cho các tính năng sẽ bán qua OTA sau SOP.</li>
+</ul>
+<p>Runway bị tiêu dần khi feature dùng tới nó, nên phải được bổ sung liên tục. Quá ít runway thì feature phải chờ nền. Quá nhiều thì đội xây những thứ có thể không bao giờ được dùng. Phần dự phòng phần cứng là quan trọng nhất, vì sau SOP không thể thêm RAM vào xe đã bán.</p>
+<h4>b) Technical debt</h4>
+<p><b>Technical debt</b> là các lối tắt đã chọn để kịp tiến độ, như hard-code cấu hình cho một biến thể. Debt không xấu nếu được ghi lại, có owner và có kế hoạch trả.</p>
+<p>Debt có "lãi": mỗi lần làm việc gần chỗ có debt, đội tốn thêm công để hiểu và để tránh làm vỡ. Martin Fowler phân loại debt theo hai trục: cố ý hay vô tình, thận trọng hay liều lĩnh. Debt cố ý và thận trọng là loại chấp nhận được, ví dụ "ra bản này trước SOP, sửa ở bản OTA đầu tiên". Debt vô tình thì phải được phát hiện qua review hoặc fitness function rồi mới đưa vào quản lý được.</p>
+<p>Một debt register đơn giản có các cột:</p>
+<div class="table-scroll"><table>
+<thead><tr><th>ID</th><th>Mô tả</th><th>Lý do chấp nhận</th><th>Lãi đang trả</th><th>Owner</th><th>Kế hoạch trả</th></tr></thead>
+<tbody>
+<tr><td>TD-07</td><td>Cấu hình HUD hard-code cho một dòng xe</td><td>Kịp mốc SOP</td><td>Mỗi dòng xe mới phải sửa code thay vì sửa cấu hình</td><td>Đội HMI</td><td>Chuyển sang file cấu hình ở bản OTA đầu tiên (giả định minh họa)</td></tr>
+</tbody></table></div>
+<p>Cách trả debt phổ biến: dành cố định một phần capacity mỗi sprint, trả khi đội chạm vào vùng code đó, và ưu tiên trả những debt đang chặn runway.</p>
+<h4>c) Migration strategy</h4>
+<p><b>Migration strategy</b> là cách chuyển từ kiến trúc cũ sang mới mà xe vẫn chạy được. Cách phổ biến là chuyển từng phần: đặt một adapter giữa cái cũ và cái mới, chuyển dần từng chức năng, chỉ gỡ phần cũ khi không còn ai dùng.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Chiến lược</th><th>Cách làm</th><th>Được</th><th>Mất</th></tr></thead>
+<tbody>
+<tr><td>Big bang</td><td>Thay toàn bộ trong một lần</td><td>Không phải giữ hai hệ song song</td><td>Rủi ro cao, khó rollback, lỗi dồn vào một thời điểm</td></tr>
+<tr><td>Từng phần qua adapter</td><td>Bao phần cũ bằng adapter, chuyển dần từng chức năng, kiểu strangler fig</td><td>Rủi ro chia nhỏ, sản phẩm luôn chạy được</td><td>Tốn công làm adapter, thời gian chuyển dài</td></tr>
+<tr><td>Chạy song song</td><td>Cái cũ và cái mới cùng chạy, so kết quả rồi mới chuyển hẳn</td><td>Có bằng chứng trước khi chuyển</td><td>Tốn tài nguyên gấp đôi trong thời gian chạy song song</td></tr>
+</tbody></table></div>
+<p>Trên xe còn một ràng buộc riêng: sau OTA, đội xe ngoài thị trường sẽ có nhiều version cùng tồn tại, và CDC còn nói chuyện với ECU hay backend chưa được cập nhật. Vì vậy mỗi bước migration phải tương thích ngược và có kế hoạch rollback.</p>
+<p>Ví dụ CDC: chuyển từ IPC độc quyền sang SOME/IP. Đội làm adapter để app cũ vẫn chạy, sau đó migrate từng service qua vài release.</p>
+<figure class="fig"><svg viewBox="0 0 720 256" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Ba giai đoạn migration: thêm adapter khi mọi service còn trên IPC cũ, chuyển dần từng service sang SOME/IP, rồi gỡ IPC cũ"><defs><marker id="s10-a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#A64E32"/></marker></defs><rect x="0" y="0" width="720" height="256" fill="#fff"/><text x="360" y="26" font-size="13.5" fill="#174C43" text-anchor="middle" font-weight="700">Migrate từng phần qua adapter: IPC độc quyền → SOME/IP</text><rect x="40" y="40" width="200" height="206" rx="10" fill="#E5EFEB" stroke="#174C43" stroke-width="1"/><text x="140" y="60" font-size="11.5" fill="#174C43" text-anchor="middle" font-weight="700">1 · Thêm adapter</text><rect x="55" y="70" width="170" height="24" rx="8" fill="#2A8C8C"/><text x="140.0" y="85.8" font-size="10.5" fill="#fff" text-anchor="middle">App cũ vẫn chạy</text><rect x="55" y="104" width="170" height="24" rx="8" fill="#A64E32"/><text x="140.0" y="119.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Adapter</text><text x="95" y="148" font-size="10.5" fill="#596966" text-anchor="middle" font-weight="700">IPC cũ</text><text x="185" y="148" font-size="10.5" fill="#174C43" text-anchor="middle" font-weight="700">SOME/IP</text><rect x="55" y="156" width="80" height="22" rx="8" fill="#596966"/><text x="95.0" y="170.6" font-size="10" fill="#fff" text-anchor="middle">Service A</text><rect x="55" y="184" width="80" height="22" rx="8" fill="#596966"/><text x="95.0" y="198.6" font-size="10" fill="#fff" text-anchor="middle">Service B</text><rect x="55" y="212" width="80" height="22" rx="8" fill="#596966"/><text x="95.0" y="226.6" font-size="10" fill="#fff" text-anchor="middle">Service C</text><rect x="260" y="40" width="200" height="206" rx="10" fill="#E5EFEB" stroke="#174C43" stroke-width="1"/><text x="360" y="60" font-size="11.5" fill="#174C43" text-anchor="middle" font-weight="700">2 · Chuyển dần service</text><rect x="275" y="70" width="170" height="24" rx="8" fill="#2A8C8C"/><text x="360.0" y="85.8" font-size="10.5" fill="#fff" text-anchor="middle">App cũ vẫn chạy</text><rect x="275" y="104" width="170" height="24" rx="8" fill="#A64E32"/><text x="360.0" y="119.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Adapter</text><text x="315" y="148" font-size="10.5" fill="#596966" text-anchor="middle" font-weight="700">IPC cũ</text><text x="405" y="148" font-size="10.5" fill="#174C43" text-anchor="middle" font-weight="700">SOME/IP</text><rect x="275" y="156" width="80" height="22" rx="8" fill="#596966"/><text x="315.0" y="170.6" font-size="10" fill="#fff" text-anchor="middle">Service A</text><rect x="365" y="184" width="80" height="22" rx="8" fill="#174C43"/><text x="405.0" y="198.6" font-size="10" fill="#fff" text-anchor="middle">Service B</text><rect x="365" y="212" width="80" height="22" rx="8" fill="#174C43"/><text x="405.0" y="226.6" font-size="10" fill="#fff" text-anchor="middle">Service C</text><rect x="480" y="40" width="200" height="206" rx="10" fill="#E5EFEB" stroke="#174C43" stroke-width="1"/><text x="580" y="60" font-size="11.5" fill="#174C43" text-anchor="middle" font-weight="700">3 · Gỡ phần cũ</text><rect x="495" y="70" width="170" height="24" rx="8" fill="#2A8C8C"/><text x="580.0" y="85.8" font-size="10.5" fill="#fff" text-anchor="middle">App cũ vẫn chạy</text><rect x="495" y="104" width="170" height="24" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><text x="580.0" y="119.6" font-size="10" fill="#596966" text-anchor="middle">adapter không còn cần</text><text x="535" y="148" font-size="10.5" fill="#596966" text-anchor="middle" font-weight="700">IPC cũ</text><text x="625" y="148" font-size="10.5" fill="#174C43" text-anchor="middle" font-weight="700">SOME/IP</text><rect x="495" y="156" width="80" height="78" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><text x="535.0" y="198.6" font-size="10" fill="#596966" text-anchor="middle">đã gỡ</text><rect x="585" y="156" width="80" height="22" rx="8" fill="#174C43"/><text x="625.0" y="170.6" font-size="10" fill="#fff" text-anchor="middle">Service A</text><rect x="585" y="184" width="80" height="22" rx="8" fill="#174C43"/><text x="625.0" y="198.6" font-size="10" fill="#fff" text-anchor="middle">Service B</text><rect x="585" y="212" width="80" height="22" rx="8" fill="#174C43"/><text x="625.0" y="226.6" font-size="10" fill="#fff" text-anchor="middle">Service C</text><line x1="242" y1="143" x2="258" y2="143" stroke="#A64E32" stroke-width="2" marker-end="url(#s10-a5)"/><line x1="462" y1="143" x2="478" y2="143" stroke="#A64E32" stroke-width="2" marker-end="url(#s10-a5)"/></svg><figcaption>App cũ chạy suốt quá trình chuyển; phần cũ chỉ bị gỡ khi không còn service nào dùng nó.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Runway chuẩn bị nền cho feature sắp tới và phải được bổ sung liên tục. Debt được quản lý qua một register có owner và kế hoạch trả, còn migration nên đi từng bước, tương thích ngược để không làm gãy xe đang chạy.</p></div>
+<h3 id="p2-7">2.7 Khi nào một vấn đề cần được giải ở cấp architecture?</h3>
+<p>Một vấn đề thuộc cấp architecture khi nó có ít nhất một trong các đặc điểm sau:</p>
+<ul>
+<li>Ảnh hưởng đến nhiều component hoặc nhiều đội.</li>
+<li>Tác động đến một quality attribute quan trọng như safety, security, startup time.</li>
+<li>Thay đổi interface công khai hoặc ranh giới giữa các domain.</li>
+<li>Liên quan tới tài nguyên dùng chung như CPU, GPU, RAM, băng thông mạng trong xe.</li>
+<li>Khó hoặc tốn kém để đảo ngược, nhất là sau khi xe đã bán.</li>
+<li>Chạm vào ràng buộc pháp lý hoặc hợp đồng với nhà cung cấp.</li>
+</ul>
+<p>Ngược lại, một vấn đề nằm gọn trong một component, không đổi interface và có thể sửa ở bản kế tiếp mà không ai khác bị ảnh hưởng thì nên để đội sở hữu tự giải. Đưa mọi thứ lên cấp kiến trúc làm SA thành nút cổ chai.</p>
+<figure class="fig"><svg viewBox="0 0 720 300" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Sáu câu hỏi kiểm tra; chỉ cần một câu trả lời có thì vấn đề lên cấp architecture; tất cả đều không thì đội sở hữu component tự xử lý; hai ví dụ CDC"><defs><marker id="s10-a27" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#A64E32"/></marker></defs><rect x="0" y="0" width="720" height="300" fill="#fff"/><text x="360" y="26" font-size="13.5" fill="#174C43" text-anchor="middle" font-weight="700">Một câu "có" là đủ để đưa vấn đề lên cấp architecture</text><rect x="40" y="42" width="390" height="28" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="54" y="60" font-size="10.5" fill="#1c2928">1 · Ảnh hưởng nhiều component hoặc nhiều đội?</text><rect x="40" y="76" width="390" height="28" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="54" y="94" font-size="10.5" fill="#1c2928">2 · Chạm safety, security, startup time hay QA quan trọng khác?</text><rect x="40" y="110" width="390" height="28" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="54" y="128" font-size="10.5" fill="#1c2928">3 · Đổi interface công khai hoặc ranh giới domain?</text><rect x="40" y="144" width="390" height="28" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="54" y="162" font-size="10.5" fill="#1c2928">4 · Dùng chung tài nguyên: CPU, GPU, RAM, băng thông?</text><rect x="40" y="178" width="390" height="28" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="54" y="196" font-size="10.5" fill="#1c2928">5 · Khó hoặc tốn kém để đảo ngược sau khi xe đã bán?</text><rect x="40" y="212" width="390" height="28" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="54" y="230" font-size="10.5" fill="#1c2928">6 · Chạm ràng buộc pháp lý hoặc hợp đồng nhà cung cấp?</text><line x1="430" y1="56" x2="476" y2="92" stroke="#A64E32" stroke-width="1.4" marker-end="url(#s10-a27)"/><line x1="430" y1="90" x2="476" y2="100" stroke="#A64E32" stroke-width="1.4" marker-end="url(#s10-a27)"/><line x1="430" y1="124" x2="476" y2="108" stroke="#A64E32" stroke-width="1.4" marker-end="url(#s10-a27)"/><line x1="430" y1="158" x2="476" y2="116" stroke="#A64E32" stroke-width="1.4" marker-end="url(#s10-a27)"/><line x1="430" y1="192" x2="476" y2="124" stroke="#A64E32" stroke-width="1.4" marker-end="url(#s10-a27)"/><line x1="430" y1="226" x2="476" y2="132" stroke="#A64E32" stroke-width="1.4" marker-end="url(#s10-a27)"/><text x="452" y="52" font-size="10" fill="#A64E32" text-anchor="middle" font-weight="700">có</text><rect x="480" y="78" width="200" height="66" rx="9" fill="#174C43"/><text x="580" y="100" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Cấp architecture</text><text x="580" y="116" font-size="10" fill="#fff" text-anchor="middle">SA hoặc review board quyết</text><text x="580" y="131" font-size="10" fill="#fff" text-anchor="middle">ghi thành ADR</text><rect x="480" y="158" width="200" height="40" rx="8" fill="#fff" stroke="#A64E32" stroke-width="1.2"/><text x="580" y="174" font-size="10" fill="#1c2928" text-anchor="middle">Nhiều app làm cạn RAM VM</text><text x="580" y="188" font-size="10" fill="#1c2928" text-anchor="middle">Android → có ở câu 1, 2, 4</text><rect x="40" y="254" width="390" height="34" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><text x="235" y="275" font-size="10.5" fill="#1c2928" text-anchor="middle">Tất cả đều "không" → đội sở hữu component tự xử lý</text><rect x="480" y="254" width="200" height="34" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><text x="580" y="268" font-size="10" fill="#1c2928" text-anchor="middle">Lỗi parse JSON trong 1 app</text><text x="580" y="282" font-size="10" fill="#1c2928" text-anchor="middle">→ cả sáu câu đều "không"</text></svg><figcaption>Sáu câu hỏi giúp đặt vấn đề đúng cấp: một câu "có" thì lên kiến trúc, tất cả "không" thì để đội tự giải.</figcaption></figure>
+<p>Ví dụ CDC: một app bị crash do lỗi parse JSON là việc của đội app. Nhưng nếu nhiều app cùng làm cạn RAM của VM Android khiến cluster bị chậm khởi động, đó là vấn đề phân bổ tài nguyên và isolation, cần SA xử lý.</p>
+<p>Vấn đề nên được giải ở cấp thấp nhất mà vẫn có đủ góc nhìn. Khi đã xác định là việc của kiến trúc, cần giao owner, đặt hạn quyết định và ghi kết quả thành ADR.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Vấn đề lên cấp architecture khi nó xuyên ranh giới, chạm quality attribute quan trọng, dùng chung tài nguyên, khó đảo ngược hoặc chạm ràng buộc pháp lý. Những gì nằm gọn trong một component thì để đội sở hữu tự giải.</p></div>
+<h3 id="p2-8">2.8 Làm sao phân biệt complexity cần thiết và complexity có thể loại bỏ?</h3>
+<p><b>Complexity cần thiết</b> đến từ chính bài toán: luật pháp, yêu cầu safety, số thị trường thật sự phải hỗ trợ.</p>
+<p><b>Complexity loại bỏ được</b> đến từ cách làm: hai thư viện cùng làm một việc, cấu hình trùng lặp, abstraction không ai dùng, biến thể không còn bán.</p>
+<p>Fred Brooks, trong bài viết "No Silver Bullet", gọi hai loại này là essential complexity và accidental complexity. Essential complexity không thể bỏ, chỉ có thể sắp xếp cho dễ quản lý. Accidental complexity có thể và nên được cắt.</p>
+<p>Ví dụ CDC: phân tách VM giữa cluster và IVI là cần thiết vì lý do safety. Còn việc ba đội tự viết ba logger khác nhau là phức tạp thừa, có thể thay bằng một logging service chung.</p>
+<p>Các câu hỏi giúp phân loại một phần phức tạp:</p>
+<ol>
+<li><b>Truy về đâu?</b> Phần này phục vụ requirement, quy định hay quality attribute nào? Có tên cụ thể thì nhiều khả năng là cần thiết.</li>
+<li><b>Bỏ đi thì sao?</b> Nếu bỏ mà không requirement nào bị vi phạm, không khách hàng nào mất tính năng, thì đó là phần thừa.</li>
+<li><b>Có cách đơn giản hơn đạt cùng mục tiêu không?</b> Mục tiêu có thể cần thiết nhưng cách làm hiện tại vẫn có phần thừa.</li>
+<li><b>Ai đang trả giá?</b> Phần phức tạp làm nhiều đội tốn công mà chỉ phục vụ một trường hợp hiếm là ứng viên để xem lại.</li>
+</ol>
+<div class="table-scroll"><table>
+<thead><tr><th>Ví dụ trên CDC</th><th>Loại</th><th>Lý do</th><th>Hướng xử lý</th></tr></thead>
+<tbody>
+<tr><td>Cluster và IVI ở hai VM tách biệt</td><td>Cần thiết</td><td>Yêu cầu safety cho cảnh báo trên cluster</td><td>Giữ, ghi rõ trong ADR</td></tr>
+<tr><td>Nhiều ngôn ngữ và bố cục theo thị trường</td><td>Cần thiết</td><td>Quy định và thị trường bán thật</td><td>Đưa vào cấu hình, không rẽ nhánh code</td></tr>
+<tr><td>Ba logger khác nhau</td><td>Thừa</td><td>Không requirement nào đòi ba cách log</td><td>Gộp về một logging service</td></tr>
+<tr><td>Biến thể màn hình đã ngừng bán</td><td>Thừa</td><td>Không còn xe mới dùng</td><td>Ngừng build cho bản mới, giữ nhánh vá cho xe cũ nếu còn nghĩa vụ hỗ trợ</td></tr>
+<tr><td>Lớp abstraction chỉ có một bên dùng</td><td>Có thể thừa</td><td>Chưa có nhu cầu thay thế thật</td><td>Xem lại, trừ khi nó là runway đã có kế hoạch</td></tr>
+</tbody></table></div>
+<p>Trước khi bỏ một phần trông có vẻ thừa, cần tìm lý do nó tồn tại. Một watchdog dư thừa hay một bước kiểm tra lặp lại có thể đang phục vụ một yêu cầu safety mà không ai ghi lại. Vì thế ADR và liên kết tới requirement giúp việc dọn dẹp an toàn hơn.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Truy mỗi phần phức tạp về một requirement cụ thể. Truy được thì sắp xếp cho dễ quản lý; không truy được thì tìm hiểu lý do tồn tại rồi cân nhắc bỏ.</p></div>
+<h3 id="p2-9">2.9 Ai sở hữu một quyết định kiến trúc sau khi hệ thống đi vào vận hành?</h3>
+<p>Sau SOP, đội dự án ban đầu thường giải tán hoặc chuyển sang xe mới. Nếu không bàn giao rõ, các quyết định kiến trúc trở thành "không ai sở hữu".</p>
+<p>Cách làm hợp lý là chuyển ownership sang một nhóm sustaining hoặc platform team, kèm theo:</p>
+<ul>
+<li>Danh sách ADR còn hiệu lực và lý do của từng quyết định.</li>
+<li>Mô hình kiến trúc và interface spec khớp với bản đang chạy trên xe.</li>
+<li>Debt register và danh sách vấn đề đã biết chưa xử lý.</li>
+<li>Ngân sách tài nguyên còn lại: RAM, flash, CPU, để biết bản OTA sau còn chỗ hay không.</li>
+<li>Môi trường build và test tái tạo được, kèm khóa ký và quy trình phát hành.</li>
+<li>Bảng quyền quyết định sau SOP và đường escalation.</li>
+</ul>
+<p>Bảng quyền quyết định sau SOP có thể trông như sau (giả định minh họa, phân chia thật phụ thuộc hợp đồng giữa OEM và Tier-1):</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Loại quyết định sau SOP</th><th>Owner</th><th>Phải tham vấn</th></tr></thead>
+<tbody>
+<tr><td>Nội dung và thời điểm của một bản OTA</td><td>OEM, nhóm quản lý release</td><td>Sustaining team, safety, security</td></tr>
+<tr><td>Thay đổi interface với ECU khác</td><td>Architecture owner của OEM</td><td>Owner của ECU bên kia</td></tr>
+<tr><td>Vá lỗ hổng bảo mật</td><td>Owner security architecture</td><td>Nhóm theo dõi lỗ hổng, sustaining team</td></tr>
+<tr><td>Thay đổi bên trong một component</td><td>Sustaining team của component đó</td><td>Architecture owner nếu chạm ngân sách tài nguyên</td></tr>
+<tr><td>Ngừng hỗ trợ một dòng xe</td><td>Ban điều hành chương trình</td><td>Pháp lý, chăm sóc khách hàng</td></tr>
+</tbody></table></div>
+<p>Quy định cũng đòi điều này. UNECE R155 yêu cầu hệ thống quản lý cybersecurity bao phủ cả giai đoạn sau sản xuất, còn UNECE R156 yêu cầu hệ thống quản lý software update. Cả hai đều cần người chịu trách nhiệm rõ ràng trong suốt thời gian xe được hỗ trợ.</p>
+<p>Ví dụ CDC: ba năm sau SOP, cần đổi thuật toán mã hóa cho kênh OTA. Owner của quyết định security architecture lúc này phải là người đánh giá tác động và phê duyệt, không phải người đã rời dự án.</p>
+<figure class="fig"><svg viewBox="0 0 720 216" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Dòng thời gian: đội dự án sở hữu quyết định tới SOP, sau đó bàn giao ADR cho sustaining team; ba năm sau SOP owner hiện tại duyệt việc đổi mã hóa OTA"><defs><marker id="s10-a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1c2928"/></marker></defs><rect x="0" y="0" width="720" height="216" fill="#fff"/><text x="360" y="26" font-size="13.5" fill="#174C43" text-anchor="middle" font-weight="700">Ownership quyết định kiến trúc phải sống qua SOP</text><rect x="40" y="52" width="258" height="30" rx="8" fill="#174C43"/><text x="169.0" y="71.0" font-size="11" fill="#fff" text-anchor="middle">Đội dự án ban đầu sở hữu</text><rect x="306" y="52" width="374" height="30" rx="8" fill="#2A8C8C"/><text x="493.0" y="71.0" font-size="11" fill="#fff" text-anchor="middle">Sustaining / platform team sở hữu</text><line x1="40" y1="112" x2="678" y2="112" stroke="#1c2928" stroke-width="2" marker-end="url(#s10-a6)"/><line x1="302" y1="46" x2="302" y2="118" stroke="#B7791F" stroke-width="2.4"/><line x1="302" y1="136" x2="302" y2="158" stroke="#B7791F" stroke-width="2.4"/><text x="170" y="130" font-size="10.5" fill="#596966" text-anchor="middle">Concept · phát triển · test</text><text x="302" y="130" font-size="11" fill="#B7791F" text-anchor="middle" font-weight="700">SOP</text><text x="460" y="130" font-size="10.5" fill="#596966" text-anchor="middle">Vận hành, OTA nhiều năm</text><text x="636" y="130" font-size="10.5" fill="#596966" text-anchor="middle">Ngừng hỗ trợ</text><circle cx="575" cy="112" r="5" fill="#A64E32"/><line x1="575" y1="117" x2="575" y2="158" stroke="#A64E32" stroke-width="1.4"/><rect x="200" y="158" width="204" height="44" rx="8" fill="#fff" stroke="#B7791F" stroke-width="1.2"/><text x="302.0" y="177.0" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">Bàn giao có chủ đích:</text><text x="302.0" y="190.5" font-size="10.5" fill="#1c2928" text-anchor="middle">ADR còn hiệu lực + lý do</text><rect x="40" y="158" width="150" height="44" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.2" stroke-dasharray="5 4"/><text x="115.0" y="177.0" font-size="10.5" fill="#A93226" text-anchor="middle" font-weight="700">Không bàn giao:</text><text x="115.0" y="190.5" font-size="10.5" fill="#A93226" text-anchor="middle">"không ai sở hữu"</text><rect x="470" y="158" width="210" height="44" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="575.0" y="177.0" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">SOP + 3 năm: đổi mã hóa OTA</text><text x="575.0" y="190.5" font-size="10.5" fill="#1c2928" text-anchor="middle">→ owner hiện tại đánh giá, duyệt</text></svg><figcaption>Tại SOP, ownership được bàn giao kèm ADR, để mọi thay đổi nhiều năm sau vẫn có người đánh giá và phê duyệt.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Quyết định kiến trúc cần owner suốt thời gian xe còn được hỗ trợ. Tại SOP, ownership được bàn giao cho sustaining hoặc platform team kèm ADR, mô hình, debt register và bảng quyền quyết định.</p></div>
+<div class="next-prev"><a href="8_Virtualization_Mixed_Criticality_Systems.html">← 8 · Virtualization &amp; Mixed Criticality Systems</a><a href="../11_Assignment_1_Architecture_Context_Foundation.html">11 · Assignment 1: Architecture Context &amp; Foundation →</a></div>
+</article>
+  <footer class="article-footer"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></footer>
+  </main>
+</div>
+<script src="../assets/glossary-data.js"></script>
+<script src="../assets/term-glossary.js" data-unit="A.7"></script>
+</body>
+</html>

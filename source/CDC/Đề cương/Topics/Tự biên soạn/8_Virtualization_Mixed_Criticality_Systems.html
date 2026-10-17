@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="../assets/site-ui.js" data-site-ui></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đề cương · Virtualization &amp; Mixed Criticality Systems</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f3f0e8;
+  --surface: #f9f7f1;
+  --ink: #2a3431;
+  --muted: #62706b;
+  --line: #dbd7cb;
+  --forest: #174c43;
+  --forest-soft: #e3ece6;
+  --copper: #a64e32;
+  --gold: #e2bd69;
+  --code: #ebe7dd;
+  --focus: #b34d31;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--copper); }
+a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.reader-header {
+  min-height: 74px;
+  padding: 12px clamp(20px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--forest);
+  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.reader-header a { color: white; text-decoration: none; }
+.reader-header nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; font-size: 0.9rem; }
+
+/* Navigation buttons: same shape/order as the AI library (secondary links | ← Quay lại | ⌂ Trang chủ) */
+.nav-link { padding: 6px 4px; color: #d4e4de; font-weight: 500; white-space: nowrap; }
+.reader-header a.nav-link:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+.nav-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(255, 255, 255, 0.3); }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.nav-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.nav-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.nav-ico { flex: none; width: 16px; height: 16px; }
+.reader-header .nav-btn { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+.reader-header .nav-btn:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.reader-header .nav-btn--primary { color: var(--forest); border-color: var(--gold); background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); }
+.reader-header .nav-btn--primary:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.article-footer .nav-btn { color: var(--forest); border-color: var(--forest); background: transparent; }
+.article-footer .nav-btn:hover { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary:hover { border-color: var(--copper); background: var(--copper); }
+.reader-header nav a:hover { color: var(--gold); }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; line-height: 1.12; }
+.brand small { color: #d4e4de; font-size: 0.75rem; font-weight: 400; }
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  border-radius: 2px;
+}
+
+.reader-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+
+.contents-panel {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 32px 20px 28px clamp(20px, 4vw, 48px);
+  border-right: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--copper);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contents-panel ul { margin: 0; padding: 0; list-style: none; }
+.contents-panel li { margin: 0; padding: 0; }
+.contents-panel a {
+  display: block;
+  padding: 7px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.contents-panel a:hover { color: var(--forest); text-decoration: underline; }
+.contents-panel .toc-level-3 { padding-left: 14px; border-left: 1px solid var(--line); }
+
+.article {
+  min-width: 0;
+  padding: 26px clamp(22px, 5vw, 76px) 70px;
+}
+
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+article { max-width: 900px; }
+article h1, article h2, article h3, .library-intro h1 {
+  color: light-dark(#26403d, #c5e8e4);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  line-height: 1.18;
+}
+article h1 { margin: 0 0 28px; font-size: 2.35rem; }
+article h2 {
+  margin: 48px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+}
+article h3 { margin: 32px 0 12px; color: var(--forest); font-size: 1.24rem; }
+article p { margin: 0 0 18px; }
+article li { margin: 6px 0; padding-left: 4px; }
+article ul, article ol { margin: 0 0 22px; padding-left: 26px; }
+article strong { color: light-dark(#26403c, #c3e9e3); }
+
+blockquote {
+  margin: 22px 0;
+  padding: 15px 20px;
+  border-left: 4px solid var(--copper);
+  background: light-dark(#f8eee8, #31231a);
+  color: light-dark(#543e35, #d4c2bb);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+.table-scroll { width: 100%; margin: 22px 0 26px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.92rem; }
+th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--forest-soft); color: light-dark(#26403c, #c3e9e3); font-weight: 700; }
+tr:nth-child(even) td { background: light-dark(#f9f7f2, #2c2918); }
+
+code, pre { font-family: Consolas, "Courier New", monospace; }
+code { padding: 0.1em 0.28em; background: var(--code); color: light-dark(#24433e, #c3dfda); font-size: 0.9em; }
+pre {
+  max-width: 100%;
+  margin: 20px 0 26px;
+  padding: 18px 20px;
+  overflow: auto;
+  border-left: 3px solid var(--forest);
+  background: light-dark(#e9eeea, #222c25);
+  color: light-dark(#26403d, #d0e6e4);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; color: inherit; }
+hr { margin: 36px 0; border: 0; border-top: 1px solid var(--line); }
+
+.audit-item { margin: 14px 0; }
+
+.audit-item details {
+  margin-top: 9px;
+  border-left: 3px solid #86a99e;
+  background: var(--forest-soft);
+}
+.audit-item summary {
+  padding: 9px 13px;
+  color: var(--forest);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.answer-body { padding: 0 14px 10px; }
+.answer-body p { margin: 4px 0 10px; }
+.answer-body ul { margin: -4px 0 12px; padding-left: 22px; }
+.answer-body li { margin: 3px 0; line-height: 1.55; }
+/* Key questions: map 1-1 to the Learning Plan "Unit Detail" requirements of the topic */
+details.audit-reveal { margin: 8px 0 18px; border-left: 3px solid #86a99e; background: var(--forest-soft); }
+details.audit-reveal > summary { padding: 9px 13px; color: var(--forest); cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.audit-key-intro { margin: 18px 0 28px; padding: 16px 20px 14px; border: 1px solid light-dark(#e6cf95, #62542f); border-left: 6px solid var(--gold); background: light-dark(#fff7e0, #312b1a); }
+.audit-key-intro p { margin: 0 0 8px; }
+.audit-key-intro ol { margin: 0; padding-left: 22px; }
+.audit-key-intro li { margin: 4px 0; }
+.audit-key-intro .req-tag { color: var(--muted); font-size: 0.8rem; }
+.audit-question-heading.audit-key { padding: 10px 14px; border-left: 6px solid var(--copper); background: light-dark(#fbeee4, #31251a); }
+.audit-question-heading.audit-key::after {
+  content: "Tr\1ECDng t\00E2m";
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--copper);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+details.audit-key-reveal, .audit-item details.audit-key-reveal { border-left: 6px solid var(--copper); background: light-dark(#f9f7f2, #2c2317); }
+details.audit-key-reveal > summary, .audit-item details.audit-key-reveal summary { color: var(--copper); }
+
+.article-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 54px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.library-main { width: min(1120px, 100%); margin: 0 auto; padding: 50px clamp(20px, 5vw, 72px) 76px; }
+.library-intro { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+.library-intro h1 { margin: 0; font-size: 3rem; }
+.library-intro h1 span { color: var(--copper); }
+
+.search-label { display: block; margin: 0 0 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#topic-search {
+  width: min(520px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-intro { max-width: 740px; color: var(--muted); }
+.qa-filter { margin: 26px 0 34px; }
+.qa-filter label { display: block; margin-bottom: 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#qa-search {
+  width: min(640px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-filter p { margin: 7px 0 0; color: var(--muted); font-size: 0.82rem; }
+.qa-topic { margin-top: 40px; }
+.qa-topic-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.qa-topic-heading h2 { flex: 1; }
+.qa-topic-heading a { flex: none; font-size: 0.86rem; }
+.qa-question[hidden], .qa-topic[hidden] { display: none; }
+.search-status { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.topic-list { margin-top: 8px; border-top: 1px solid var(--line); }
+.topic-link {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 15px;
+  min-height: 72px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topic-link:hover { background: light-dark(#e8eee9, #222d23); color: var(--forest); }
+.topic-number { color: var(--copper); font-family: Georgia, serif; font-size: 1.1rem; }
+.topic-title { font-weight: 650; }
+.topic-arrow { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.source-note { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.87rem; }
+
+@media (max-width: 860px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .contents-panel {
+    position: static;
+    max-height: none;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contents-panel nav { max-height: 210px; overflow: auto; }
+  .article { padding-top: 22px; }
+}
+
+@media (max-width: 560px) {
+  .reader-header { align-items: flex-start; padding: 12px 17px; }
+  .reader-header { flex-wrap: wrap; }
+  .reader-header nav { gap: 6px 8px; }
+  .nav-sep { display: none; }
+  .nav-btn { min-height: 34px; padding: 6px 12px; }
+  .library-intro h1 { font-size: 2.25rem; }
+  article h1 { font-size: 1.9rem; }
+  article h2 { font-size: 1.4rem; }
+  .topic-link { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .topic-arrow { display: none; }
+  .qa-topic-heading { align-items: flex-start; flex-direction: column; gap: 0; }
+  th, td { min-width: 130px; padding: 9px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* Highlight non-AI (CDC/SDV) topics in the library index */
+.topic-link.topic-core { background: var(--forest-soft); box-shadow: inset 5px 0 0 var(--forest); }
+.topic-link.topic-core .topic-title { color: var(--forest); }
+.topic-link.topic-core .topic-number { color: var(--forest); font-weight: 700; }
+.topic-link.topic-core:hover { background: light-dark(#d4e5de, #233930); }
+.topic-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 18px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.legend-swatch { display: inline-block; width: 18px; height: 14px; margin-right: -10px; border: 1px solid var(--line); vertical-align: -2px; }
+.legend-swatch.legend-core { background: var(--forest-soft); box-shadow: inset 4px 0 0 var(--forest); }
+
+/* Non-learning items (assignment / review / OJT) among CDC/SDV topics: red text */
+.topic-link.topic-task .topic-title, .topic-link.topic-task .topic-number { color: light-dark(#b3261e, #e9847e); }
+.topic-link.topic-task:hover .topic-title { color: light-dark(#8c1d18, #ed9794); }
+.legend-task { color: light-dark(#b3261e, #e9847e); font-weight: 600; }
+/* Study-time note per topic (from Fast_Track_CDC_Weekly_Checklist.xlsx) */
+.topic-time { display: block; margin-top: 3px; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.topic-link.topic-task .topic-time { color: light-dark(#b3261e, #e9847e); opacity: 0.85; }
+.legend-time { flex-basis: 100%; color: var(--muted); }
+
+/* ---- Thuật ngữ: bấm để xem giải nghĩa ---- */
+.gl {
+  border-bottom: 1.5px dotted #6f9a8e;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color .12s;
+}
+.gl:hover { background: var(--forest-soft); }
+.gl:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.gl.is-open { background: var(--forest-soft); border-bottom-style: solid; border-bottom-color: var(--forest); }
+.gl-pop {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(28, 41, 40, .16);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gl-term { display: block; margin-bottom: 2px; color: var(--forest); font-weight: 700; font-size: .82rem; }
+.gl-hint { color: var(--muted); font-size: .85rem; }
+.gl-hint .gl-demo { border-bottom: 1.5px dotted #6f9a8e; }
+
+/* ---- Checklist đầu ra (tick được, lưu trên trình duyệt) ---- */
+.checklist { margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 16px 14px; }
+.checklist > h3 { margin-top: 18px; }
+.cl-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--muted); font-size: .9rem; }
+.cl-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 99px; background: var(--forest-soft); overflow: hidden; }
+.cl-bar > i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s; }
+.cl-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.cl-item { padding: 9px 0 10px; border-top: 1px dashed var(--line); }
+.cl-item:first-child { border-top: 0; }
+.cl-item > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.cl-item input[type="checkbox"] { margin-top: .35em; width: 17px; height: 17px; accent-color: var(--forest); flex: none; }
+.cl-item.is-done > label > span { color: var(--muted); text-decoration: line-through; text-decoration-color: light-dark(#9fb3ad, #495c56); }
+.cl-pass, .cl-src { margin: 4px 0 0 27px; font-size: .9rem; }
+.cl-pass { color: var(--ink); }
+.cl-src { color: var(--muted); font-size: .82rem; }
+.cl-reset { margin-left: auto; border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 2px 9px; color: var(--muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.cl-reset:hover { color: var(--copper); border-color: var(--copper); }
+
+/* Lesson style for CDC/SDV topics — mirrors the teaching layout of the AI library
+   (bài đọc: hook → giải thích → ví dụ → vì sao quan trọng → nghiền ngẫm → thực hành → tự kiểm)
+   while keeping the CDC palette of reader.css. Load AFTER reader.css. */
+:root {
+  --teal: #2A8C8C; --teal-soft: #EEF7F6;
+  --violet: #6A4FC0; --violet-soft: #F5F2FD;
+  --green: #2E7D4F; --green-soft: #EFF8F2;
+  --amber: #B7791F; --amber-soft: #FFF7E8;
+  --red: #A93226; --red-soft: #FCEFEC;
+}
+
+body.lesson-page article { max-width: 800px; }
+body.lesson-page article p, body.lesson-page article li { line-height: 1.75; }
+body.lesson-page article h2 { margin-top: 44px; }
+body.lesson-page article h2 .sec-no { color: var(--copper); font-weight: 700; margin-right: 6px; }
+
+/* Bài nav (pill row, like .tapnav in the AI library) */
+.bai-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+.bai-nav a { font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--surface); }
+.bai-nav a:hover { border-color: var(--forest); color: var(--forest); }
+.bai-nav a.cur { background: var(--forest); border-color: var(--forest); color: #fff; }
+.bai-nav .grp { font-size: 0.7rem; font-weight: 700; color: var(--copper); align-self: center; margin: 0 2px 0 6px; letter-spacing: .06em; }
+
+.lesson-kicker { margin: 0 0 6px; color: var(--copper); font-size: 0.78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+body.lesson-page article h1 { margin-bottom: 10px; }
+.lesson-meta { margin: 0 0 18px; font-weight: 600; color: light-dark(#2c4b46, #bfdad5); font-size: 0.95rem; }
+
+/* Bản đồ bài — chuỗi khái niệm */
+.roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 24px; font-size: 0.86rem; }
+.roadmap span { background: var(--forest-soft); color: var(--forest); border: 1px solid light-dark(#c9ddd5, #314e42); border-radius: 8px; padding: 5px 10px; font-weight: 600; }
+.roadmap i { color: var(--muted); font-style: normal; }
+
+/* Figure card for SVG diagrams */
+.fig { margin: 24px 0; background: light-dark(#f9f7f2, #202819); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 12px; box-shadow: 0 1px 3px rgba(23,76,67,.06); overflow-x: auto; }
+.fig svg { width: 100%; height: auto; display: block; min-width: 560px; }
+.fig figcaption, .fig .cap { margin-top: 8px; color: var(--muted); font-size: 0.84rem; text-align: center; font-style: italic; }
+
+/* Opening question of a section */
+.hook { font-size: 1.04rem; color: light-dark(#26403c, #c6e2de); border-left: 3px solid var(--copper); padding: 4px 0 4px 14px; margin: 6px 0 18px; }
+
+/* Plain-language explanation */
+.plain { background: var(--forest-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0 18px; }
+.plain .ttl { color: var(--forest); }
+
+/* Generic box header */
+.box { border-radius: 12px; padding: 14px 18px; margin: 20px 0; }
+.box > .ttl, .plain > .ttl { margin: 0 0 7px; font-weight: 700; font-size: 0.86rem; }
+.box p { margin: 6px 0; }
+.box ul, .box ol { margin: 6px 0; padding-left: 22px; }
+.box li { margin: 4px 0; }
+
+.ex { background: var(--teal-soft); border: 1px solid var(--teal); }
+.ex > .ttl { color: light-dark(#1d6b6b, #a8e7e7); }
+.case { background: light-dark(#f9f7f2, #2c2117); border: 1px solid light-dark(#EBB28F, #63432f); border-left: 4px solid var(--copper); }
+.case > .ttl { color: var(--copper); font-size: 0.74rem; text-transform: uppercase; letter-spacing: .05em; }
+.pitfall { background: var(--amber-soft); border: 1px solid light-dark(#EBC77A, #695833); }
+.pitfall > .ttl { color: light-dark(#8A5A00, #ffd88f); }
+.why { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--forest); }
+.why > .ttl { color: var(--forest); }
+
+.practice { background: var(--green-soft); border: 1px solid var(--green); }
+.practice > .ttl { color: light-dark(#1F6340, #ade5c9); }
+.remember { background: var(--forest); color: #E4EFEB; }
+.remember > .ttl { color: var(--gold); }
+.remember b, .remember strong { color: #fff; }
+
+/* Sai vs đúng */
+.contrast { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.contrast > div { border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; }
+.contrast .bad { background: var(--red-soft); border: 1px solid light-dark(#E3A79F, #60342e); }
+.contrast .good { background: var(--green-soft); border: 1px solid light-dark(#9CCFB0, #326747); }
+.contrast .ttl { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
+.contrast .bad .ttl { color: var(--red); }
+.contrast .good .ttl { color: var(--green); }
+.contrast p { margin: 4px 0; }
+
+/* Step-by-step anatomy */
+.steps { list-style: none; counter-reset: st; padding-left: 0 !important; }
+.steps > li { counter-increment: st; position: relative; padding: 2px 0 2px 42px !important; margin: 12px 0 !important; }
+.steps > li::before { content: counter(st); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+
+/* Small term chips inline */
+.term { font-weight: 650; color: light-dark(#26403c, #c3e9e3); }
+.term-gloss { color: var(--muted); font-size: 0.92em; }
+
+/* Lesson prev/next */
+.next-prev { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .contrast { grid-template-columns: 1fr; }
+  .fig svg { min-width: 520px; }
+}
+
+/* ---------- Learning reflection + Unit assessment (assets/assessment.js) ---------- */
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.refl-intro { color: light-dark(#2c4b46, #bfdad5); }
+.refl-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--violet); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.refl-label { margin: 0 0 4px !important; font-weight: 700; color: light-dark(#3f2c86, #a99ade); }
+.refl-hint { color: light-dark(#41506B, #aeb9ce); font-size: 0.93rem; margin-bottom: 8px; }
+.refl-hint ul { margin: 4px 0 0; padding-left: 20px; }
+.refl-hint li { margin: 2px 0; }
+#reflection-app textarea, #quiz-app textarea, #workshop-app textarea { width: 100%; font: inherit; font-size: 0.95rem; line-height: 1.55; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); color: var(--ink); resize: vertical; }
+#reflection-app textarea:focus, #quiz-app textarea:focus, #workshop-app textarea:focus { outline: 2px solid var(--gold); border-color: var(--forest); }
+.refl-sample { margin-top: 8px; }
+.refl-sample summary { cursor: pointer; color: var(--forest); font-size: 0.86rem; font-weight: 600; }
+.refl-sample-body { margin: 6px 0; padding: 8px 12px; background: var(--forest-soft); border-radius: 6px; font-size: 0.92rem; }
+.refl-sample-body ul { margin: 4px 0; padding-left: 20px; }
+.refl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 6px; }
+.refl-tools p { flex-basis: 100%; margin: 2px 0 0; }
+.tool-msg { color: var(--green); font-size: 0.86rem; }
+.act-btn, .mini-btn { font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1.5px solid var(--forest); }
+.act-btn { background: var(--forest); color: #fff; }
+.act-btn:hover { background: var(--copper); border-color: var(--copper); }
+.mini-btn { background: transparent; color: var(--forest); padding: 5px 12px; font-size: 0.82rem; }
+.mini-btn:hover { background: var(--forest-soft); }
+.mini-btn.danger { color: var(--red); border-color: light-dark(#E3A79F, #60342e); }
+.assess-note { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; }
+.assess-note.small { background: transparent; padding: 0; }
+
+table.rubric select { font: inherit; font-size: 0.86rem; padding: 4px 6px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ws-col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.ws-h { margin: 0 0 4px !important; font-weight: 700; color: var(--forest); font-size: 0.9rem; }
+.ws-col ol, .ws-col ul { margin: 0 !important; padding-left: 20px !important; font-size: 0.93rem; }
+table.rubric td.num { text-align: center; font-weight: 700; color: var(--copper); }
+table.rubric td { font-size: 0.9rem; }
+table.rubric textarea { min-width: 180px; }
+.rub-pts { font-size: 0.82rem; color: var(--forest); font-weight: 600; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.dash-card.pass { border-color: light-dark(#9CCFB0, #326747); background: var(--green-soft); }
+.dash-card.fail { border-color: light-dark(#E3A79F, #60342e); background: var(--red-soft); }
+.dash-h { margin: 0 !important; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-v { margin: 2px 0 !important; font-size: 1.6rem; font-weight: 700; color: var(--forest); }
+.dash-sub { margin: 0 !important; font-size: 0.84rem; color: var(--muted); }
+
+/* ---------- Knowledge questions (open questions, self-rated) ---------- */
+.kq-howto { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kq-toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.kq-filter { font-size: 0.88rem; color: var(--forest); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.kq-progress { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; }
+.kq-track { flex: 1; height: 8px; border-radius: 99px; background: light-dark(#E3E8E2, #272f25); overflow: hidden; display: flex; }
+.kq-track .seg { height: 100%; }
+.seg-yes { background: var(--green); } .seg-part { background: light-dark(#D9A441, #665027); } .seg-no { background: light-dark(#C0504D, #6a2a28); }
+.kq-count { font-size: 0.84rem; color: var(--muted); white-space: nowrap; }
+.kq-group { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; border-bottom: 1px dashed var(--line); }
+.kq-group-title { margin: 0 0 6px !important; font-size: 1.08rem !important; }
+.kq-back { font-size: 0.82rem; white-space: nowrap; }
+.kq-list { padding-left: 26px !important; margin-top: 8px !important; }
+.kq-item { margin: 12px 0 !important; padding: 10px 14px !important; border: 1px solid var(--line); border-left: 4px solid light-dark(#C9D3CF, #3b4843); border-radius: 10px; background: var(--surface); }
+.kq-item[data-rate="yes"] { border-left-color: var(--green); }
+.kq-item[data-rate="part"] { border-left-color: #D9A441; }
+.kq-item[data-rate="no"] { border-left-color: #C0504D; }
+.only-weak .kq-item[data-rate="yes"] { display: none; }
+.kq-q { margin: 0 0 6px !important; font-weight: 600; line-height: 1.6 !important; }
+.kq-type { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 4px; background: var(--forest-soft); color: var(--forest); font-size: 0.72rem; font-weight: 700; letter-spacing: .03em; vertical-align: 2px; text-transform: uppercase; }
+.kq-mine, .kq-answer { margin: 6px 0; }
+.kq-mine summary, .kq-answer summary { cursor: pointer; font-size: 0.86rem; font-weight: 600; color: var(--forest); }
+.kq-mine textarea { margin-top: 6px; width: 100%; font: inherit; font-size: 0.95rem; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; resize: vertical; }
+.kq-answer-body { margin-top: 6px; padding: 10px 14px; background: light-dark(#F4F8F6, #1b2a22); border: 1px solid light-dark(#D5E3DD, #2f473d); border-radius: 8px; font-size: 0.95rem; }
+.kq-answer-body p { margin: 4px 0 8px !important; }
+.kq-answer-body ul, .kq-answer-body ol { margin: 4px 0 8px !important; padding-left: 20px !important; }
+.kq-answer-body li { margin: 2px 0 !important; }
+.kq-refs { font-size: 0.84rem; color: var(--muted); border-top: 1px dashed light-dark(#D5E3DD, #2f473d); padding-top: 6px; margin-top: 8px !important; }
+.kq-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.kq-rate-l { font-size: 0.8rem; color: var(--muted); }
+.kq-rbtn { font: inherit; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid light-dark(#C9D3CF, #3b4843); background: light-dark(#f9f7f2, #192320); color: var(--muted); cursor: pointer; }
+.kq-rbtn[aria-pressed="true"].r-yes { background: var(--green); border-color: var(--green); color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-part { background: light-dark(#D9A441, #665027); border-color: #D9A441; color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-no { background: light-dark(#C0504D, #6a2a28); border-color: #C0504D; color: #fff; }
+
+
+  </style>
+  <style>
+    article h4 { margin: 22px 0 8px; color: var(--forest); font-size: 1.02rem; }
+    td.c, th.c { text-align: center; }
+    tr.total td { font-weight: 700; background: var(--forest-soft) !important; }
+    .fig svg .hit:hover { opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="../assets/dark.css">
+</head>
+<body class="topic-page lesson-page">
+<header class="reader-header">
+    <a class="brand" href="../../dainv13.html"><span class="brand-mark">Đ</span><span>Đề cương<br><small>Virtualization &amp; Mixed Criticality Systems</small></span></a>
+    <nav aria-label="Page actions"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></nav>
+</header>
+<div class="reader-layout">
+  <aside class="contents-panel">
+    <p class="eyebrow">Nội dung trang</p>
+    <nav aria-label="Topic contents"><ul>
+<li class="toc-level-2"><a href="#p1">Phần 1 · Giải thích chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-2">1.2 Tổng quan về chủ đề</a></li>
+<li class="toc-level-2"><a href="#p2">Phần 2 · Nội dung chi tiết</a></li>
+<li class="toc-level-3"><a href="#p2-1">2.1 Virtualization và workload khác criticality</a></li>
+<li class="toc-level-3"><a href="#p2-2">2.2 Hypervisor, VM, container, partitioning</a></li>
+<li class="toc-level-3"><a href="#p2-3">2.3 CPU, memory, I/O, network isolation</a></li>
+<li class="toc-level-3"><a href="#p2-4">2.4 Safety-, mission-, non-critical workload</a></li>
+<li class="toc-level-3"><a href="#p2-5">2.5 Fault containment, timing isolation, reservation</a></li>
+<li class="toc-level-3"><a href="#p2-6">2.6 Trade-off năm hướng tối ưu</a></li>
+<li class="toc-level-3"><a href="#p2-7">2.7 Non-critical không ảnh hưởng critical</a></li>
+<li class="toc-level-3"><a href="#p2-8">2.8 Chứng minh isolation bằng evidence</a></li>
+<li class="toc-level-3"><a href="#p2-9">2.9 Policy ưu tiên khi tranh chấp</a></li>
+</ul></nav>
+  </aside>
+  <main class="article">
+    <article>
+<p class="lesson-kicker">Đề cương tự biên soạn</p>
+<h1 id="top">Virtualization &amp; Mixed Criticality Systems</h1>
+<p class="lesson-meta">Ảo hóa &amp; hệ thống mixed-criticality · đọc ~20 phút</p>
+
+<h2 id="p1"><span class="sec-no">1 ·</span> Giải thích chủ đề</h2>
+<h3 id="p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</h3>
+<ul>
+<li><b>Virtualization</b>: kỹ thuật cho nhiều hệ điều hành chạy trên cùng một phần cứng, mỗi hệ điều hành tưởng mình có máy riêng. Lớp phần mềm làm việc này là hypervisor. Nó dựa vào hỗ trợ ảo hóa của phần cứng, trên ARM là mức đặc quyền EL2 và bảng dịch địa chỉ giai đoạn hai.</li>
+<li><b>Mixed Criticality</b>: các phần mềm có mức độ quan trọng khác nhau về an toàn cùng chạy chung một hệ thống. ISO 26262 đo mức này bằng ASIL, từ A thấp nhất đến D cao nhất. Phần không có yêu cầu safety được xếp là QM.</li>
+<li><b>Systems</b>: toàn bộ phần cứng, hypervisor, OS và ứng dụng được xem như một khối cần thiết kế và chứng minh cùng nhau.</li>
+</ul>
+<h3 id="p1-2">1.2 Tổng quan về chủ đề</h3>
+<p>CDC gom cluster, IVI và đôi khi HUD vào một SoC để giảm chi phí. Cluster hiển thị đèn cảnh báo có yêu cầu ASIL theo ISO 26262, còn IVI chạy Android Automotive với hàng trăm app không đạt chuẩn safety.</p>
+<p>Đặt hai thế giới này lên một con chip đặt ra câu hỏi trung tâm của chủ đề: làm sao chắc chắn phần kém tin cậy không thể phá phần cần tin cậy, về bộ nhớ, về thời gian và về dữ liệu trao đổi.</p>
+<p>Chủ đề đi từ các khái niệm hypervisor, VM, container và partitioning, tới cách tách từng loại tài nguyên CPU, bộ nhớ, I/O và mạng, cách phân loại workload, và các cơ chế giữ lỗi, giữ thời gian, dành trước tài nguyên. Sau đó là các trade-off khi chọn cấu hình, và ba câu hỏi thực hành: làm sao để workload không critical không ảnh hưởng workload critical, isolation được chứng minh ra sao, và ai được ưu tiên khi tài nguyên bị tranh chấp.</p>
+<h2 id="p2"><span class="sec-no">2 ·</span> Nội dung chi tiết</h2>
+<h3 id="p2-1">2.1 Virtualization và việc đồng tồn tại của các workload có mức độ criticality khác nhau</h3>
+<h4>a) Virtualization làm gì</h4>
+<p>Mục tiêu của virtualization trên xe không phải là chạy nhiều máy cho tiện, mà là để nhiều workload khác mức criticality dùng chung phần cứng mà vẫn tách biệt.</p>
+<p>Hypervisor tạo ra các VM. Mỗi VM có CPU ảo, vùng nhớ và thiết bị riêng. Phần cứng hỗ trợ việc này bằng các cơ chế như mức đặc quyền dành riêng cho hypervisor, bảng dịch địa chỉ giai đoạn hai, bộ điều khiển ngắt có hỗ trợ ảo hóa, và SMMU để giới hạn vùng nhớ thiết bị được phép truy cập.</p>
+<h4>b) Vì sao đặt chung các workload khác criticality</h4>
+<p>Lý do chính là chi phí và tích hợp: ít hộp hơn, ít dây hơn, dùng chung GPU và màn hình, và dễ làm tính năng kết hợp như hiển thị bản đồ navigation ngay trên cluster. Có ba cách để đặt chung:</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Cách</th><th>Mô tả</th><th>Mạnh ở</th><th>Yếu ở</th></tr></thead>
+<tbody>
+<tr><td>Chip riêng</td><td>Cluster chạy trên MCU hoặc SoC nhỏ riêng, IVI trên SoC khác</td><td>Tách biệt tự nhiên, dễ chứng minh</td><td>Đắt hơn, khó chia sẻ màn hình và dữ liệu</td></tr>
+<tr><td>Một SoC, có hypervisor</td><td>Cluster và IVI là hai VM trên cùng chip</td><td>Tiết kiệm, mỗi bên dùng OS hợp nhất</td><td>Phải chứng minh isolation ở tài nguyên chia sẻ</td></tr>
+<tr><td>Một OS, có partitioning</td><td>Cluster và IVI là các partition trên cùng một OS như QNX</td><td>Ít lớp hơn, độ trễ thấp</td><td>Khó chạy Android, lỗi kernel ảnh hưởng tất cả</td></tr>
+</tbody></table></div>
+<h4>c) Freedom from interference</h4>
+<p>ISO 26262 gọi yêu cầu này là freedom from interference: phần mềm mức thấp không được gây lỗi cho phần mềm mức cao về bộ nhớ, thời gian và trao đổi dữ liệu.</p>
+<ul>
+<li><b>Bộ nhớ</b>: Android không được ghi vào vùng nhớ của cluster, kể cả qua DMA của một thiết bị.</li>
+<li><b>Thời gian và thực thi</b>: Android tải nặng không được làm cluster trễ hạn vẽ khung hình hay bị treo.</li>
+<li><b>Trao đổi dữ liệu</b>: dữ liệu Android gửi sang cluster có thể sai, trễ, lặp hoặc mất, và cluster phải phát hiện được.</li>
+</ul>
+<p>Ví dụ CDC: VM cluster chạy QNX với một phần chức năng ASIL B, VM IVI chạy Android Automotive ở mức QM. Hypervisor bảo đảm Android crash thì cluster vẫn hiển thị.</p>
+<figure class="fig"><svg viewBox="0 0 720 280" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="VM cluster ASIL B và VM IVI QM trên cùng hypervisor và SoC; ở giữa là ba mặt freedom from interference: bộ nhớ, thời gian, trao đổi dữ liệu"><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">CDC hợp nhất: hai VM và ba mặt freedom from interference</text><rect x="20" y="40" width="220" height="148" rx="10" fill="#E5EFEB" stroke="#174C43" stroke-width="1.4"/><text x="130" y="60" font-size="11" fill="#174C43" text-anchor="middle" font-weight="700">VM cluster · ASIL B</text><rect x="36" y="74" width="188" height="44" rx="8" fill="#174C43"/><text x="130" y="92.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Cluster HMI</text><text x="130" y="106.5" font-size="10" fill="#fff" text-anchor="middle">đèn cảnh báo, tốc độ</text><rect x="36" y="130" width="188" height="30" rx="8" fill="#2A6F66"/><text x="130" y="148.7" font-size="10.5" fill="#fff" text-anchor="middle">QNX</text><rect x="480" y="40" width="220" height="148" rx="10" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.4"/><text x="590" y="60" font-size="11" fill="#2A8C8C" text-anchor="middle" font-weight="700">VM IVI · QM</text><rect x="496" y="74" width="188" height="44" rx="8" fill="#2A8C8C"/><text x="590" y="92.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">Android Automotive</text><text x="590" y="106.5" font-size="10" fill="#fff" text-anchor="middle">hàng trăm app</text><rect x="496" y="130" width="188" height="30" rx="8" fill="#2A6F66"/><text x="590" y="148.7" font-size="10.5" fill="#fff" text-anchor="middle">Linux kernel</text><text x="360" y="54" font-size="11" fill="#A93226" text-anchor="middle" font-weight="700">Freedom from interference</text><rect x="256" y="64" width="208" height="34" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.4" stroke-dasharray="5 4"/><text x="360" y="84.7" font-size="10.5" fill="#A93226" text-anchor="middle">Bộ nhớ: không ghi đè</text><rect x="256" y="106" width="208" height="34" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.4" stroke-dasharray="5 4"/><text x="360" y="126.7" font-size="10.5" fill="#A93226" text-anchor="middle">Thời gian: không làm trễ</text><rect x="256" y="148" width="208" height="34" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.4" stroke-dasharray="5 4"/><text x="360" y="168.7" font-size="10.5" fill="#A93226" text-anchor="middle">Dữ liệu: sai thì phát hiện</text><rect x="20" y="198" width="680" height="30" rx="8" fill="#E2BD69"/><text x="360" y="216.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Hypervisor Type 1: stage-2 MMU, SMMU, lập lịch VM, watchdog</text><rect x="20" y="236" width="680" height="30" rx="8" fill="#1c2928"/><text x="360" y="254.7" font-size="10.5" fill="#fff" text-anchor="middle">SoC dùng chung: CPU, GPU, RAM, display controller</text></svg><figcaption>Hai VM khác mức criticality đứng trên cùng hypervisor và SoC; chúng chỉ được phép chung nhà khi cả ba mặt interference đã bị chặn.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Virtualization cho phép chia sẻ phần cứng giữa các mức criticality để giảm chi phí và dễ tích hợp. Điều kiện bắt buộc là chứng minh được freedom from interference trên cả ba mặt: bộ nhớ, thời gian và trao đổi dữ liệu.</p></div>
+<h3 id="p2-2">2.2 Hypervisor, virtual machine, container và partitioning</h3>
+<div class="table-scroll"><table>
+<thead><tr><th>Khái niệm</th><th>Ý nghĩa</th><th>Mức tách biệt</th></tr></thead>
+<tbody>
+<tr><td>Hypervisor</td><td>Lớp phần mềm quản lý phần cứng, tạo và giám sát VM</td><td>Là gốc của isolation</td></tr>
+<tr><td>Virtual machine</td><td>Một máy ảo chạy OS riêng</td><td>Cao: kernel tách riêng</td></tr>
+<tr><td>Container</td><td>Nhóm process cô lập trên cùng một kernel</td><td>Thấp hơn: chung kernel</td></tr>
+<tr><td>Partitioning</td><td>Chia tài nguyên cố định cho từng phần</td><td>Có thể ở mức hypervisor hoặc OS</td></tr>
+</tbody></table></div>
+<h4>a) Hypervisor</h4>
+<p>Hypervisor Type 1 chạy trực tiếp trên phần cứng và là lựa chọn phổ biến trên xe, ví dụ QNX Hypervisor, PikeOS, COQOS, Xen. Container hợp với việc tách các service cùng mức criticality, ví dụ nhiều app trong VM IVI.</p>
+<figure class="fig"><svg viewBox="0 0 720 296" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Hypervisor Type 1 trên hardware chạy VM cluster với QNX kernel và VM IVI; trong VM IVI các container dùng chung kernel"><defs><marker id="s8-vm-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">VM tách kernel, container chung kernel</text><rect x="20" y="252" width="540" height="30" rx="8" fill="#1c2928"/><text x="290" y="270.9" font-size="11" fill="#fff" text-anchor="middle">Hardware: SoC với CPU, GPU, RAM</text><rect x="20" y="214" width="540" height="30" rx="8" fill="#174C43"/><text x="290" y="232.8" font-size="11" fill="#fff" text-anchor="middle">Hypervisor Type 1: QNX Hypervisor, PikeOS, COQOS, Xen</text><rect x="20" y="40" width="200" height="166" rx="10" fill="#E5EFEB" stroke="#174C43" stroke-width="1.4"/><text x="120" y="60" font-size="11" fill="#174C43" text-anchor="middle" font-weight="700">VM cluster (ASIL)</text><rect x="36" y="74" width="168" height="56" rx="8" fill="#A64E32"/><text x="120" y="98.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Cluster HMI</text><text x="120" y="113" font-size="10.5" fill="#fff" text-anchor="middle">cảnh báo, tốc độ</text><rect x="36" y="160" width="168" height="32" rx="8" fill="#2A6F66"/><text x="120" y="179.8" font-size="11" fill="#fff" text-anchor="middle">QNX kernel riêng</text><rect x="236" y="40" width="324" height="166" rx="10" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.4"/><text x="398" y="60" font-size="11" fill="#2A8C8C" text-anchor="middle" font-weight="700">VM IVI (QM)</text><rect x="252" y="74" width="140" height="56" rx="8" fill="#fff" stroke="#2A8C8C" stroke-width="1.2" stroke-dasharray="5 4"/><text x="322" y="98.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Container</text><text x="322" y="113" font-size="10.5" fill="#1c2928" text-anchor="middle">app media</text><rect x="404" y="74" width="140" height="56" rx="8" fill="#fff" stroke="#2A8C8C" stroke-width="1.2" stroke-dasharray="5 4"/><text x="474" y="98.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Container</text><text x="474" y="113" font-size="10.5" fill="#1c2928" text-anchor="middle">app bên thứ ba</text><rect x="252" y="160" width="292" height="32" rx="8" fill="#2A6F66"/><text x="398" y="179.8" font-size="11" fill="#fff" text-anchor="middle">Linux kernel của Android, dùng chung</text><line x1="322" y1="130" x2="322" y2="158" stroke="#596966" stroke-width="1.2" marker-end="url(#s8-vm-m)"/><line x1="474" y1="130" x2="474" y2="158" stroke="#596966" stroke-width="1.2" marker-end="url(#s8-vm-m)"/><rect x="580" y="50" width="120" height="70" rx="8" fill="#174C43"/><text x="640" y="74.5" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Giữa hai VM</text><text x="640" y="88.8" font-size="10.5" fill="#fff" text-anchor="middle">kernel riêng</text><text x="640" y="103.1" font-size="10.5" fill="#fff" text-anchor="middle">mức tách cao</text><rect x="580" y="136" width="120" height="70" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="640" y="160.5" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Giữa container</text><text x="640" y="174.8" font-size="10.5" fill="#1c2928" text-anchor="middle">chung kernel</text><text x="640" y="189.2" font-size="10.5" fill="#1c2928" text-anchor="middle">tách thấp hơn</text></svg><figcaption>Hai VM khác mức criticality không chung kernel; container chỉ hợp để tách các app cùng mức trong một VM.</figcaption></figure>
+<p>Type 2 chạy như một ứng dụng trên OS chủ, giống phần mềm máy ảo trên máy tính cá nhân. Nó không hợp cho xe vì lỗi của OS chủ kéo theo mọi VM. Hypervisor cho xe thường giữ phần chạy ở mức đặc quyền cao nhất thật nhỏ, để dễ kiểm chứng và dễ chứng nhận.</p>
+<h4>b) Virtual machine</h4>
+<p>Mỗi VM chạy một OS khách với kernel riêng. OS khách có thể không biết mình đang chạy trên máy ảo, hoặc biết và dùng driver đặc biệt để làm việc hiệu quả hơn với hypervisor, gọi là paravirtualization. Virtio là chuẩn phổ biến cho các driver loại này. Thiết bị có thể được gán thẳng cho một VM, hoặc được chia sẻ qua một backend chạy ở VM khác hay trong hypervisor.</p>
+<h4>c) Container</h4>
+<p>Trên Linux, container dựa vào namespaces để mỗi nhóm process thấy hệ thống riêng và cgroups để giới hạn tài nguyên. Container nhẹ và khởi động nhanh, nhưng mọi container dùng chung một kernel: lỗi kernel ảnh hưởng tất cả. Bản thân Android cũng đã tách app bằng user ID riêng và SELinux, tức là tách ở mức process. Container hợp để triển khai và cập nhật các service độc lập trong một VM Linux, không hợp để làm ranh giới giữa hai mức criticality.</p>
+<h4>d) Partitioning</h4>
+<p>Partitioning có hai mặt: không gian, tức vùng nhớ và thiết bị riêng, và thời gian, tức phần thời gian CPU riêng. Nó có thể làm ở mức hypervisor, mỗi VM là một partition, hoặc ở mức OS, như adaptive partitioning của QNX. Ý tưởng time partition cố định vốn phổ biến trong hàng không theo chuẩn ARINC 653, và một số hypervisor như PikeOS mang cách làm đó sang ô tô. Cấu hình partition thường là tĩnh, được chốt lúc thiết kế và nằm trong tài liệu safety.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Hypervisor Type 1 là gốc của isolation, VM tách ở mức kernel, container tách ở mức process, partitioning chia cố định không gian và thời gian. Workload khác mức criticality nên tách bằng VM hoặc partition, không chỉ bằng container.</p></div>
+<h3 id="p2-3">2.3 CPU, memory, I/O và network isolation</h3>
+<h4>a) CPU</h4>
+<ul>
+<li><b>CPU</b>: gán cố định core cho VM, gọi là CPU pinning. Cluster có core riêng nên không bị Android chiếm.</li>
+</ul>
+<p>Nếu buộc phải dùng chung core, hypervisor chia thời gian bằng budget hoặc cửa sổ thời gian cố định cho từng VM. Ngắt cũng phải được định tuyến đúng: ngắt của thiết bị thuộc IVI không được làm gián đoạn core của cluster. Cache L1 thuộc riêng từng core, nhưng cache cấp cuối thường dùng chung, nên CPU pinning thôi chưa đủ.</p>
+<h4>b) Memory</h4>
+<ul>
+<li><b>Memory</b>: MMU giai đoạn hai của hypervisor ngăn VM đọc ghi vùng nhớ của VM khác. Cache và băng thông DRAM vẫn có thể bị chia sẻ, cần kỹ thuật như cache partitioning.</li>
+</ul>
+<p>Cache partitioning có thể làm bằng phần mềm, chọn trang nhớ sao cho mỗi VM chỉ dùng một phần cache, gọi là cache coloring, hoặc bằng phần cứng như MPAM trên các lõi ARM mới. Băng thông DRAM được bảo vệ bằng cách giới hạn lượng truy cập của core non-critical trong mỗi chu kỳ. Cái giá: mỗi VM chỉ còn dùng được một phần cache, và VM bị giới hạn sẽ chạy chậm hơn.</p>
+<h4>c) I/O</h4>
+<ul>
+<li><b>I/O</b>: IOMMU giới hạn vùng nhớ mà thiết bị DMA được truy cập. Thiết bị có thể gán thẳng cho một VM hoặc chia sẻ qua virtio.</li>
+</ul>
+<p>Trên ARM, IOMMU được gọi là SMMU. Có ba cách đưa thiết bị cho VM: gán thẳng thì nhanh nhưng thiết bị chỉ thuộc một VM; chia sẻ qua virtio thì linh hoạt nhưng thêm độ trễ, và backend chạy virtio trở thành một dependency chung; còn thiết bị có sẵn hỗ trợ chia sẻ trong phần cứng, như GPU có virtualization hay display controller nhiều layer, cho mỗi VM một phần riêng.</p>
+<p>Ví dụ CDC: display controller có nhiều layer. Layer cảnh báo được gán cho VM cluster, layer khác cho VM IVI. Android không thể vẽ đè lên đèn cảnh báo.</p>
+<figure class="fig"><svg viewBox="0 0 720 258" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Gán thẳng thiết bị cho một VM, chia sẻ qua backend virtio, hoặc chia sẻ trong phần cứng như display controller nhiều layer; SMMU giới hạn DMA cho mọi cách"><defs><marker id="s8-dev-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Ba cách đưa thiết bị cho VM</text><rect x="20" y="34" width="220" height="168" rx="10" fill="#E5EFEB"/><text x="130" y="52" font-size="11.5" fill="#174C43" text-anchor="middle" font-weight="700">Gán thẳng</text><rect x="250" y="34" width="220" height="168" rx="10" fill="#E5EFEB"/><text x="360" y="52" font-size="11.5" fill="#174C43" text-anchor="middle" font-weight="700">Chia sẻ qua virtio</text><rect x="480" y="34" width="220" height="168" rx="10" fill="#E5EFEB"/><text x="590" y="52" font-size="11.5" fill="#174C43" text-anchor="middle" font-weight="700">Chia sẻ trong phần cứng</text><rect x="70" y="62" width="120" height="28" rx="8" fill="#174C43"/><text x="130" y="79.7" font-size="10.5" fill="#fff" text-anchor="middle">VM cluster</text><line x1="130" y1="90" x2="130" y2="124" stroke="#596966" stroke-width="1.6" marker-end="url(#s8-dev-m)"/><rect x="70" y="126" width="120" height="28" rx="8" fill="#1c2928"/><text x="130" y="143.7" font-size="10.5" fill="#fff" text-anchor="middle">Thiết bị</text><rect x="264" y="62" width="90" height="28" rx="8" fill="#2A8C8C"/><text x="309" y="79.7" font-size="10.5" fill="#fff" text-anchor="middle">VM A</text><rect x="366" y="62" width="90" height="28" rx="8" fill="#2A8C8C"/><text x="411" y="79.7" font-size="10.5" fill="#fff" text-anchor="middle">VM B</text><line x1="309" y1="90" x2="330" y2="104" stroke="#596966" stroke-width="1.5" marker-end="url(#s8-dev-m)"/><line x1="411" y1="90" x2="390" y2="104" stroke="#596966" stroke-width="1.5" marker-end="url(#s8-dev-m)"/><rect x="290" y="106" width="140" height="22" rx="8" fill="#E2BD69"/><text x="360" y="120.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Backend virtio</text><line x1="360" y1="128" x2="360" y2="136" stroke="#596966" stroke-width="1.5" marker-end="url(#s8-dev-m)"/><rect x="300" y="138" width="120" height="22" rx="8" fill="#1c2928"/><text x="360" y="152.7" font-size="10.5" fill="#fff" text-anchor="middle">Thiết bị</text><rect x="494" y="62" width="90" height="26" rx="8" fill="#174C43"/><text x="539" y="78.7" font-size="10.5" fill="#fff" text-anchor="middle">VM cluster</text><rect x="596" y="62" width="90" height="26" rx="8" fill="#2A8C8C"/><text x="641" y="78.7" font-size="10.5" fill="#fff" text-anchor="middle">VM IVI</text><rect x="494" y="96" width="192" height="64" rx="8" fill="#1c2928"/><text x="590" y="110" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">Display controller</text><rect x="504" y="120" width="80" height="30" rx="8" fill="#A64E32"/><text x="544" y="138.7" font-size="10.5" fill="#fff" text-anchor="middle">Layer 1</text><rect x="596" y="120" width="80" height="30" rx="8" fill="#2A8C8C"/><text x="636" y="138.7" font-size="10.5" fill="#fff" text-anchor="middle">Layer 2+</text><line x1="510" y1="88" x2="510" y2="118" stroke="#fff" stroke-width="1.5"/><line x1="670" y1="88" x2="670" y2="118" stroke="#fff" stroke-width="1.5"/><text x="130" y="180" font-size="10.5" fill="#2A6F66" text-anchor="middle" font-weight="700">+ nhanh, ít lớp</text><text x="130" y="195" font-size="10.5" fill="#A93226" text-anchor="middle">− chỉ một VM dùng được</text><text x="360" y="180" font-size="10.5" fill="#2A6F66" text-anchor="middle" font-weight="700">+ nhiều VM dùng chung</text><text x="360" y="195" font-size="10.5" fill="#A93226" text-anchor="middle">− thêm độ trễ, backend chung</text><text x="590" y="180" font-size="10.5" fill="#2A6F66" text-anchor="middle" font-weight="700">+ mỗi VM một phần riêng</text><text x="590" y="195" font-size="10.5" fill="#A93226" text-anchor="middle">− phụ thuộc chip hỗ trợ</text><rect x="20" y="214" width="680" height="30" rx="8" fill="#174C43"/><text x="360" y="232.8" font-size="11" fill="#fff" text-anchor="middle">SMMU giới hạn DMA của mọi thiết bị vào đúng vùng nhớ của VM sở hữu</text></svg><figcaption>Mỗi cách đưa thiết bị cho VM đánh đổi tốc độ lấy khả năng chia sẻ, còn SMMU là hàng rào chung cho cả ba.</figcaption></figure>
+<h4>d) Network isolation</h4>
+<p>Mỗi VM có card mạng ảo, nối qua virtual switch của hypervisor hoặc qua phần cứng mạng hỗ trợ chia sẻ. Các nguyên tắc chính:</p>
+<ul>
+<li><b>Tách VLAN</b>: lưu lượng dữ liệu xe cho cluster nằm ở VLAN khác với lưu lượng infotainment và Internet.</li>
+<li><b>Firewall giữa VM</b>: chỉ những cổng và service đã khai báo mới được đi qua.</li>
+<li><b>Ưu tiên và giới hạn băng thông</b>: gói tin quan trọng có priority cao theo 802.1Q, có thể dùng TSN khi cần thời gian xác định. IVI tải bản đồ dung lượng lớn không được làm nghẽn đường dữ liệu của cluster.</li>
+<li><b>Không có đường thẳng từ Internet xuống mạng xe</b>: IVI không được gửi trực tiếp lên CAN. Mọi lệnh đi qua gateway trên MCU, có danh sách lệnh cho phép và giới hạn tần suất.</li>
+</ul>
+<p>Ví dụ CDC: Android nhận Internet qua TCU trên VLAN infotainment. Khi người dùng chỉnh điều hòa, lệnh đi qua gateway trên MCU, được kiểm tra có nằm trong danh sách cho phép không, rồi mới lên CAN.</p>
+<figure class="fig"><svg viewBox="0 0 720 352" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Chia CPU, bộ nhớ, I/O, layer display và mạng giữa VM cluster và VM IVI; cache, băng thông DRAM và backend virtio vẫn chia sẻ ngầm"><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Bản đồ isolation giữa VM cluster và VM IVI</text><rect x="150" y="36" width="250" height="24" rx="8" fill="#174C43"/><text x="275" y="51.9" font-size="11" fill="#fff" text-anchor="middle">VM cluster</text><rect x="420" y="36" width="280" height="24" rx="8" fill="#2A8C8C"/><text x="560" y="51.9" font-size="11" fill="#fff" text-anchor="middle">VM IVI</text><text x="20" y="85" font-size="11" fill="#174C43" font-weight="700">CPU</text><text x="20" y="99" font-size="10" fill="#596966">CPU pinning</text><text x="20" y="131" font-size="11" fill="#174C43" font-weight="700">Bộ nhớ</text><text x="20" y="145" font-size="10" fill="#596966">stage-2 MMU</text><text x="20" y="177" font-size="11" fill="#174C43" font-weight="700">I/O</text><text x="20" y="191" font-size="10" fill="#596966">SMMU giới hạn DMA</text><text x="20" y="223" font-size="11" fill="#174C43" font-weight="700">Display</text><text x="20" y="237" font-size="10" fill="#596966">layer riêng</text><text x="20" y="269" font-size="11" fill="#174C43" font-weight="700">Mạng</text><text x="20" y="283" font-size="10" fill="#596966">VLAN, firewall</text><rect x="150" y="70" width="121" height="34" rx="8" fill="#174C43"/><text x="210.5" y="90.8" font-size="11" fill="#fff" text-anchor="middle">Core 0</text><rect x="279" y="70" width="121" height="34" rx="8" fill="#174C43"/><text x="339.5" y="90.8" font-size="11" fill="#fff" text-anchor="middle">Core 1</text><rect x="420" y="70" width="64" height="34" rx="8" fill="#2A8C8C"/><text x="452" y="90.8" font-size="11" fill="#fff" text-anchor="middle">Core 2</text><rect x="492" y="70" width="64" height="34" rx="8" fill="#2A8C8C"/><text x="524" y="90.8" font-size="11" fill="#fff" text-anchor="middle">Core 3</text><rect x="564" y="70" width="64" height="34" rx="8" fill="#2A8C8C"/><text x="596" y="90.8" font-size="11" fill="#fff" text-anchor="middle">Core 4</text><rect x="636" y="70" width="64" height="34" rx="8" fill="#2A8C8C"/><text x="668" y="90.8" font-size="11" fill="#fff" text-anchor="middle">Core 5</text><rect x="150" y="116" width="250" height="34" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="275" y="136.8" font-size="11" fill="#1c2928" text-anchor="middle">Vùng nhớ của cluster</text><rect x="420" y="116" width="280" height="34" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="560" y="136.8" font-size="11" fill="#1c2928" text-anchor="middle">Vùng nhớ của IVI</text><rect x="150" y="162" width="250" height="34" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="275" y="182.8" font-size="11" fill="#1c2928" text-anchor="middle">Thiết bị gán thẳng (ví dụ)</text><rect x="420" y="162" width="280" height="34" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="560" y="182.8" font-size="11" fill="#1c2928" text-anchor="middle">Thiết bị chia sẻ qua virtio (ví dụ)</text><rect x="150" y="208" width="250" height="34" rx="8" fill="#A64E32"/><text x="275" y="228.8" font-size="11" fill="#fff" text-anchor="middle">Layer cảnh báo</text><rect x="420" y="208" width="280" height="34" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="560" y="228.8" font-size="11" fill="#1c2928" text-anchor="middle">Các layer còn lại</text><rect x="150" y="254" width="250" height="34" rx="8" fill="#E5EFEB" stroke="#174C43" stroke-width="1.2"/><text x="275" y="274.9" font-size="11" fill="#1c2928" text-anchor="middle">VLAN dữ liệu xe</text><rect x="420" y="254" width="280" height="34" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="560" y="274.9" font-size="11" fill="#1c2928" text-anchor="middle">VLAN infotainment, Internet qua TCU</text><line x1="410" y1="66" x2="410" y2="292" stroke="#A93226" stroke-width="2" stroke-dasharray="5 4"/><text x="410" y="302" font-size="9.5" fill="#A93226" text-anchor="middle">firewall, gateway</text><rect x="150" y="310" width="550" height="34" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.6" stroke-dasharray="5 4"/><text x="425" y="330.7" font-size="10.5" fill="#A93226" text-anchor="middle">Vẫn chia sẻ ngầm: cache, băng thông DRAM, bus, backend virtio → cần partitioning và giới hạn</text><text x="20" y="324" font-size="11" fill="#A93226" font-weight="700">Điểm khó</text><text x="20" y="338" font-size="10" fill="#596966">tài nguyên chung</text></svg><figcaption>Mỗi loại tài nguyên, kể cả mạng, cần một cơ chế tách riêng, và phần chia sẻ ngầm như cache là chỗ isolation dễ hở nhất.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Isolation phải phủ đủ CPU, bộ nhớ, I/O và mạng, mỗi loại có cơ chế riêng: pinning, stage-2 MMU, SMMU và layer riêng, VLAN và firewall. Tài nguyên chia sẻ ngầm như cache, băng thông bộ nhớ và backend virtio là điểm khó nhất.</p></div>
+<h3 id="p2-4">2.4 Safety-critical, mission-critical và non-critical workload</h3>
+<h4>a) Ba nhóm workload</h4>
+<ul>
+<li><b>Safety-critical</b>: lỗi có thể gây nguy hiểm cho người. Ví dụ đèn cảnh báo phanh, camera lùi theo yêu cầu quy định. Có ASIL theo ISO 26262.</li>
+<li><b>Mission-critical</b>: lỗi không trực tiếp gây nguy hiểm nhưng làm xe mất chức năng quan trọng hoặc mất uy tín. Ví dụ đồng hồ tốc độ hiển thị mượt, kết nối gọi khẩn cấp.</li>
+<li><b>Non-critical</b>: lỗi chỉ gây khó chịu. Ví dụ media player, game, app bên thứ ba.</li>
+</ul>
+<p>Phân loại này quyết định workload chạy ở VM nào, được cấp tài nguyên ưu tiên ra sao và phải chịu mức kiểm thử nào.</p>
+<h4>b) Phân loại dựa vào đâu</h4>
+<p>Nhóm safety-critical đến từ phân tích HARA theo ISO 26262: xác định mối nguy, đánh giá mức nghiêm trọng, tần suất gặp và khả năng người lái kiểm soát, từ đó ra ASIL. Mission-critical không phải là thuật ngữ của ISO 26262. Đây là cách phân loại của OEM, dựa vào yêu cầu sẵn sàng, quy định pháp lý như eCall ở châu Âu, và uy tín thương hiệu. Phần còn lại là non-critical, chạy ở mức QM.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Nhóm</th><th>Hậu quả khi lỗi</th><th>Yêu cầu phát triển</th><th>Thường chạy ở đâu</th><th>Khi quá tải</th></tr></thead>
+<tbody>
+<tr><td>Safety-critical</td><td>Nguy hiểm cho người</td><td>Quy trình ISO 26262 theo ASIL</td><td>VM cluster, safety island hoặc MCU</td><td>Không bao giờ bị cắt</td></tr>
+<tr><td>Mission-critical</td><td>Mất chức năng quan trọng, vi phạm quy định, mất uy tín</td><td>QM có yêu cầu sẵn sàng và hiệu năng chặt</td><td>VM cluster hoặc service ưu tiên trong VM IVI</td><td>Được giữ sau phần safety</td></tr>
+<tr><td>Non-critical</td><td>Người dùng khó chịu</td><td>QM thông thường</td><td>VM IVI</td><td>Bị giảm chất lượng đầu tiên</td></tr>
+</tbody></table></div>
+<h4>c) Ranh giới không phải lúc nào cũng gọn</h4>
+<p>Một màn hình có thể chứa cả ba nhóm. Màn hình cluster có đèn cảnh báo thuộc nhóm safety, tốc độ thuộc nhóm mission, tên bài hát thuộc nhóm non-critical. Thiết kế tốt tách chúng thành các thành phần riêng và layer riêng, thay vì xếp cả màn hình vào mức cao nhất.</p>
+<p>ISO 26262 còn cho phép ASIL decomposition: chia một yêu cầu thành hai phần độc lập ở mức thấp hơn. Ví dụ, đường vẽ đèn cảnh báo không cần đạt mức cao nhất nếu có một bộ kiểm tra độc lập, như kiểm tra CRC vùng ảnh cảnh báo ở display controller, phát hiện khi hình xuất ra sai.</p>
+<figure class="fig"><svg viewBox="0 0 720 252" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Ba cột safety-critical, mission-critical và non-critical với ví dụ trên CDC; một màn hình cluster chứa cả ba loại"><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Phân loại workload trên CDC</text><rect x="20" y="40" width="200" height="42" rx="8" fill="#174C43"/><text x="120" y="57.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Safety-critical</text><text x="120" y="72" font-size="10.5" fill="#fff" text-anchor="middle">lỗi gây nguy hiểm</text><rect x="20" y="90" width="200" height="26" rx="8" fill="#fff" stroke="#174C43" stroke-width="1.2"/><text x="120" y="106.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Đèn cảnh báo phanh</text><rect x="20" y="122" width="200" height="26" rx="8" fill="#fff" stroke="#174C43" stroke-width="1.2"/><text x="120" y="138.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Camera lùi</text><rect x="20" y="154" width="200" height="26" rx="8" fill="#fff" stroke="#174C43" stroke-width="1.2"/><text x="120" y="170.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Cảnh báo ADAS</text><rect x="260" y="40" width="200" height="42" rx="8" fill="#2A6F66"/><text x="360" y="57.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Mission-critical</text><text x="360" y="72" font-size="10.5" fill="#fff" text-anchor="middle">lỗi làm mất chức năng chính</text><rect x="260" y="90" width="200" height="26" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="360" y="106.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Đồng hồ tốc độ mượt</text><rect x="260" y="122" width="200" height="26" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="360" y="138.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Gọi khẩn cấp eCall</text><rect x="260" y="154" width="200" height="26" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="360" y="170.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Màn hình sáng nhanh</text><rect x="500" y="40" width="200" height="42" rx="8" fill="#2A8C8C"/><text x="600" y="57.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Non-critical</text><text x="600" y="72" font-size="10.5" fill="#fff" text-anchor="middle">lỗi gây khó chịu</text><rect x="500" y="90" width="200" height="26" rx="8" fill="#fff" stroke="#2A8C8C" stroke-width="1.2"/><text x="600" y="106.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Media player</text><rect x="500" y="122" width="200" height="26" rx="8" fill="#fff" stroke="#2A8C8C" stroke-width="1.2"/><text x="600" y="138.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Game, app bên thứ ba</text><rect x="500" y="154" width="200" height="26" rx="8" fill="#fff" stroke="#2A8C8C" stroke-width="1.2"/><text x="600" y="170.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Hiệu ứng giao diện</text><text x="20" y="226" font-size="11" fill="#174C43" font-weight="700">Một màn hình</text><text x="20" y="240" font-size="11" fill="#174C43" font-weight="700">cluster:</text><rect x="130" y="210" width="186" height="32" rx="8" fill="#174C43"/><text x="223" y="229.7" font-size="10.5" fill="#fff" text-anchor="middle">Đèn cảnh báo</text><rect x="322" y="210" width="186" height="32" rx="8" fill="#2A6F66"/><text x="415" y="229.7" font-size="10.5" fill="#fff" text-anchor="middle">Tốc độ</text><rect x="514" y="210" width="186" height="32" rx="8" fill="#2A8C8C"/><text x="607" y="229.7" font-size="10.5" fill="#fff" text-anchor="middle">Tên bài hát</text></svg><figcaption>Phân loại theo hậu quả khi lỗi, và một màn hình có thể chứa cả ba nhóm nên phải được tách thành phần riêng.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Ba nhóm workload có hậu quả lỗi khác nhau: safety đến từ HARA và ASIL, mission do OEM định nghĩa theo yêu cầu sẵn sàng và quy định, non-critical là phần còn lại. Phân loại đúng, kể cả tách nhỏ một màn hình, là cơ sở để chia partition và ưu tiên tài nguyên.</p></div>
+<h3 id="p2-5">2.5 Fault containment, timing isolation và resource reservation</h3>
+<h4>a) Fault containment</h4>
+<p><b>Fault containment</b>: lỗi trong một partition bị giữ lại trong partition đó. Hypervisor phát hiện VM treo qua watchdog và khởi động lại VM đó mà không ảnh hưởng VM khác.</p>
+<p>Fault containment có ba bước. Phát hiện: watchdog, heartbeat, health monitor, bắt lỗi truy cập bộ nhớ. Ngăn lan: bảo vệ bộ nhớ, kiểm tra mọi dữ liệu đi qua ranh giới partition. Phục hồi: khởi động lại riêng partition lỗi, chuyển sang chế độ giảm chức năng. Cần có giới hạn số lần khởi động lại, vượt quá thì chuyển về trạng thái an toàn thay vì khởi động lại mãi.</p>
+<h4>b) Timing isolation</h4>
+<p><b>Timing isolation</b>: workload critical luôn được chạy đúng hạn dù bên khác đang tải nặng.</p>
+<p>Các cơ chế: core riêng cho phần critical, cửa sổ thời gian cố định khi phải dùng chung core, budget CPU cho từng partition, cách ly ngắt, giới hạn băng thông bộ nhớ của bên non-critical. Phần critical không được chờ một lock hay một service do bên non-critical giữ. Khả năng đúng hạn được kiểm chứng bằng phân tích thời gian đáp ứng xấu nhất, và được giám sát lúc chạy bằng deadline monitor.</p>
+<figure class="fig"><svg viewBox="0 0 720 214" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Chu kỳ 10 ms chia cửa sổ 0 đến 3 ms cho cluster và 3 đến 10 ms cho IVI; khi IVI tải nặng, cửa sổ của cluster vẫn giữ nguyên"><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Cửa sổ thời gian trên một core dùng chung</text><text x="20" y="65" font-size="11" fill="#174C43" font-weight="700">Bình thường</text><text x="20" y="79" font-size="10" fill="#596966">tải vừa</text><rect x="130" y="50" width="84" height="32" rx="8" fill="#174C43"/><text x="172" y="69.7" font-size="10.5" fill="#fff" text-anchor="middle">Cluster</text><rect x="214" y="50" width="196" height="32" rx="8" fill="#2A8C8C"/><text x="312" y="69.7" font-size="10.5" fill="#fff" text-anchor="middle">IVI</text><rect x="410" y="50" width="84" height="32" rx="8" fill="#174C43"/><text x="452" y="69.7" font-size="10.5" fill="#fff" text-anchor="middle">Cluster</text><rect x="494" y="50" width="196" height="32" rx="8" fill="#2A8C8C"/><text x="592" y="69.7" font-size="10.5" fill="#fff" text-anchor="middle">IVI</text><text x="20" y="119" font-size="11" fill="#174C43" font-weight="700">IVI tải nặng</text><text x="20" y="133" font-size="10" fill="#596966">dùng hết cửa sổ</text><rect x="130" y="104" width="84" height="32" rx="8" fill="#174C43"/><text x="172" y="123.7" font-size="10.5" fill="#fff" text-anchor="middle">Cluster</text><rect x="214" y="104" width="196" height="32" rx="8" fill="#A64E32"/><text x="312" y="123.7" font-size="10.5" fill="#fff" text-anchor="middle">IVI 100%, phần thừa chờ chu kỳ sau</text><rect x="410" y="104" width="84" height="32" rx="8" fill="#174C43"/><text x="452" y="123.7" font-size="10.5" fill="#fff" text-anchor="middle">Cluster</text><rect x="494" y="104" width="196" height="32" rx="8" fill="#A64E32"/><text x="592" y="123.7" font-size="10.5" fill="#fff" text-anchor="middle">IVI 100%, phần thừa chờ chu kỳ sau</text><line x1="130" y1="156" x2="690" y2="156" stroke="#596966" stroke-width="1.2"/><line x1="130" y1="152" x2="130" y2="160" stroke="#596966" stroke-width="1.2"/><text x="130" y="174" font-size="10" fill="#596966" text-anchor="middle">0 ms</text><line x1="214" y1="152" x2="214" y2="160" stroke="#596966" stroke-width="1.2"/><text x="214" y="174" font-size="10" fill="#596966" text-anchor="middle">3 ms</text><line x1="410" y1="152" x2="410" y2="160" stroke="#596966" stroke-width="1.2"/><text x="410" y="174" font-size="10" fill="#596966" text-anchor="middle">10 ms</text><line x1="494" y1="152" x2="494" y2="160" stroke="#596966" stroke-width="1.2"/><text x="494" y="174" font-size="10" fill="#596966" text-anchor="middle">13 ms</text><line x1="690" y1="152" x2="690" y2="160" stroke="#596966" stroke-width="1.2"/><text x="690" y="174" font-size="10" fill="#596966" text-anchor="middle">20 ms</text><text x="360" y="200" font-size="10.5" fill="#174C43" text-anchor="middle" font-weight="700">Cluster luôn có 3 ms mỗi 10 ms, dù IVI tải bao nhiêu (giả định minh họa)</text></svg><figcaption>Cửa sổ thời gian cố định làm cho phần của cluster không phụ thuộc vào tải của IVI.</figcaption></figure>
+<h4>c) Resource reservation</h4>
+<p><b>Resource reservation</b>: dành trước tài nguyên tối thiểu cho từng partition.</p>
+<pre><code>Cluster: core 0-1 riêng, 512 MB RAM, layer display 1
+IVI:     core 2-5, 6 GB RAM, layer display 2-3   (giả định minh họa)</code></pre>
+<figure class="fig"><svg viewBox="0 0 720 240" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Dòng thời gian: VM IVI treo, watchdog của hypervisor phát hiện và khởi động lại riêng VM IVI, VM cluster vẫn chạy đúng hạn"><defs><marker id="s8-wd-l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B7791F"/></marker><marker id="s8-wd-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Lỗi bị giữ lại trong VM IVI</text><text x="20" y="76" font-size="11" fill="#174C43" font-weight="700">VM cluster</text><text x="20" y="132" font-size="11" fill="#2A8C8C" font-weight="700">VM IVI</text><text x="20" y="190" font-size="11" fill="#2A6F66" font-weight="700">Hypervisor</text><rect x="140" y="56" width="560" height="32" rx="8" fill="#174C43"/><text x="420" y="75.8" font-size="11" fill="#fff" text-anchor="middle">Vẫn chạy đúng hạn: core 0-1 và 512 MB dành riêng</text><text x="387" y="105" font-size="10" fill="#A93226" text-anchor="middle" font-weight="700">lỗi không lan sang cluster</text><rect x="140" y="112" width="190" height="32" rx="8" fill="#2A8C8C"/><text x="235" y="131.8" font-size="11" fill="#fff" text-anchor="middle">Chạy bình thường</text><rect x="334" y="112" width="106" height="32" rx="8" fill="#A93226"/><text x="387" y="131.8" font-size="11" fill="#fff" text-anchor="middle">Treo</text><rect x="444" y="112" width="136" height="32" rx="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="512" y="131.8" font-size="11" fill="#1c2928" text-anchor="middle">Khởi động lại VM</text><rect x="584" y="112" width="116" height="32" rx="8" fill="#2A8C8C"/><text x="642" y="131.8" font-size="11" fill="#fff" text-anchor="middle">Chạy lại</text><rect x="140" y="172" width="560" height="30" rx="8" fill="#E5EFEB" stroke="#2A6F66" stroke-width="1.2"/><text x="420" y="190.8" font-size="11" fill="#1c2928" text-anchor="middle">Watchdog giám sát từng VM</text><line x1="442" y1="172" x2="442" y2="147" stroke="#B7791F" stroke-width="1.8" marker-end="url(#s8-wd-l)"/><text x="450" y="163" font-size="10" fill="#B7791F" font-weight="700">phát hiện treo, restart riêng VM IVI</text><line x1="140" y1="220" x2="700" y2="220" stroke="#596966" stroke-width="1.2" marker-end="url(#s8-wd-m)"/><text x="700" y="234" font-size="10" fill="#596966" text-anchor="end">thời gian</text></svg><figcaption>Fault containment và reservation cùng tác dụng: VM IVI treo rồi khởi động lại, còn cluster không mất nhịp nào.</figcaption></figure>
+<p>Ngoài CPU và RAM, còn dành trước phần thời gian GPU, layer display, băng thông mạng và dung lượng lưu trữ. Mức dành trước phải tính theo trường hợp xấu nhất, không theo mức trung bình. Phần dành trước mà chưa dùng có thể cho bên non-critical mượn tạm, với điều kiện lấy lại được ngay khi bên critical cần. Với GPU điều này khó hơn, vì một lệnh vẽ dài không phải lúc nào cũng dừng giữa chừng được.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Fault containment phát hiện, chặn và phục hồi lỗi trong từng partition. Timing isolation bảo đảm phần critical đúng hạn, resource reservation dành sẵn tài nguyên theo trường hợp xấu nhất. Reservation đánh đổi một phần hiệu suất để lấy sự chắc chắn.</p></div>
+<h3 id="p2-6">2.6 Trade-off giữa utilization, latency, determinism, flexibility và certification</h3>
+<h4>a) Từng cặp đánh đổi</h4>
+<ul>
+<li><b>Utilization và determinism</b>: dành core riêng cho cluster cho kết quả ổn định nhưng core đó thường rảnh.</li>
+<li><b>Latency</b>: chia sẻ thiết bị qua virtio thêm một lớp, làm tăng độ trễ so với gán thẳng.</li>
+<li><b>Latency và determinism</b>: lập lịch động cho độ trễ trung bình thấp, nhưng độ trễ xấu nhất khó đoán. Lập lịch theo cửa sổ cố định cho độ trễ xấu nhất rõ ràng, nhưng một tác vụ có thể phải chờ tới cửa sổ của nó.</li>
+<li><b>Flexibility</b>: cấp tài nguyên động tiện cho cập nhật tính năng nhưng khó chứng minh worst case.</li>
+<li><b>Utilization và certification</b>: chia sẻ càng nhiều thì càng nhiều kênh ảnh hưởng phải phân tích và test, nên chi phí chứng nhận tăng theo.</li>
+<li><b>Certification</b>: càng nhiều phần mềm phải đạt ASIL thì càng tốn chi phí. Giữ phần certified nhỏ là chiến lược phổ biến.</li>
+</ul>
+<h4>b) Ba cấu hình mẫu</h4>
+<div class="table-scroll"><table>
+<thead><tr><th>Cấu hình</th><th>Utilization</th><th>Latency</th><th>Determinism</th><th>Flexibility</th><th>Certification</th></tr></thead>
+<tbody>
+<tr><td>A. Core riêng, gán thẳng thiết bị</td><td>Thấp</td><td>Thấp</td><td>Cao</td><td>Thấp</td><td>Dễ</td></tr>
+<tr><td>B. Core dùng chung, cửa sổ thời gian, virtio</td><td>Trung bình</td><td>Trung bình</td><td>Cao</td><td>Trung bình</td><td>Trung bình</td></tr>
+<tr><td>C. Cấp phát động toàn bộ</td><td>Cao</td><td>Trung bình thấp, xấu nhất khó đoán</td><td>Thấp</td><td>Cao</td><td>Khó</td></tr>
+</tbody></table></div>
+<p>Thực tế, nhiều CDC trộn các cấu hình: phần safety theo A, phần mission theo B, phần non-critical theo C.</p>
+<figure class="fig"><svg viewBox="0 0 720 240" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Ma trận ba cấu hình A core riêng, B cửa sổ thời gian và virtio, C cấp phát động, đánh giá theo utilization, latency, determinism, flexibility và certification"><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Ba cấu hình mẫu theo năm tiêu chí</text><text x="286" y="50" font-size="10.5" fill="#174C43" text-anchor="middle" font-weight="700">Utilization</text><text x="378" y="50" font-size="10.5" fill="#174C43" text-anchor="middle" font-weight="700">Latency</text><text x="470" y="50" font-size="10.5" fill="#174C43" text-anchor="middle" font-weight="700">Determinism</text><text x="562" y="50" font-size="10.5" fill="#174C43" text-anchor="middle" font-weight="700">Flexibility</text><text x="654" y="50" font-size="10.5" fill="#174C43" text-anchor="middle" font-weight="700">Certification</text><rect x="20" y="60" width="214" height="40" rx="8" fill="#E5EFEB" stroke="#596966" stroke-width="1.2"/><text x="127" y="76.8" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">A. Core riêng,</text><text x="127" y="90.5" font-size="10" fill="#1c2928" text-anchor="middle">gán thẳng thiết bị</text><rect x="242" y="60" width="88" height="40" rx="8" fill="#A64E32"/><text x="286" y="83.7" font-size="10.5" fill="#fff" text-anchor="middle">Thấp</text><rect x="334" y="60" width="88" height="40" rx="8" fill="#2A8C8C"/><text x="378" y="83.7" font-size="10.5" fill="#fff" text-anchor="middle">Thấp</text><rect x="426" y="60" width="88" height="40" rx="8" fill="#2A8C8C"/><text x="470" y="83.7" font-size="10.5" fill="#fff" text-anchor="middle">Cao</text><rect x="518" y="60" width="88" height="40" rx="8" fill="#A64E32"/><text x="562" y="83.7" font-size="10.5" fill="#fff" text-anchor="middle">Thấp</text><rect x="610" y="60" width="88" height="40" rx="8" fill="#2A8C8C"/><text x="654" y="83.7" font-size="10.5" fill="#fff" text-anchor="middle">Dễ</text><rect x="20" y="108" width="214" height="40" rx="8" fill="#E5EFEB" stroke="#596966" stroke-width="1.2"/><text x="127" y="124.8" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">B. Core chung, cửa sổ</text><text x="127" y="138.5" font-size="10" fill="#1c2928" text-anchor="middle">thời gian, virtio</text><rect x="242" y="108" width="88" height="40" rx="8" fill="#E2BD69"/><text x="286" y="131.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Vừa</text><rect x="334" y="108" width="88" height="40" rx="8" fill="#E2BD69"/><text x="378" y="131.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Vừa</text><rect x="426" y="108" width="88" height="40" rx="8" fill="#2A8C8C"/><text x="470" y="131.7" font-size="10.5" fill="#fff" text-anchor="middle">Cao</text><rect x="518" y="108" width="88" height="40" rx="8" fill="#E2BD69"/><text x="562" y="131.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Vừa</text><rect x="610" y="108" width="88" height="40" rx="8" fill="#E2BD69"/><text x="654" y="131.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Vừa</text><rect x="20" y="156" width="214" height="40" rx="8" fill="#E5EFEB" stroke="#596966" stroke-width="1.2"/><text x="127" y="172.9" font-size="10.5" fill="#1c2928" text-anchor="middle" font-weight="700">C. Cấp phát động</text><text x="127" y="186.5" font-size="10" fill="#1c2928" text-anchor="middle">toàn bộ</text><rect x="242" y="156" width="88" height="40" rx="8" fill="#2A8C8C"/><text x="286" y="179.7" font-size="10.5" fill="#fff" text-anchor="middle">Cao</text><rect x="334" y="156" width="88" height="40" rx="8" fill="#E2BD69"/><text x="378" y="179.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Thấp, khó đoán</text><rect x="426" y="156" width="88" height="40" rx="8" fill="#A64E32"/><text x="470" y="179.7" font-size="10.5" fill="#fff" text-anchor="middle">Thấp</text><rect x="518" y="156" width="88" height="40" rx="8" fill="#2A8C8C"/><text x="562" y="179.7" font-size="10.5" fill="#fff" text-anchor="middle">Cao</text><rect x="610" y="156" width="88" height="40" rx="8" fill="#A64E32"/><text x="654" y="179.7" font-size="10.5" fill="#fff" text-anchor="middle">Khó</text><rect x="242" y="212" width="14" height="14" rx="3" fill="#2A8C8C"/><text x="262" y="224" font-size="10.5" fill="#596966">tốt cho tiêu chí đó</text><rect x="392" y="212" width="14" height="14" rx="3" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="412" y="224" font-size="10.5" fill="#596966">trung bình</text><rect x="542" y="212" width="14" height="14" rx="3" fill="#A64E32"/><text x="562" y="224" font-size="10.5" fill="#596966">bất lợi</text></svg><figcaption>Không cấu hình nào tốt ở cả năm tiêu chí; vì vậy mỗi nhóm workload thường dùng một cấu hình khác nhau.</figcaption></figure>
+<p>Ví dụ: một OEM có thể chọn chạy cluster trên một MCU safety riêng thay vì VM, chấp nhận thêm chi phí phần cứng để giảm công chứng nhận hypervisor.</p>
+<h4>c) Cách chọn điểm cân bằng</h4>
+<p>Bắt đầu từ yêu cầu safety: ASIL của từng chức năng và thời gian tối đa được phép giữa lúc lỗi xảy ra và lúc hệ thống phải về trạng thái an toàn. Sau đó tính chi phí phần cứng, chi phí chứng nhận và nhu cầu cập nhật tính năng. Cuối cùng đo trên phần cứng thật, vì cache và băng thông bộ nhớ thường làm kết quả khác với tính toán trên giấy.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Không có cấu hình tối ưu mọi mặt: tăng utilization hay flexibility thường làm giảm determinism và tăng chi phí certification. Kiến trúc sư chọn điểm cân bằng cho từng nhóm workload theo yêu cầu safety và chi phí của dự án.</p></div>
+<h3 id="p2-7">2.7 Làm sao workload không critical không ảnh hưởng workload critical?</h3>
+<h4>a) Bốn nguyên tắc</h4>
+<ol>
+<li>Đặt chúng ở partition khác nhau, có core, vùng nhớ và thiết bị riêng.</li>
+<li>Giới hạn tài nguyên chia sẻ: cache partitioning, giới hạn băng thông bộ nhớ cho VM non-critical.</li>
+<li>Giao tiếp giữa hai bên qua kênh được kiểm soát, một chiều nếu có thể, có kiểm tra dữ liệu.</li>
+<li>Bên critical không chờ bên non-critical. Nếu không có dữ liệu, dùng giá trị mặc định an toàn.</li>
+</ol>
+<p>Ví dụ CDC: nếu Android treo khi đang gửi dữ liệu navigation cho cluster, cluster chỉ ẩn phần chỉ đường và vẫn hiển thị tốc độ, cảnh báo bình thường.</p>
+<figure class="fig"><svg viewBox="0 0 720 262" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Dữ liệu navigation từ VM IVI qua kênh một chiều có kiểm tra tới VM cluster; khi mất dữ liệu cluster chỉ ẩn phần chỉ đường"><defs><marker id="s8-ch-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker><marker id="s8-ch-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Kênh một chiều từ IVI sang cluster</text><rect x="20" y="40" width="200" height="136" rx="10" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.4"/><text x="120" y="60" font-size="11" fill="#2A8C8C" text-anchor="middle" font-weight="700">VM IVI · non-critical</text><rect x="36" y="72" width="168" height="44" rx="8" fill="#2A8C8C"/><text x="120" y="90.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Android</text><text x="120" y="105" font-size="10.5" fill="#fff" text-anchor="middle">gửi dữ liệu navigation</text><rect x="56" y="132" width="128" height="28" rx="8" fill="#A93226"/><text x="120" y="149.8" font-size="11" fill="#fff" text-anchor="middle">Nếu Android treo</text><line x1="204" y1="94" x2="288" y2="94" stroke="#2A8C8C" stroke-width="1.8" marker-end="url(#s8-ch-t)"/><rect x="290" y="74" width="140" height="42" rx="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="360" y="91.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Kiểm tra dữ liệu</text><text x="360" y="106" font-size="10.5" fill="#1c2928" text-anchor="middle">hợp lệ, đúng hạn?</text><text x="360" y="64" font-size="10.5" fill="#596966" text-anchor="middle" font-weight="700">kênh một chiều</text><line x1="430" y1="94" x2="498" y2="94" stroke="#2A8C8C" stroke-width="1.8" marker-end="url(#s8-ch-t)"/><rect x="500" y="40" width="200" height="136" rx="10" fill="#E5EFEB" stroke="#174C43" stroke-width="1.4"/><text x="600" y="60" font-size="11" fill="#174C43" text-anchor="middle" font-weight="700">VM cluster · critical</text><rect x="516" y="72" width="80" height="32" rx="8" fill="#174C43"/><text x="556" y="91.8" font-size="11" fill="#fff" text-anchor="middle">Tốc độ</text><rect x="604" y="72" width="80" height="32" rx="8" fill="#A64E32"/><text x="644" y="91.8" font-size="11" fill="#fff" text-anchor="middle">Cảnh báo</text><rect x="516" y="116" width="168" height="44" rx="8" fill="#fff" stroke="#596966" stroke-width="1.2" stroke-dasharray="5 4"/><text x="600" y="134.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">Chỉ đường</text><text x="600" y="149" font-size="10.5" fill="#1c2928" text-anchor="middle">ẩn khi không có dữ liệu</text><line x1="184" y1="146" x2="512" y2="146" stroke="#A93226" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#s8-ch-r)"/><text x="350" y="140" font-size="10" fill="#A93226" text-anchor="middle" font-weight="700">mất dữ liệu → dùng mặc định an toàn</text><rect x="20" y="196" width="330" height="48" rx="8" fill="#174C43"/><text x="185" y="216.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Partition riêng</text><text x="185" y="231" font-size="10.5" fill="#fff" text-anchor="middle">core, vùng nhớ, thiết bị</text><rect x="370" y="196" width="330" height="48" rx="8" fill="#2A6F66"/><text x="535" y="216.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">Giới hạn phần chia sẻ</text><text x="535" y="231" font-size="10.5" fill="#fff" text-anchor="middle">cache và băng thông bộ nhớ của VM IVI</text></svg><figcaption>Cluster không bao giờ chờ IVI: dữ liệu đi một chiều, qua kiểm tra, và khi thiếu thì chỉ phần phụ bị ẩn.</figcaption></figure>
+<h4>b) Đóng từng kênh ảnh hưởng</h4>
+<div class="table-scroll"><table>
+<thead><tr><th>Kênh</th><th>Bên non-critical gây ảnh hưởng thế nào</th><th>Biện pháp</th></tr></thead>
+<tbody>
+<tr><td>CPU</td><td>Chiếm thời gian chạy</td><td>Core riêng hoặc budget cố định</td></tr>
+<tr><td>Bộ nhớ</td><td>Ghi đè vùng nhớ</td><td>Stage-2 MMU</td></tr>
+<tr><td>Cache, băng thông DRAM</td><td>Làm phần critical chạy chậm</td><td>Cache partitioning, giới hạn băng thông</td></tr>
+<tr><td>DMA của thiết bị</td><td>Thiết bị ghi vào vùng nhớ của VM khác</td><td>SMMU</td></tr>
+<tr><td>GPU, display</td><td>Chiếm GPU, vẽ đè lên vùng cảnh báo</td><td>Priority và preemption trên GPU, layer riêng</td></tr>
+<tr><td>Service dùng chung</td><td>Backend virtio hoặc file system chung bị treo</td><td>Phần critical không phụ thuộc backend chung</td></tr>
+<tr><td>Giao tiếp</td><td>Dữ liệu sai hoặc gửi dồn dập</td><td>Kiểm tra dữ liệu, E2E, giới hạn tần suất</td></tr>
+<tr><td>Nhiệt, nguồn, reset</td><td>Làm SoC nóng nên cả chip giảm xung, hoặc reset chung</td><td>Policy nhiệt giảm IVI trước, reset riêng từng VM</td></tr>
+</tbody></table></div>
+<h4>c) Giám sát lúc chạy</h4>
+<p>Thiết kế tốt vẫn cần giám sát. Health monitor theo dõi hạn chót của cluster. Khi thấy cluster sát hạn, hệ thống siết bên IVI, ví dụ giảm băng thông hoặc frame rate. Nếu vẫn vi phạm, chuyển sang chế độ hiển thị tối thiểu an toàn. Một bộ kiểm tra độc lập trên display controller xác nhận vùng cảnh báo thực sự hiện đúng.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Tách tài nguyên, kiểm soát giao tiếp và không để bên critical phụ thuộc bên kém tin cậy. Mỗi kênh ảnh hưởng, kể cả nhiệt, nguồn và service dùng chung, cần một biện pháp riêng, cộng với giám sát lúc chạy.</p></div>
+<h3 id="p2-8">2.8 Isolation được chứng minh bằng thiết kế, test và evidence như thế nào?</h3>
+<ul>
+<li><b>Thiết kế</b>: tài liệu cấu hình partition, phân tích dependent failure, FMEA.</li>
+<li><b>Test</b>: fault injection như làm crash VM IVI, chạy stress test bộ nhớ và GPU ở VM IVI rồi đo thời gian đáp ứng của cluster.</li>
+<li><b>Evidence</b>: kết quả đo worst-case, log test, báo cáo truy vết từ yêu cầu đến test. Tất cả đưa vào safety case.</li>
+</ul>
+<h4>a) Thiết kế</h4>
+<p>Dependent failure analysis theo ISO 26262 phần 9 liệt kê mọi tài nguyên dùng chung và mọi đường lỗi có thể lan giữa các partition. Mỗi đường phải có một cơ chế chặn tương ứng. Hypervisor thường được mua dưới dạng phần tử phát triển độc lập với ngữ cảnh, gọi là SEooC, kèm safety manual. Safety manual nêu các giả định khi sử dụng, và bên tích hợp phải chứng minh hệ thống của mình đáp ứng những giả định đó. Cấu hình partition được quản lý version như mã nguồn.</p>
+<h4>b) Test</h4>
+<ul>
+<li><b>Fault injection</b>: làm crash VM IVI, cố ý ghi vào vùng nhớ của cluster và kiểm tra MMU chặn, cho thiết bị DMA vào vùng cấm và kiểm tra SMMU chặn.</li>
+<li><b>Stress</b>: chạy hết CPU, băng thông bộ nhớ, GPU ở VM IVI, đồng thời đo thời gian khung hình của cluster.</li>
+<li><b>Chạy dài</b>: nhiều giờ liên tục để bắt các trường hợp hiếm.</li>
+<li><b>Cấu hình sai có chủ đích</b>: kiểm tra hệ thống phát hiện khi cấu hình partition bị sửa sai.</li>
+</ul>
+<p>Danh sách test nên được dẫn ra từ bảng phân tích dependent failure, để mỗi kênh ảnh hưởng đều có ít nhất một test.</p>
+<h4>c) Evidence</h4>
+<p>Evidence nối mọi thứ lại: kênh ảnh hưởng, cơ chế chặn, test, kết quả. Kết quả phải gắn với đúng phiên bản phần mềm và cấu hình được phát hành, nếu không thì không còn giá trị. Safety case trình bày lập luận theo dạng tuyên bố, lý lẽ và bằng chứng, thường được vẽ bằng ký pháp GSN. Cuối cùng là review và đánh giá functional safety độc lập.</p>
+<figure class="fig"><svg viewBox="0 0 720 230" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Chuỗi DFA xác định kênh ảnh hưởng, cơ chế chặn, test, kết quả gắn với cấu hình phát hành, và claim trong safety case; ví dụ kênh băng thông bộ nhớ"><defs><marker id="s8-evd-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker></defs><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Từ phân tích tới safety case</text><rect x="20" y="40" width="124" height="44" rx="8" fill="#174C43"/><text x="82" y="58.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">1. DFA</text><text x="82" y="72.5" font-size="10" fill="#fff" text-anchor="middle">kênh ảnh hưởng</text><line x1="144" y1="62" x2="157" y2="62" stroke="#596966" stroke-width="1.5" marker-end="url(#s8-evd-m)"/><rect x="20" y="110" width="124" height="58" rx="8" fill="#fff" stroke="#174C43" stroke-width="1.2"/><text x="82" y="136" font-size="10" fill="#1c2928" text-anchor="middle">Băng thông</text><text x="82" y="149" font-size="10" fill="#1c2928" text-anchor="middle">DRAM dùng chung</text><rect x="159" y="40" width="124" height="44" rx="8" fill="#2A6F66"/><text x="221" y="58.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">2. Cơ chế</text><text x="221" y="72.5" font-size="10" fill="#fff" text-anchor="middle">chặn</text><line x1="283" y1="62" x2="296" y2="62" stroke="#596966" stroke-width="1.5" marker-end="url(#s8-evd-m)"/><rect x="159" y="110" width="124" height="58" rx="8" fill="#fff" stroke="#2A6F66" stroke-width="1.2"/><text x="221" y="136" font-size="10" fill="#1c2928" text-anchor="middle">Giới hạn băng</text><text x="221" y="149" font-size="10" fill="#1c2928" text-anchor="middle">thông VM IVI</text><rect x="298" y="40" width="124" height="44" rx="8" fill="#2A8C8C"/><text x="360" y="58.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">3. Test</text><text x="360" y="72.5" font-size="10" fill="#fff" text-anchor="middle">có chủ đích</text><line x1="422" y1="62" x2="435" y2="62" stroke="#596966" stroke-width="1.5" marker-end="url(#s8-evd-m)"/><rect x="298" y="110" width="124" height="58" rx="8" fill="#fff" stroke="#2A8C8C" stroke-width="1.2"/><text x="360" y="129.5" font-size="10" fill="#1c2928" text-anchor="middle">Stress nhiều giờ,</text><text x="360" y="142.5" font-size="10" fill="#1c2928" text-anchor="middle">đo khung hình</text><text x="360" y="155.5" font-size="10" fill="#1c2928" text-anchor="middle">cluster</text><rect x="437" y="40" width="124" height="44" rx="8" fill="#A64E32"/><text x="499" y="58.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">4. Kết quả</text><text x="499" y="72.5" font-size="10" fill="#fff" text-anchor="middle">gắn cấu hình</text><line x1="561" y1="62" x2="574" y2="62" stroke="#596966" stroke-width="1.5" marker-end="url(#s8-evd-m)"/><rect x="437" y="110" width="124" height="58" rx="8" fill="#fff" stroke="#A64E32" stroke-width="1.2"/><text x="499" y="129.5" font-size="10" fill="#1c2928" text-anchor="middle">Log worst-case</text><text x="499" y="142.5" font-size="10" fill="#1c2928" text-anchor="middle">gắn đúng bản</text><text x="499" y="155.5" font-size="10" fill="#1c2928" text-anchor="middle">phát hành</text><rect x="576" y="40" width="124" height="44" rx="8" fill="#1c2928"/><text x="638" y="58.8" font-size="10.5" fill="#fff" text-anchor="middle" font-weight="700">5. Safety case</text><text x="638" y="72.5" font-size="10" fill="#fff" text-anchor="middle">claim</text><rect x="576" y="110" width="124" height="58" rx="8" fill="#fff" stroke="#1c2928" stroke-width="1.2"/><text x="638" y="129.5" font-size="10" fill="#1c2928" text-anchor="middle">Cluster không trễ</text><text x="638" y="142.5" font-size="10" fill="#1c2928" text-anchor="middle">khung hình</text><text x="638" y="155.5" font-size="10" fill="#1c2928" text-anchor="middle">quá ngưỡng</text><text x="20" y="102" font-size="10.5" fill="#596966" font-weight="700">Ví dụ một kênh:</text><rect x="20" y="184" width="680" height="32" rx="8" fill="#E2BD69"/><text x="360" y="203.8" font-size="11" fill="#1c2928" text-anchor="middle">Mỗi kênh trong bảng DFA phải đi hết chuỗi này, nếu không safety case có lỗ hổng</text></svg><figcaption>Evidence chỉ thuyết phục khi mỗi kênh ảnh hưởng nối được tới một cơ chế, một test và một kết quả trên đúng cấu hình phát hành.</figcaption></figure>
+<p>Ví dụ: chạy benchmark băng thông bộ nhớ cực đại trên Android trong nhiều giờ và chứng minh cluster không bao giờ trễ khung hình quá ngưỡng.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Isolation phải được chứng minh, không chỉ được tin. Dependent failure analysis xác định các kênh, mỗi kênh có cơ chế và test tương ứng, và evidence gắn với đúng cấu hình phát hành tạo thành safety case.</p></div>
+<h3 id="p2-9">2.9 Khi resource bị tranh chấp, policy nào quyết định ưu tiên?</h3>
+<h4>a) Thứ bậc theo criticality</h4>
+<p>Policy ưu tiên nên được định trước trong thiết kế, theo thứ tự criticality:</p>
+<ol>
+<li>Safety-critical luôn được bảo đảm phần tài nguyên đã dành trước.</li>
+<li>Mission-critical được ưu tiên tiếp theo.</li>
+<li>Non-critical dùng phần còn lại và bị hạn chế đầu tiên khi quá tải.</li>
+</ol>
+<p>Cơ chế thực thi: priority trên scheduler, giới hạn băng thông, QoS trên bus và GPU, chính sách giảm chất lượng. Ví dụ CDC: khi GPU quá tải, IVI giảm frame rate animation hoặc tắt hiệu ứng, còn cluster vẫn giữ tốc độ khung hình đã cam kết.</p>
+<figure class="fig"><svg viewBox="0 0 720 266" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Ba mức ưu tiên safety, mission và non-critical; khi GPU quá tải chỉ phần non-critical bị cắt"><text x="20" y="24" font-size="13.5" fill="#174C43" font-weight="700">Ai nhường tài nguyên khi quá tải</text><rect x="20" y="42" width="280" height="46" rx="8" fill="#174C43"/><text x="160" y="61.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">1 · Safety-critical</text><text x="160" y="76" font-size="10.5" fill="#fff" text-anchor="middle">luôn giữ phần đã dành trước</text><rect x="20" y="98" width="280" height="46" rx="8" fill="#2A6F66"/><text x="160" y="117.7" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">2 · Mission-critical</text><text x="160" y="132" font-size="10.5" fill="#fff" text-anchor="middle">được ưu tiên tiếp theo</text><rect x="20" y="154" width="280" height="46" rx="8" fill="#E5EFEB" stroke="#2A8C8C" stroke-width="1.2"/><text x="160" y="173.7" font-size="11" fill="#1c2928" text-anchor="middle" font-weight="700">3 · Non-critical</text><text x="160" y="188" font-size="10.5" fill="#1c2928" text-anchor="middle">dùng phần còn lại, bị cắt đầu tiên</text><text x="340" y="58" font-size="11" fill="#174C43" font-weight="700">Bình thường</text><rect x="340" y="66" width="100" height="32" rx="8" fill="#174C43"/><text x="390" y="85.7" font-size="10.5" fill="#fff" text-anchor="middle">Safety</text><rect x="440" y="66" width="90" height="32" rx="8" fill="#2A6F66"/><text x="485" y="85.7" font-size="10.5" fill="#fff" text-anchor="middle">Mission</text><rect x="530" y="66" width="170" height="32" rx="8" fill="#2A8C8C"/><text x="615" y="85.7" font-size="10.5" fill="#fff" text-anchor="middle">Non-critical</text><text x="340" y="130" font-size="11" fill="#174C43" font-weight="700">GPU quá tải</text><rect x="340" y="138" width="100" height="32" rx="8" fill="#174C43"/><text x="390" y="157.7" font-size="10.5" fill="#fff" text-anchor="middle">Safety</text><rect x="440" y="138" width="90" height="32" rx="8" fill="#2A6F66"/><text x="485" y="157.7" font-size="10.5" fill="#fff" text-anchor="middle">Mission</text><rect x="530" y="138" width="82" height="32" rx="8" fill="#2A8C8C"/><text x="571" y="157.7" font-size="10.5" fill="#fff" text-anchor="middle">Non-critical</text><rect x="612" y="138" width="88" height="32" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.2" stroke-dasharray="5 4"/><text x="656" y="157.7" font-size="10.5" fill="#A93226" text-anchor="middle">bị cắt</text><text x="520" y="194" font-size="10.5" fill="#596966" text-anchor="middle">IVI giảm frame rate, tắt hiệu ứng;</text><text x="520" y="208" font-size="10.5" fill="#596966" text-anchor="middle">cluster giữ tốc độ khung hình đã cam kết</text><rect x="20" y="222" width="680" height="32" rx="8" fill="#E2BD69" stroke="#B7791F" stroke-width="1.2"/><text x="360" y="241.7" font-size="10.5" fill="#1c2928" text-anchor="middle">Thực thi bằng: priority scheduler · giới hạn băng thông · QoS trên bus và GPU · giảm chất lượng</text></svg><figcaption>Thứ tự nhường tài nguyên được định trước theo criticality, nên khi quá tải bên non-critical luôn chịu thiệt trước.</figcaption></figure>
+<h4>b) Policy cho từng loại tài nguyên</h4>
+<div class="table-scroll"><table>
+<thead><tr><th>Tài nguyên</th><th>Policy</th><th>Cơ chế</th></tr></thead>
+<tbody>
+<tr><td>CPU</td><td>Phần critical có core hoặc budget riêng, bên khác dùng phần dư</td><td>CPU pinning, priority, budget partition</td></tr>
+<tr><td>RAM</td><td>Dành trước. IVI thiếu bộ nhớ thì tự xử lý trong VM của nó, không lấy của cluster</td><td>Partition tĩnh, lmkd trong Android</td></tr>
+<tr><td>Băng thông bộ nhớ</td><td>Siết VM non-critical khi phần critical cần</td><td>Bandwidth regulation, QoS trên bus</td></tr>
+<tr><td>GPU</td><td>Phần critical được ưu tiên, IVI giảm frame rate</td><td>Priority, preemption, chia thời gian</td></tr>
+<tr><td>Display</td><td>Layer cảnh báo luôn nằm trên cùng</td><td>Thứ tự layer trên display controller</td></tr>
+<tr><td>Mạng</td><td>Gói dữ liệu xe đi trước gói infotainment</td><td>VLAN priority, TSN shaping</td></tr>
+<tr><td>Nhiệt và nguồn</td><td>Khi quá nhiệt, giảm hiệu năng IVI trước</td><td>Thermal policy của SoC và hypervisor</td></tr>
+</tbody></table></div>
+<h4>c) Ai quyết định và khi nào</h4>
+<p>Policy do system architect cùng nhóm safety quyết định lúc thiết kế, ghi vào tài liệu cấu hình và được test như mọi yêu cầu khác. Policy có thể đổi theo chế độ xe: khi xe đỗ và đang sạc, IVI có thể được dùng nhiều tài nguyên hơn cho game hoặc video; khi xe chạy, phần cluster và cảnh báo được giữ biên rộng hơn. Mỗi lần policy bị kích hoạt, ví dụ IVI bị siết GPU, nên được ghi log để sau này biết budget có đủ không.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Ưu tiên theo criticality, được định nghĩa trước cho từng loại tài nguyên và thực thi bằng cơ chế kỹ thuật. Policy có thể đổi theo chế độ xe, nhưng bên non-critical luôn chịu giảm chất lượng đầu tiên.</p></div>
+<div class="next-prev"><a href="7_System_Software_Stack_Linux_Android_Automotive_QNX_AUTOSAR.html">← 7 · System Software Stack Deep Dive</a><a href="10_SA_Role_Complexity_Lifecycle_Governance.html">10 · SA Role, Complexity &amp; Lifecycle Governance →</a></div>
+</article>
+  <footer class="article-footer"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></footer>
+  </main>
+</div>
+<script src="../assets/glossary-data.js"></script>
+<script src="../assets/term-glossary.js" data-unit="A.6"></script>
+</body>
+</html>

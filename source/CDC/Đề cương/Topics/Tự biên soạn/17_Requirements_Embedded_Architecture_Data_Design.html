@@ -1,0 +1,1164 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="../assets/site-ui.js" data-site-ui></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đề cương · Requirements, Embedded Architecture &amp; Data Design</title>
+  <style>
+:root {
+  color-scheme: light;
+  --paper: #f3f0e8;
+  --surface: #f9f7f1;
+  --ink: #2a3431;
+  --muted: #62706b;
+  --line: #dbd7cb;
+  --forest: #174c43;
+  --forest-soft: #e3ece6;
+  --copper: #a64e32;
+  --gold: #e2bd69;
+  --code: #ebe7dd;
+  --focus: #b34d31;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--copper); }
+a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.reader-header {
+  min-height: 74px;
+  padding: 12px clamp(20px, 5vw, 76px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: var(--forest);
+  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.reader-header a { color: white; text-decoration: none; }
+.reader-header nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; font-size: 0.9rem; }
+
+/* Navigation buttons: same shape/order as the AI library (secondary links | ← Quay lại | ⌂ Trang chủ) */
+.nav-link { padding: 6px 4px; color: #d4e4de; font-weight: 500; white-space: nowrap; }
+.reader-header a.nav-link:hover { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+.nav-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(255, 255, 255, 0.3); }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.nav-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.nav-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.nav-ico { flex: none; width: 16px; height: 16px; }
+.reader-header .nav-btn { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+.reader-header .nav-btn:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.reader-header .nav-btn--primary { color: var(--forest); border-color: var(--gold); background: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); }
+.reader-header .nav-btn--primary:hover { color: var(--forest); border-color: light-dark(#fff, #2b2b2b); background: light-dark(#f9f7f2, #192320); }
+.article-footer .nav-btn { color: var(--forest); border-color: var(--forest); background: transparent; }
+.article-footer .nav-btn:hover { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary { color: #fff; background: var(--forest); }
+.article-footer .nav-btn--primary:hover { border-color: var(--copper); background: var(--copper); }
+.reader-header nav a:hover { color: var(--gold); }
+.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; line-height: 1.12; }
+.brand small { color: #d4e4de; font-size: 0.75rem; font-weight: 400; }
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--forest);
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  border-radius: 2px;
+}
+
+.reader-layout {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+
+.contents-panel {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 32px 20px 28px clamp(20px, 4vw, 48px);
+  border-right: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--copper);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.contents-panel ul { margin: 0; padding: 0; list-style: none; }
+.contents-panel li { margin: 0; padding: 0; }
+.contents-panel a {
+  display: block;
+  padding: 7px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.contents-panel a:hover { color: var(--forest); text-decoration: underline; }
+.contents-panel .toc-level-3 { padding-left: 14px; border-left: 1px solid var(--line); }
+
+.article {
+  min-width: 0;
+  padding: 26px clamp(22px, 5vw, 76px) 70px;
+}
+
+.article-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+article { max-width: 900px; }
+article h1, article h2, article h3, .library-intro h1 {
+  color: light-dark(#26403d, #c5e8e4);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  line-height: 1.18;
+}
+article h1 { margin: 0 0 28px; font-size: 2.35rem; }
+article h2 {
+  margin: 48px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+}
+article h3 { margin: 32px 0 12px; color: var(--forest); font-size: 1.24rem; }
+article p { margin: 0 0 18px; }
+article li { margin: 6px 0; padding-left: 4px; }
+article ul, article ol { margin: 0 0 22px; padding-left: 26px; }
+article strong { color: light-dark(#26403c, #c3e9e3); }
+
+blockquote {
+  margin: 22px 0;
+  padding: 15px 20px;
+  border-left: 4px solid var(--copper);
+  background: light-dark(#f8eee8, #31231a);
+  color: light-dark(#543e35, #d4c2bb);
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+.table-scroll { width: 100%; margin: 22px 0 26px; overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.92rem; }
+th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--forest-soft); color: light-dark(#26403c, #c3e9e3); font-weight: 700; }
+tr:nth-child(even) td { background: light-dark(#f9f7f2, #2c2918); }
+
+code, pre { font-family: Consolas, "Courier New", monospace; }
+code { padding: 0.1em 0.28em; background: var(--code); color: light-dark(#24433e, #c3dfda); font-size: 0.9em; }
+pre {
+  max-width: 100%;
+  margin: 20px 0 26px;
+  padding: 18px 20px;
+  overflow: auto;
+  border-left: 3px solid var(--forest);
+  background: light-dark(#e9eeea, #222c25);
+  color: light-dark(#26403d, #d0e6e4);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  tab-size: 4;
+}
+pre code { padding: 0; background: none; color: inherit; }
+hr { margin: 36px 0; border: 0; border-top: 1px solid var(--line); }
+
+.audit-item { margin: 14px 0; }
+
+.audit-item details {
+  margin-top: 9px;
+  border-left: 3px solid #86a99e;
+  background: var(--forest-soft);
+}
+.audit-item summary {
+  padding: 9px 13px;
+  color: var(--forest);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  list-style-position: inside;
+}
+.answer-body { padding: 0 14px 10px; }
+.answer-body p { margin: 4px 0 10px; }
+.answer-body ul { margin: -4px 0 12px; padding-left: 22px; }
+.answer-body li { margin: 3px 0; line-height: 1.55; }
+/* Key questions: map 1-1 to the Learning Plan "Unit Detail" requirements of the topic */
+details.audit-reveal { margin: 8px 0 18px; border-left: 3px solid #86a99e; background: var(--forest-soft); }
+details.audit-reveal > summary { padding: 9px 13px; color: var(--forest); cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+.audit-key-intro { margin: 18px 0 28px; padding: 16px 20px 14px; border: 1px solid light-dark(#e6cf95, #62542f); border-left: 6px solid var(--gold); background: light-dark(#fff7e0, #312b1a); }
+.audit-key-intro p { margin: 0 0 8px; }
+.audit-key-intro ol { margin: 0; padding-left: 22px; }
+.audit-key-intro li { margin: 4px 0; }
+.audit-key-intro .req-tag { color: var(--muted); font-size: 0.8rem; }
+.audit-question-heading.audit-key { padding: 10px 14px; border-left: 6px solid var(--copper); background: light-dark(#fbeee4, #31251a); }
+.audit-question-heading.audit-key::after {
+  content: "Tr\1ECDng t\00E2m";
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--copper);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+details.audit-key-reveal, .audit-item details.audit-key-reveal { border-left: 6px solid var(--copper); background: light-dark(#f9f7f2, #2c2317); }
+details.audit-key-reveal > summary, .audit-item details.audit-key-reveal summary { color: var(--copper); }
+
+.article-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 54px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.library-main { width: min(1120px, 100%); margin: 0 auto; padding: 50px clamp(20px, 5vw, 72px) 76px; }
+.library-intro { padding: 8px 0 34px; border-bottom: 1px solid var(--line); }
+.library-intro h1 { margin: 0; font-size: 3rem; }
+.library-intro h1 span { color: var(--copper); }
+
+.search-label { display: block; margin: 0 0 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#topic-search {
+  width: min(520px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-intro { max-width: 740px; color: var(--muted); }
+.qa-filter { margin: 26px 0 34px; }
+.qa-filter label { display: block; margin-bottom: 7px; color: var(--forest); font-size: 0.88rem; font-weight: 700; }
+#qa-search {
+  width: min(640px, 100%);
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #879892;
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.qa-filter p { margin: 7px 0 0; color: var(--muted); font-size: 0.82rem; }
+.qa-topic { margin-top: 40px; }
+.qa-topic-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.qa-topic-heading h2 { flex: 1; }
+.qa-topic-heading a { flex: none; font-size: 0.86rem; }
+.qa-question[hidden], .qa-topic[hidden] { display: none; }
+.search-status { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; }
+.topic-list { margin-top: 8px; border-top: 1px solid var(--line); }
+.topic-link {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 15px;
+  min-height: 72px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topic-link:hover { background: light-dark(#e8eee9, #222d23); color: var(--forest); }
+.topic-number { color: var(--copper); font-family: Georgia, serif; font-size: 1.1rem; }
+.topic-title { font-weight: 650; }
+.topic-arrow { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.source-note { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.87rem; }
+
+@media (max-width: 860px) {
+  .reader-layout { grid-template-columns: 1fr; }
+  .contents-panel {
+    position: static;
+    max-height: none;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .contents-panel nav { max-height: 210px; overflow: auto; }
+  .article { padding-top: 22px; }
+}
+
+@media (max-width: 560px) {
+  .reader-header { align-items: flex-start; padding: 12px 17px; }
+  .reader-header { flex-wrap: wrap; }
+  .reader-header nav { gap: 6px 8px; }
+  .nav-sep { display: none; }
+  .nav-btn { min-height: 34px; padding: 6px 12px; }
+  .library-intro h1 { font-size: 2.25rem; }
+  article h1 { font-size: 1.9rem; }
+  article h2 { font-size: 1.4rem; }
+  .topic-link { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .topic-arrow { display: none; }
+  .qa-topic-heading { align-items: flex-start; flex-direction: column; gap: 0; }
+  th, td { min-width: 130px; padding: 9px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+/* Highlight non-AI (CDC/SDV) topics in the library index */
+.topic-link.topic-core { background: var(--forest-soft); box-shadow: inset 5px 0 0 var(--forest); }
+.topic-link.topic-core .topic-title { color: var(--forest); }
+.topic-link.topic-core .topic-number { color: var(--forest); font-weight: 700; }
+.topic-link.topic-core:hover { background: light-dark(#d4e5de, #233930); }
+.topic-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 18px 0 6px; color: var(--muted); font-size: 0.84rem; }
+.legend-swatch { display: inline-block; width: 18px; height: 14px; margin-right: -10px; border: 1px solid var(--line); vertical-align: -2px; }
+.legend-swatch.legend-core { background: var(--forest-soft); box-shadow: inset 4px 0 0 var(--forest); }
+
+/* Non-learning items (assignment / review / OJT) among CDC/SDV topics: red text */
+.topic-link.topic-task .topic-title, .topic-link.topic-task .topic-number { color: light-dark(#b3261e, #e9847e); }
+.topic-link.topic-task:hover .topic-title { color: light-dark(#8c1d18, #ed9794); }
+.legend-task { color: light-dark(#b3261e, #e9847e); font-weight: 600; }
+/* Study-time note per topic (from Fast_Track_CDC_Weekly_Checklist.xlsx) */
+.topic-time { display: block; margin-top: 3px; color: var(--muted); font-size: 0.78rem; font-weight: 500; }
+.topic-link.topic-task .topic-time { color: light-dark(#b3261e, #e9847e); opacity: 0.85; }
+.legend-time { flex-basis: 100%; color: var(--muted); }
+
+/* ---- Thuật ngữ: bấm để xem giải nghĩa ---- */
+.gl {
+  border-bottom: 1.5px dotted #6f9a8e;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background-color .12s;
+}
+.gl:hover { background: var(--forest-soft); }
+.gl:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.gl.is-open { background: var(--forest-soft); border-bottom-style: solid; border-bottom-color: var(--forest); }
+.gl-pop {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(340px, calc(100vw - 24px));
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(28, 41, 40, .16);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gl-term { display: block; margin-bottom: 2px; color: var(--forest); font-weight: 700; font-size: .82rem; }
+.gl-hint { color: var(--muted); font-size: .85rem; }
+.gl-hint .gl-demo { border-bottom: 1.5px dotted #6f9a8e; }
+
+/* ---- Checklist đầu ra (tick được, lưu trên trình duyệt) ---- */
+.checklist { margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px 16px 14px; }
+.checklist > h3 { margin-top: 18px; }
+.cl-progress { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--muted); font-size: .9rem; }
+.cl-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 99px; background: var(--forest-soft); overflow: hidden; }
+.cl-bar > i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s; }
+.cl-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.cl-item { padding: 9px 0 10px; border-top: 1px dashed var(--line); }
+.cl-item:first-child { border-top: 0; }
+.cl-item > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.cl-item input[type="checkbox"] { margin-top: .35em; width: 17px; height: 17px; accent-color: var(--forest); flex: none; }
+.cl-item.is-done > label > span { color: var(--muted); text-decoration: line-through; text-decoration-color: light-dark(#9fb3ad, #495c56); }
+.cl-pass, .cl-src { margin: 4px 0 0 27px; font-size: .9rem; }
+.cl-pass { color: var(--ink); }
+.cl-src { color: var(--muted); font-size: .82rem; }
+.cl-reset { margin-left: auto; border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 2px 9px; color: var(--muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.cl-reset:hover { color: var(--copper); border-color: var(--copper); }
+
+/* Lesson style for CDC/SDV topics — mirrors the teaching layout of the AI library
+   (bài đọc: hook → giải thích → ví dụ → vì sao quan trọng → nghiền ngẫm → thực hành → tự kiểm)
+   while keeping the CDC palette of reader.css. Load AFTER reader.css. */
+:root {
+  --teal: #2A8C8C; --teal-soft: #EEF7F6;
+  --violet: #6A4FC0; --violet-soft: #F5F2FD;
+  --green: #2E7D4F; --green-soft: #EFF8F2;
+  --amber: #B7791F; --amber-soft: #FFF7E8;
+  --red: #A93226; --red-soft: #FCEFEC;
+}
+
+body.lesson-page article { max-width: 800px; }
+body.lesson-page article p, body.lesson-page article li { line-height: 1.75; }
+body.lesson-page article h2 { margin-top: 44px; }
+body.lesson-page article h2 .sec-no { color: var(--copper); font-weight: 700; margin-right: 6px; }
+
+/* Bài nav (pill row, like .tapnav in the AI library) */
+.bai-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }
+.bai-nav a { font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--surface); }
+.bai-nav a:hover { border-color: var(--forest); color: var(--forest); }
+.bai-nav a.cur { background: var(--forest); border-color: var(--forest); color: #fff; }
+.bai-nav .grp { font-size: 0.7rem; font-weight: 700; color: var(--copper); align-self: center; margin: 0 2px 0 6px; letter-spacing: .06em; }
+
+.lesson-kicker { margin: 0 0 6px; color: var(--copper); font-size: 0.78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+body.lesson-page article h1 { margin-bottom: 10px; }
+.lesson-meta { margin: 0 0 18px; font-weight: 600; color: light-dark(#2c4b46, #bfdad5); font-size: 0.95rem; }
+
+/* Bản đồ bài — chuỗi khái niệm */
+.roadmap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 24px; font-size: 0.86rem; }
+.roadmap span { background: var(--forest-soft); color: var(--forest); border: 1px solid light-dark(#c9ddd5, #314e42); border-radius: 8px; padding: 5px 10px; font-weight: 600; }
+.roadmap i { color: var(--muted); font-style: normal; }
+
+/* Figure card for SVG diagrams */
+.fig { margin: 24px 0; background: light-dark(#f9f7f2, #202819); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 12px; box-shadow: 0 1px 3px rgba(23,76,67,.06); overflow-x: auto; }
+.fig svg { width: 100%; height: auto; display: block; min-width: 560px; }
+.fig figcaption, .fig .cap { margin-top: 8px; color: var(--muted); font-size: 0.84rem; text-align: center; font-style: italic; }
+
+/* Opening question of a section */
+.hook { font-size: 1.04rem; color: light-dark(#26403c, #c6e2de); border-left: 3px solid var(--copper); padding: 4px 0 4px 14px; margin: 6px 0 18px; }
+
+/* Plain-language explanation */
+.plain { background: var(--forest-soft); border-radius: 10px; padding: 12px 16px; margin: 14px 0 18px; }
+.plain .ttl { color: var(--forest); }
+
+/* Generic box header */
+.box { border-radius: 12px; padding: 14px 18px; margin: 20px 0; }
+.box > .ttl, .plain > .ttl { margin: 0 0 7px; font-weight: 700; font-size: 0.86rem; }
+.box p { margin: 6px 0; }
+.box ul, .box ol { margin: 6px 0; padding-left: 22px; }
+.box li { margin: 4px 0; }
+
+.ex { background: var(--teal-soft); border: 1px solid var(--teal); }
+.ex > .ttl { color: light-dark(#1d6b6b, #a8e7e7); }
+.case { background: light-dark(#f9f7f2, #2c2117); border: 1px solid light-dark(#EBB28F, #63432f); border-left: 4px solid var(--copper); }
+.case > .ttl { color: var(--copper); font-size: 0.74rem; text-transform: uppercase; letter-spacing: .05em; }
+.pitfall { background: var(--amber-soft); border: 1px solid light-dark(#EBC77A, #695833); }
+.pitfall > .ttl { color: light-dark(#8A5A00, #ffd88f); }
+.why { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--forest); }
+.why > .ttl { color: var(--forest); }
+
+.practice { background: var(--green-soft); border: 1px solid var(--green); }
+.practice > .ttl { color: light-dark(#1F6340, #ade5c9); }
+.remember { background: var(--forest); color: #E4EFEB; }
+.remember > .ttl { color: var(--gold); }
+.remember b, .remember strong { color: #fff; }
+
+/* Sai vs đúng */
+.contrast { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.contrast > div { border-radius: 10px; padding: 12px 16px; font-size: 0.95rem; }
+.contrast .bad { background: var(--red-soft); border: 1px solid light-dark(#E3A79F, #60342e); }
+.contrast .good { background: var(--green-soft); border: 1px solid light-dark(#9CCFB0, #326747); }
+.contrast .ttl { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 4px; }
+.contrast .bad .ttl { color: var(--red); }
+.contrast .good .ttl { color: var(--green); }
+.contrast p { margin: 4px 0; }
+
+/* Step-by-step anatomy */
+.steps { list-style: none; counter-reset: st; padding-left: 0 !important; }
+.steps > li { counter-increment: st; position: relative; padding: 2px 0 2px 42px !important; margin: 12px 0 !important; }
+.steps > li::before { content: counter(st); position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: var(--forest); color: #fff; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+
+/* Small term chips inline */
+.term { font-weight: 650; color: light-dark(#26403c, #c3e9e3); }
+.term-gloss { color: var(--muted); font-size: 0.92em; }
+
+/* Lesson prev/next */
+.next-prev { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-weight: 600; }
+
+@media (max-width: 560px) {
+  .contrast { grid-template-columns: 1fr; }
+  .fig svg { min-width: 520px; }
+}
+
+/* ---------- Learning reflection + Unit assessment (assets/assessment.js) ---------- */
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.refl-intro { color: light-dark(#2c4b46, #bfdad5); }
+.refl-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--violet); border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+.refl-label { margin: 0 0 4px !important; font-weight: 700; color: light-dark(#3f2c86, #a99ade); }
+.refl-hint { color: light-dark(#41506B, #aeb9ce); font-size: 0.93rem; margin-bottom: 8px; }
+.refl-hint ul { margin: 4px 0 0; padding-left: 20px; }
+.refl-hint li { margin: 2px 0; }
+#reflection-app textarea, #quiz-app textarea, #workshop-app textarea { width: 100%; font: inherit; font-size: 0.95rem; line-height: 1.55; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); color: var(--ink); resize: vertical; }
+#reflection-app textarea:focus, #quiz-app textarea:focus, #workshop-app textarea:focus { outline: 2px solid var(--gold); border-color: var(--forest); }
+.refl-sample { margin-top: 8px; }
+.refl-sample summary { cursor: pointer; color: var(--forest); font-size: 0.86rem; font-weight: 600; }
+.refl-sample-body { margin: 6px 0; padding: 8px 12px; background: var(--forest-soft); border-radius: 6px; font-size: 0.92rem; }
+.refl-sample-body ul { margin: 4px 0; padding-left: 20px; }
+.refl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 6px; }
+.refl-tools p { flex-basis: 100%; margin: 2px 0 0; }
+.tool-msg { color: var(--green); font-size: 0.86rem; }
+.act-btn, .mini-btn { font: inherit; font-size: 0.88rem; font-weight: 600; border-radius: 999px; padding: 7px 14px; cursor: pointer; border: 1.5px solid var(--forest); }
+.act-btn { background: var(--forest); color: #fff; }
+.act-btn:hover { background: var(--copper); border-color: var(--copper); }
+.mini-btn { background: transparent; color: var(--forest); padding: 5px 12px; font-size: 0.82rem; }
+.mini-btn:hover { background: var(--forest-soft); }
+.mini-btn.danger { color: var(--red); border-color: light-dark(#E3A79F, #60342e); }
+.assess-note { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; }
+.assess-note.small { background: transparent; padding: 0; }
+
+table.rubric select { font: inherit; font-size: 0.86rem; padding: 4px 6px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; background: light-dark(#f9f7f2, #192320); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ws-col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.ws-h { margin: 0 0 4px !important; font-weight: 700; color: var(--forest); font-size: 0.9rem; }
+.ws-col ol, .ws-col ul { margin: 0 !important; padding-left: 20px !important; font-size: 0.93rem; }
+table.rubric td.num { text-align: center; font-weight: 700; color: var(--copper); }
+table.rubric td { font-size: 0.9rem; }
+table.rubric textarea { min-width: 180px; }
+.rub-pts { font-size: 0.82rem; color: var(--forest); font-weight: 600; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.dash-card.pass { border-color: light-dark(#9CCFB0, #326747); background: var(--green-soft); }
+.dash-card.fail { border-color: light-dark(#E3A79F, #60342e); background: var(--red-soft); }
+.dash-h { margin: 0 !important; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-v { margin: 2px 0 !important; font-size: 1.6rem; font-weight: 700; color: var(--forest); }
+.dash-sub { margin: 0 !important; font-size: 0.84rem; color: var(--muted); }
+
+/* ---------- Knowledge questions (open questions, self-rated) ---------- */
+.kq-howto { background: var(--forest-soft); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kq-toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0; background: var(--paper); border-bottom: 1px solid var(--line); }
+.kq-filter { font-size: 0.88rem; color: var(--forest); font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.kq-progress { flex: 1 1 240px; display: flex; align-items: center; gap: 10px; }
+.kq-track { flex: 1; height: 8px; border-radius: 99px; background: light-dark(#E3E8E2, #272f25); overflow: hidden; display: flex; }
+.kq-track .seg { height: 100%; }
+.seg-yes { background: var(--green); } .seg-part { background: light-dark(#D9A441, #665027); } .seg-no { background: light-dark(#C0504D, #6a2a28); }
+.kq-count { font-size: 0.84rem; color: var(--muted); white-space: nowrap; }
+.kq-group { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 26px; border-bottom: 1px dashed var(--line); }
+.kq-group-title { margin: 0 0 6px !important; font-size: 1.08rem !important; }
+.kq-back { font-size: 0.82rem; white-space: nowrap; }
+.kq-list { padding-left: 26px !important; margin-top: 8px !important; }
+.kq-item { margin: 12px 0 !important; padding: 10px 14px !important; border: 1px solid var(--line); border-left: 4px solid light-dark(#C9D3CF, #3b4843); border-radius: 10px; background: var(--surface); }
+.kq-item[data-rate="yes"] { border-left-color: var(--green); }
+.kq-item[data-rate="part"] { border-left-color: #D9A441; }
+.kq-item[data-rate="no"] { border-left-color: #C0504D; }
+.only-weak .kq-item[data-rate="yes"] { display: none; }
+.kq-q { margin: 0 0 6px !important; font-weight: 600; line-height: 1.6 !important; }
+.kq-type { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 4px; background: var(--forest-soft); color: var(--forest); font-size: 0.72rem; font-weight: 700; letter-spacing: .03em; vertical-align: 2px; text-transform: uppercase; }
+.kq-mine, .kq-answer { margin: 6px 0; }
+.kq-mine summary, .kq-answer summary { cursor: pointer; font-size: 0.86rem; font-weight: 600; color: var(--forest); }
+.kq-mine textarea { margin-top: 6px; width: 100%; font: inherit; font-size: 0.95rem; padding: 8px 10px; border: 1px solid light-dark(#b9c6c1, #414f4a); border-radius: 6px; resize: vertical; }
+.kq-answer-body { margin-top: 6px; padding: 10px 14px; background: light-dark(#F4F8F6, #1b2a22); border: 1px solid light-dark(#D5E3DD, #2f473d); border-radius: 8px; font-size: 0.95rem; }
+.kq-answer-body p { margin: 4px 0 8px !important; }
+.kq-answer-body ul, .kq-answer-body ol { margin: 4px 0 8px !important; padding-left: 20px !important; }
+.kq-answer-body li { margin: 2px 0 !important; }
+.kq-refs { font-size: 0.84rem; color: var(--muted); border-top: 1px dashed light-dark(#D5E3DD, #2f473d); padding-top: 6px; margin-top: 8px !important; }
+.kq-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.kq-rate-l { font-size: 0.8rem; color: var(--muted); }
+.kq-rbtn { font: inherit; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid light-dark(#C9D3CF, #3b4843); background: light-dark(#f9f7f2, #192320); color: var(--muted); cursor: pointer; }
+.kq-rbtn[aria-pressed="true"].r-yes { background: var(--green); border-color: var(--green); color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-part { background: light-dark(#D9A441, #665027); border-color: #D9A441; color: #fff; }
+.kq-rbtn[aria-pressed="true"].r-no { background: light-dark(#C0504D, #6a2a28); border-color: #C0504D; color: #fff; }
+
+
+  </style>
+  <style>
+    article h4 { margin: 22px 0 8px; color: var(--forest); font-size: 1.02rem; }
+    td.c, th.c { text-align: center; }
+    tr.total td { font-weight: 700; background: var(--forest-soft) !important; }
+    .fig svg .hit:hover { opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="../assets/dark.css">
+</head>
+<body class="topic-page lesson-page">
+<header class="reader-header">
+    <a class="brand" href="../../dainv13.html"><span class="brand-mark">Đ</span><span>Đề cương<br><small>Requirements, Embedded Architecture &amp; Data Design</small></span></a>
+    <nav aria-label="Page actions"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></nav>
+</header>
+<div class="reader-layout">
+  <aside class="contents-panel">
+    <p class="eyebrow">Nội dung trang</p>
+    <nav aria-label="Topic contents"><ul>
+<li class="toc-level-2"><a href="#p1">Phần 1 · Giải thích chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</a></li>
+<li class="toc-level-3"><a href="#p1-2">1.2 Tổng quan về chủ đề</a></li>
+<li class="toc-level-2"><a href="#p2">Phần 2 · Nội dung chi tiết</a></li>
+<li class="toc-level-3"><a href="#p2-1">2.1 Requirement, architecture và data liên kết thế nào</a></li>
+<li class="toc-level-3"><a href="#p2-2">2.2 Functional và non-functional requirements</a></li>
+<li class="toc-level-3"><a href="#p2-3">2.3 Chất lượng requirement</a></li>
+<li class="toc-level-3"><a href="#p2-4">2.4 Allocation xuống component</a></li>
+<li class="toc-level-3"><a href="#p2-5">2.5 Ownership, schema, lifecycle, timing, persistence, integrity</a></li>
+<li class="toc-level-3"><a href="#p2-6">2.6 Interface contract và backward compatibility</a></li>
+</ul></nav>
+  </aside>
+  <main class="article">
+    <article>
+<p class="lesson-kicker">Đề cương tự biên soạn</p>
+<h1 id="top">Requirements, Embedded Architecture &amp; Data Design</h1>
+<p class="lesson-meta">Requirement, kiến trúc nhúng &amp; thiết kế dữ liệu · đọc ~20 phút</p>
+
+<h2 id="p1"><span class="sec-no">1 ·</span> Giải thích chủ đề</h2>
+<h3 id="p1-1">1.1 Giải thích các cụm từ trong tên chủ đề</h3>
+<ul>
+<li><b>Requirements</b>: Phát biểu về điều hệ thống phải làm hoặc phải đạt được. Mỗi requirement là một cam kết có thể kiểm chứng, không phải một ý tưởng. Requirement có nhiều cấp: stakeholder requirement (người dùng, luật, OEM cần gì), system requirement (cả CDC phải làm gì) và software hoặc hardware requirement (từng phần phải làm gì).</li>
+<li><b>Embedded Architecture</b>: Cách chia phần mềm nhúng thành các khối, chạy trên phần cứng nào, giao tiếp ra sao. Với CDC, đó là việc đặt cluster, IVI, HUD lên SoC, hypervisor và các partition. Kiến trúc thường được mô tả qua ba góc nhìn: góc tĩnh (component và interface), góc động (các khối tương tác theo thời gian ra sao) và góc triển khai (khối nào chạy trên core, VM hay partition nào).</li>
+<li><b>Data Design</b>: Thiết kế dữ liệu: ai tạo ra, cấu trúc gì, sống bao lâu, lưu ở đâu và được bảo vệ thế nào. Dữ liệu tốt giúp các component hiểu nhau mà không cần đoán. Phạm vi gồm cả dữ liệu chạy trên đường truyền (signal, message, service event) lẫn dữ liệu lưu lâu dài (hồ sơ người lái, cấu hình, log).</li>
+</ul>
+<h3 id="p1-2">1.2 Tổng quan về chủ đề</h3>
+<p>Chủ đề này nối ba việc thường bị tách rời. Requirement nói "cần gì". Architecture nói "khối nào gánh việc đó". Data design nói "khối đó trao đổi thông tin gì, theo hợp đồng nào".</p>
+<p>Trong CDC, một yêu cầu như hiển thị tốc độ xe chạm tới cả ba lớp. Nó có độ trễ, có nguồn tín hiệu, có định dạng dữ liệu và có component chịu trách nhiệm. Bỏ sót một lớp là tạo ra lỗi tích hợp về sau.</p>
+<p>CDC làm việc này khó hơn một ECU thông thường. Một SoC chứa nhiều chức năng có mức quan trọng khác nhau, phần mềm đến từ nhiều nhà cung cấp, và từng phần có thể được cập nhật OTA riêng. Requirement, ranh giới component và hợp đồng dữ liệu là thứ giữ cho các bên khớp nhau qua nhiều năm.</p>
+<p>Các quy trình phổ biến trong ngành cũng đặt ba việc này cạnh nhau. Automotive SPICE có SYS.2 và SYS.3 cho requirement và kiến trúc ở cấp hệ thống, SWE.1 và SWE.2 cho cấp phần mềm. ISO 26262 phần 6 yêu cầu software safety requirement và software architectural design cho phần mềm có ASIL. Phần 2 lần lượt xem cách nối ba lớp (2.1), các loại requirement (2.2), tiêu chí của requirement tốt (2.3), cách chia requirement xuống component (2.4), các khía cạnh của dữ liệu (2.5) và hợp đồng interface (2.6).</p>
+<h2 id="p2"><span class="sec-no">2 ·</span> Nội dung chi tiết</h2>
+<h3 id="p2-1">2.1 Liên kết requirement, embedded architecture và data design</h3>
+<p>Ba lớp này phải đi thành chuỗi có dấu vết. Mỗi requirement được gán cho một hoặc vài component. Mỗi component công bố dữ liệu nó sở hữu và interface nó cung cấp. Khi requirement đổi, ta lần theo chuỗi để biết component và dữ liệu nào bị ảnh hưởng.</p>
+<p>Ví dụ CDC: yêu cầu "cảnh báo áp suất lốp thấp phải hiện trên cluster". Chuỗi liên kết như sau:</p>
+<ol>
+<li>Requirement: hiện icon cảnh báo trong vòng 500 ms sau khi nhận tín hiệu (giả định minh họa).</li>
+<li>Architecture: Vehicle Signal Service trên phân vùng safety nhận tín hiệu CAN, Cluster HMI hiển thị.</li>
+<li>Data design: tín hiệu <code>TirePressureWarning</code> có kiểu enum, chu kỳ cập nhật, giá trị mặc định khi mất tín hiệu.</li>
+</ol>
+<figure class="fig"><svg viewBox="0 0 720 236" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Chuỗi liên kết từ requirement cảnh báo áp suất lốp sang architecture và data design">
+<defs>
+<marker id="s17-m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A64E32"/></marker>
+<marker id="s17-m1b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Một requirement đi qua ba lớp (cảnh báo áp suất lốp)</text>
+<rect x="16" y="40" width="210" height="30" rx="8" fill="#174C43"/>
+<text x="121" y="60" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1 · Requirement</text>
+<rect x="16" y="76" width="210" height="94" rx="8" fill="#E5EFEB" stroke="#174C43"/>
+<text x="121" y="98" text-anchor="middle" font-size="11" fill="#1c2928">Hiện icon cảnh báo áp suất lốp</text>
+<text x="121" y="116" text-anchor="middle" font-size="11" fill="#1c2928">trên cluster trong ≤ 500 ms</text>
+<text x="121" y="134" text-anchor="middle" font-size="11" fill="#1c2928">sau khi nhận tín hiệu</text>
+<text x="121" y="156" text-anchor="middle" font-size="10" fill="#596966">"cần gì"</text>
+<rect x="258" y="40" width="210" height="30" rx="8" fill="#2A6F66"/>
+<text x="363" y="60" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">2 · Architecture</text>
+<rect x="258" y="76" width="210" height="94" rx="8" fill="#E5EFEB" stroke="#2A6F66"/>
+<text x="363" y="98" text-anchor="middle" font-size="11" fill="#1c2928">CAN → Vehicle Signal Service</text>
+<text x="363" y="116" text-anchor="middle" font-size="11" fill="#1c2928">trên phân vùng safety</text>
+<text x="363" y="134" text-anchor="middle" font-size="11" fill="#1c2928">→ Cluster HMI hiển thị</text>
+<text x="363" y="156" text-anchor="middle" font-size="10" fill="#596966">"khối nào gánh việc"</text>
+<rect x="500" y="40" width="204" height="30" rx="8" fill="#A64E32"/>
+<text x="602" y="60" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">3 · Data design</text>
+<rect x="500" y="76" width="204" height="94" rx="8" fill="#E5EFEB" stroke="#A64E32"/>
+<text x="602" y="98" text-anchor="middle" font-size="11" font-weight="700" fill="#1c2928">TirePressureWarning</text>
+<text x="602" y="116" text-anchor="middle" font-size="11" fill="#1c2928">kiểu enum, chu kỳ cập nhật</text>
+<text x="602" y="134" text-anchor="middle" font-size="11" fill="#1c2928">mặc định khi mất tín hiệu</text>
+<text x="602" y="156" text-anchor="middle" font-size="10" fill="#596966">"trao đổi gì, theo hợp đồng nào"</text>
+<line x1="228" y1="123" x2="255" y2="123" stroke="#A64E32" stroke-width="2" marker-end="url(#s17-m1)"/>
+<line x1="470" y1="123" x2="497" y2="123" stroke="#A64E32" stroke-width="2" marker-end="url(#s17-m1)"/>
+<path d="M121,172 V194 H602 V175" fill="none" stroke="#596966" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#s17-m1b)"/>
+<line x1="363" y1="194" x2="363" y2="175" stroke="#596966" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#s17-m1b)"/>
+<text x="360" y="220" text-anchor="middle" font-size="11" fill="#596966">Requirement đổi → lần theo chuỗi để biết component và dữ liệu nào bị ảnh hưởng</text>
+</svg><figcaption>Mỗi lớp trả lời một câu hỏi riêng, và khi requirement đổi thì cả chuỗi phía sau phải được xem lại.</figcaption></figure>
+<p>Nếu chỉ viết requirement mà không chốt dữ liệu, mỗi nhóm sẽ tự hiểu "mất tín hiệu" theo cách riêng. Kết quả là cluster và IVI hiển thị khác nhau cho cùng một tình huống.</p>
+<p>Chuỗi này không chỉ đi một chiều từ trên xuống. Khi làm kiến trúc, nhóm thường phát hiện ràng buộc mới, ví dụ mọi app chỉ được lấy dữ liệu xe qua Vehicle Signal Service. Ràng buộc đó trở thành <b>derived requirement</b>: requirement sinh ra từ quyết định thiết kế chứ không từ khách hàng. Derived requirement cũng cần ID, lý do và người duyệt, nhất là khi nó chạm tới safety. Tương tự, khi data design cho thấy một tín hiệu không có sẵn trên bus, requirement gốc phải được xem lại.</p>
+<p>Để giữ được chuỗi, nhóm cần ba thứ:</p>
+<ul>
+<li>ID ổn định cho requirement, component, interface và phần tử dữ liệu.</li>
+<li>Liên kết hai chiều trong công cụ quản lý requirement hoặc trong model, xuất ra được dạng trace matrix.</li>
+<li>Impact analysis bắt buộc với mỗi change request: liệt kê component, interface, dữ liệu và test bị chạm.</li>
+</ul>
+<div class="table-scroll"><table>
+<thead><tr><th>Requirement</th><th>Component</th><th>Interface / dữ liệu</th><th>Test</th></tr></thead>
+<tbody>
+<tr><td>REQ-CDC-042: icon áp suất lốp hiện ≤ 500 ms</td><td>Vehicle Signal Service, Cluster HMI</td><td><code>TirePressureWarning</code> v1</td><td>TC-CL-210: đo độ trễ trên HIL</td></tr>
+<tr><td>REQ-CDC-043: mất tín hiệu quá 1 s thì hiện trạng thái "không xác định"</td><td>Vehicle Signal Service</td><td><code>status = UNKNOWN</code></td><td>TC-CL-211: cắt tín hiệu CAN</td></tr>
+<tr><td>DRV-CDC-007 (derived): app chỉ đọc dữ liệu xe qua Vehicle Signal Service</td><td>Vehicle Signal Service, IVI</td><td>Quyền truy cập service</td><td>TC-SEC-020: app thử mở socket CAN</td></tr>
+</tbody></table></div>
+<p>Các ID trên là giả định minh họa. Một hàng thiếu ô nào là một lỗ hổng: requirement chưa có người làm, interface chưa được định nghĩa, hoặc hành vi chưa có test.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Requirement, architecture và data design là một chuỗi có liên kết hai chiều. Mỗi mắt xích phải truy được sang mắt xích kế tiếp, và quyết định thiết kế mới phải quay lại thành derived requirement.</p></div>
+<h3 id="p2-2">2.2 Functional và non-functional requirements</h3>
+<p>Functional requirement mô tả hành vi: hệ thống làm gì khi có đầu vào nào. Non-functional requirement mô tả mức chất lượng của hành vi đó: nhanh đến đâu, ổn định ra sao, an toàn, bảo mật, tiêu thụ tài nguyên bao nhiêu.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Loại</th><th>Ví dụ trong CDC</th></tr></thead>
+<tbody>
+<tr><td>Functional</td><td>Khi người lái chọn chế độ Sport, cluster đổi giao diện sang theme Sport.</td></tr>
+<tr><td>Performance</td><td>Cluster hiển thị khung hình đầu tiên trong 2 s sau khi bật nguồn (giả định minh họa).</td></tr>
+<tr><td>Safety</td><td>Nếu IVI bị treo, đèn cảnh báo trên cluster vẫn phải hoạt động.</td></tr>
+<tr><td>Security</td><td>Ứng dụng bên thứ ba không được đọc trực tiếp dữ liệu CAN.</td></tr>
+<tr><td>Reliability / availability</td><td>Nếu process Cluster HMI bị crash, nó được khởi động lại và hiển thị lại trong 3 s (giả định minh họa).</td></tr>
+<tr><td>Usability</td><td>Tác vụ IVI cho phép khi xe chạy phải làm được bằng các lần liếc ngắn. Hướng dẫn driver distraction của NHTSA dùng mốc mỗi lần liếc không quá 2 s và tổng thời gian rời mắt khỏi đường không quá 12 s cho một tác vụ.</td></tr>
+<tr><td>Resource</td><td>Cluster dùng tối đa 1 core và 512 MB RAM ở tải đỉnh (giả định minh họa).</td></tr>
+<tr><td>Maintainability / updatability</td><td>Mỗi ứng dụng IVI cập nhật OTA được độc lập, không phải thay cả image.</td></tr>
+<tr><td>Constraint</td><td>Phải dùng SoC đã chọn cho dòng xe và Android Automotive cho IVI.</td></tr>
+</tbody></table></div>
+<p>Non-functional có hai nhóm con. <b>Quality requirement</b> đặt mức chất lượng: performance, reliability, safety, security, usability. <b>Constraint</b> giới hạn cách làm: SoC đã chọn, hệ điều hành bắt buộc, chuẩn phải tuân thủ, ngân sách giá linh kiện. Constraint không cần đo, nhưng phải được ghi rõ để kiến trúc không đi vào hướng bị cấm.</p>
+<p>Non-functional requirement thường quyết định kiến trúc nhiều hơn functional. Yêu cầu "cluster không bị ảnh hưởng khi IVI lỗi" buộc phải tách partition hoặc dùng hypervisor. Vì vậy cần viết chúng sớm, có số đo cụ thể, chứ không để cuối dự án.</p>
+<p>Một quality requirement viết tốt có bốn phần: metric, điều kiện, ngưỡng và cách đo.</p>
+<pre><code>Metric:    thời gian từ khi bật nguồn tới khung hình đầu của cluster
+Điều kiện: khởi động lạnh, nhiệt độ môi trường -20 °C đến 85 °C
+Ngưỡng:    ≤ 2,0 s ở mọi lần đo, trung bình ≤ 1,5 s
+Cách đo:   camera tốc độ cao + timestamp trong log, 200 chu kỳ trên HIL
+(giả định minh họa)</code></pre>
+<p>Hai loại requirement cũng được verify khác nhau. Functional thường kiểm bằng test case có đầu vào và kết quả mong đợi. Non-functional thường cần đo lặp nhiều lần, test tải, test chạy dài, phân tích (ví dụ phân tích thời gian thực thi xấu nhất) hoặc review thiết kế. Nếu chưa ai biết sẽ đo bằng cách nào, requirement đó chưa sẵn sàng để giao.</p>
+<figure class="fig"><svg viewBox="0 0 720 266" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Ba non-functional requirement dẫn tới quyết định kiến trúc trên SoC CDC">
+<defs>
+<marker id="s17-m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Non-functional requirement định hình kiến trúc</text>
+<rect x="16" y="44" width="296" height="64" rx="9" fill="#fff" stroke="#174C43"/>
+<text x="30" y="62" font-size="11" font-weight="700" fill="#174C43">Safety</text>
+<text x="30" y="80" font-size="10.5" fill="#1c2928">IVI treo thì đèn cảnh báo trên cluster vẫn chạy</text>
+<text x="30" y="98" font-size="10.5" font-weight="600" fill="#A64E32">→ tách partition bằng hypervisor</text>
+<rect x="16" y="116" width="296" height="64" rx="9" fill="#fff" stroke="#174C43"/>
+<text x="30" y="134" font-size="11" font-weight="700" fill="#174C43">Security</text>
+<text x="30" y="152" font-size="10.5" fill="#1c2928">App bên thứ ba không đọc trực tiếp dữ liệu CAN</text>
+<text x="30" y="170" font-size="10.5" font-weight="600" fill="#A64E32">→ chỉ lấy tín hiệu qua Vehicle Signal Service</text>
+<rect x="16" y="188" width="296" height="64" rx="9" fill="#fff" stroke="#174C43"/>
+<text x="30" y="206" font-size="11" font-weight="700" fill="#174C43">Performance</text>
+<text x="30" y="224" font-size="10.5" fill="#1c2928">Cluster có khung hình đầu trong 2 s sau bật nguồn</text>
+<text x="30" y="242" font-size="10.5" font-weight="600" fill="#A64E32">→ cluster khởi động riêng, không chờ IVI</text>
+<rect x="330" y="44" width="374" height="208" rx="10" fill="#fff" stroke="#174C43" stroke-width="1.5"/>
+<text x="344" y="62" font-size="11" font-weight="700" fill="#174C43">SoC CDC</text>
+<rect x="342" y="70" width="170" height="102" rx="8" fill="#E5EFEB" stroke="#174C43"/>
+<text x="427" y="87" text-anchor="middle" font-size="11" font-weight="700" fill="#174C43">Phân vùng safety</text>
+<rect x="354" y="95" width="146" height="30" rx="7" fill="#174C43"/>
+<text x="427" y="114" text-anchor="middle" font-size="11" fill="#fff">Cluster HMI + cảnh báo</text>
+<rect x="354" y="133" width="146" height="30" rx="7" fill="#2A6F66"/>
+<text x="427" y="152" text-anchor="middle" font-size="10.5" fill="#fff">Vehicle Signal Service</text>
+<rect x="522" y="70" width="170" height="102" rx="8" fill="#fff" stroke="#2A8C8C"/>
+<text x="607" y="87" text-anchor="middle" font-size="11" font-weight="700" fill="#2A6F66">Phân vùng IVI</text>
+<rect x="534" y="95" width="146" height="30" rx="7" fill="#2A8C8C"/>
+<text x="607" y="114" text-anchor="middle" font-size="11" fill="#fff">Android IVI</text>
+<rect x="534" y="133" width="146" height="30" rx="7" fill="#fff" stroke="#2A8C8C"/>
+<text x="607" y="152" text-anchor="middle" font-size="11" fill="#1c2928">App bên thứ ba</text>
+<line x1="501" y1="148" x2="532" y2="148" stroke="#2A8C8C" stroke-width="2" marker-end="url(#s17-m2)"/>
+<rect x="342" y="180" width="350" height="26" rx="7" fill="#1c2928"/>
+<text x="517" y="197" text-anchor="middle" font-size="11" fill="#fff">Hypervisor: cách ly CPU, bộ nhớ, thiết bị</text>
+<rect x="342" y="214" width="350" height="26" rx="7" fill="#E2BD69"/>
+<text x="517" y="231" text-anchor="middle" font-size="11" fill="#1c2928">CAN / ECU xe</text>
+</svg><figcaption>Yêu cầu về safety, security và performance là thứ buộc kiến trúc phải tách partition và đi qua một cổng tín hiệu duy nhất.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Functional nói hệ thống làm gì, non-functional nói làm tốt đến mức nào và trong ràng buộc nào. Quality requirement cần metric, điều kiện, ngưỡng và cách đo, và chính nhóm này thường định hình kiến trúc.</p></div>
+<h3 id="p2-3">2.3 Requirement quality: clear, complete, consistent, verifiable và traceable</h3>
+<p>ISO/IEC/IEEE 29148 mô tả đặc tính của từng requirement (như necessary, unambiguous, complete, singular, feasible, verifiable) và của cả tập requirement (như complete, consistent). Khi review trong dự án, năm đặc tính dưới đây là bộ kiểm tra hay dùng nhất:</p>
+<ul>
+<li><b>Clear</b>: mọi người đọc (kỹ sư, tester, nhà cung cấp) hiểu cùng một nghĩa. Tránh từ như "nhanh", "thân thiện", "nếu có thể", "v.v.". Mỗi câu chỉ nói một việc; câu có "và/hoặc" thường nên tách đôi.</li>
+<li><b>Complete</b>: có đủ điều kiện kích hoạt, đáp ứng, ngưỡng và hành vi khi có lỗi hay ngoại lệ. Chỗ "TBD" phải có người chịu trách nhiệm và hạn chốt.</li>
+<li><b>Consistent</b>: không mâu thuẫn với requirement khác, với glossary hay với chuẩn đang áp dụng. Cùng một khái niệm phải dùng cùng một tên và một đơn vị trong cả bộ requirement.</li>
+<li><b>Verifiable</b>: có test, phép đo, phân tích hoặc inspection để kết luận đạt hay không. Mỗi ngưỡng phải có đơn vị và điều kiện đo.</li>
+<li><b>Traceable</b>: có ID duy nhất, có liên kết lên nguồn (stakeholder requirement, luật, safety goal) và xuống thiết kế, code, test. Nhờ đó biết vì sao requirement tồn tại và ai bị ảnh hưởng khi nó đổi.</li>
+</ul>
+<div class="table-scroll"><table>
+<thead><tr><th>Đặc tính</th><th>Câu hỏi khi review</th><th>Câu chưa đạt</th><th>Viết lại</th></tr></thead>
+<tbody>
+<tr><td>Clear</td><td>Hai người đọc có hiểu giống nhau không?</td><td>"Cluster phải đủ sáng vào ban đêm."</td><td>"Ở chế độ đêm, độ sáng cluster nằm trong 5–20 cd/m²." (giả định minh họa)</td></tr>
+<tr><td>Complete</td><td>Trường hợp lỗi đã được nói chưa?</td><td>"Cluster hiển thị tốc độ xe."</td><td>Thêm: "Nếu quá 500 ms không nhận giá trị tốc độ mới, cluster hiện '---' thay cho giá trị cũ."</td></tr>
+<tr><td>Consistent</td><td>Có requirement nào nói ngược lại?</td><td>A: "Âm cảnh báo luôn được ưu tiên." B: "Cuộc gọi không bị âm thanh khác ngắt."</td><td>Chốt một quy tắc: âm cảnh báo safety ưu tiên hơn cuộc gọi, cuộc gọi chỉ bị giảm âm lượng chứ không bị ngắt.</td></tr>
+<tr><td>Verifiable</td><td>Viết được test kết luận đạt hay không?</td><td>"Hệ thống phải khởi động nhanh."</td><td>"Khung hình đầu của cluster ≤ 2 s sau khi bật nguồn, khởi động lạnh."</td></tr>
+<tr><td>Traceable</td><td>Có ID, nguồn và liên kết xuống test?</td><td>Một câu nằm trong biên bản họp, không có ID.</td><td>"REQ-CDC-201, nguồn SG-03, verify bởi TC-CL-305." (giả định minh họa)</td></tr>
+</tbody></table></div>
+<p>EARS (Easy Approach to Requirements Syntax, do Mavin và cộng sự ở Rolls-Royce đề xuất) cho sẵn vài khuôn câu. Mỗi khuôn ép người viết nêu đủ điều kiện và đáp ứng:</p>
+<ul>
+<li><b>Ubiquitous</b>: "The &lt;hệ thống&gt; shall …" cho hành vi luôn đúng.</li>
+<li><b>Event-driven</b>: "When &lt;sự kiện&gt;, the … shall …".</li>
+<li><b>State-driven</b>: "While &lt;trạng thái&gt;, the … shall …".</li>
+<li><b>Unwanted behaviour</b>: "If &lt;điều kiện bất thường&gt;, then the … shall …" cho lỗi và ngoại lệ.</li>
+<li><b>Optional feature</b>: "Where &lt;tính năng có mặt&gt;, the … shall …" cho biến thể xe.</li>
+<li><b>Complex</b>: ghép các khuôn trên, như ví dụ dưới đây.</li>
+</ul>
+<pre><code>While &lt;trạng thái&gt;, when &lt;sự kiện&gt;, the &lt;hệ thống&gt; shall &lt;đáp ứng&gt;.
+
+REQ-CDC-118: While the reverse gear is engaged, when the rear camera
+signal is lost, the IVI shall show a "Camera unavailable" message
+within 300 ms. (giả định minh họa)</code></pre>
+<p>So với câu "Camera lùi phải hoạt động ổn định", câu trên có trạng thái, sự kiện, đáp ứng và ngưỡng đo được.</p>
+<figure class="fig"><svg viewBox="0 0 720 196" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Các thành phần của câu EARS áp vào REQ-CDC-118">
+<defs>
+<marker id="s17-m3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Mẫu EARS tách câu requirement thành phần kiểm được</text>
+<rect x="16" y="40" width="130" height="34" rx="8" fill="#174C43"/>
+<text x="81" y="61" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">While &lt;trạng thái&gt;</text>
+<rect x="155" y="40" width="130" height="34" rx="8" fill="#2A6F66"/>
+<text x="220" y="61" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">when &lt;sự kiện&gt;</text>
+<rect x="294" y="40" width="130" height="34" rx="8" fill="#2A8C8C"/>
+<text x="359" y="61" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">the &lt;hệ thống&gt;</text>
+<rect x="433" y="40" width="130" height="34" rx="8" fill="#A64E32"/>
+<text x="498" y="61" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">shall &lt;đáp ứng&gt;</text>
+<rect x="572" y="40" width="132" height="34" rx="8" fill="#E2BD69"/>
+<text x="638" y="61" text-anchor="middle" font-size="11" font-weight="700" fill="#1c2928">ngưỡng đo được</text>
+<line x1="81" y1="76" x2="81" y2="92" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m3)"/>
+<line x1="220" y1="76" x2="220" y2="92" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m3)"/>
+<line x1="359" y1="76" x2="359" y2="92" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m3)"/>
+<line x1="498" y1="76" x2="498" y2="92" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m3)"/>
+<line x1="638" y1="76" x2="638" y2="92" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m3)"/>
+<rect x="16" y="96" width="130" height="50" rx="8" fill="#E5EFEB" stroke="#174C43"/>
+<text x="81" y="117" text-anchor="middle" font-size="10.5" fill="#1c2928">the reverse gear</text>
+<text x="81" y="133" text-anchor="middle" font-size="10.5" fill="#1c2928">is engaged</text>
+<rect x="155" y="96" width="130" height="50" rx="8" fill="#E5EFEB" stroke="#2A6F66"/>
+<text x="220" y="117" text-anchor="middle" font-size="10.5" fill="#1c2928">the rear camera</text>
+<text x="220" y="133" text-anchor="middle" font-size="10.5" fill="#1c2928">signal is lost</text>
+<rect x="294" y="96" width="130" height="50" rx="8" fill="#E5EFEB" stroke="#2A8C8C"/>
+<text x="359" y="125" text-anchor="middle" font-size="10.5" fill="#1c2928">the IVI</text>
+<rect x="433" y="96" width="130" height="50" rx="8" fill="#E5EFEB" stroke="#A64E32"/>
+<text x="498" y="117" text-anchor="middle" font-size="10.5" fill="#1c2928">show "Camera</text>
+<text x="498" y="133" text-anchor="middle" font-size="10.5" fill="#1c2928">unavailable"</text>
+<rect x="572" y="96" width="132" height="50" rx="8" fill="#E5EFEB" stroke="#B7791F"/>
+<text x="638" y="125" text-anchor="middle" font-size="10.5" fill="#1c2928">within 300 ms</text>
+<text x="81" y="168" text-anchor="middle" font-size="10.5" fill="#596966">Trạng thái nào?</text>
+<text x="220" y="168" text-anchor="middle" font-size="10.5" fill="#596966">Sự kiện nào?</text>
+<text x="359" y="168" text-anchor="middle" font-size="10.5" fill="#596966">Ai đáp ứng?</text>
+<text x="498" y="168" text-anchor="middle" font-size="10.5" fill="#596966">Làm gì?</text>
+<text x="638" y="168" text-anchor="middle" font-size="10.5" fill="#596966">Test bằng số nào?</text>
+<text x="16" y="188" font-size="10" fill="#596966">REQ-CDC-118 (giả định minh họa)</text>
+</svg><figcaption>Mỗi phần của câu EARS trả lời một câu hỏi, nên người viết test biết ngay cần dựng trạng thái nào và đo ngưỡng nào.</figcaption></figure>
+<p>Năm câu hỏi nên được dùng như checklist trong mỗi buổi review requirement. Câu nào trả lời "chưa" thì requirement quay lại người viết, kèm ghi chú cụ thể. Một số công cụ quản lý requirement còn tự dò từ mơ hồ hoặc requirement thiếu link test, giúp review tập trung vào nội dung.</p>
+<figure class="fig"><svg viewBox="0 0 720 302" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Một câu requirement nháp đi qua năm câu hỏi review clear, complete, consistent, verifiable và traceable">
+<defs>
+<marker id="s17-m3b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Một câu nháp đi qua năm câu hỏi review</text>
+<rect x="16" y="38" width="688" height="32" rx="8" fill="#fff" stroke="#A93226" stroke-width="1.5"/>
+<text x="360" y="59" text-anchor="middle" font-size="11.5" fill="#A93226">Bản nháp: "Camera lùi phải hoạt động ổn định."</text>
+<line x1="360" y1="71" x2="360" y2="80" stroke="#596966" stroke-width="1.5"/>
+<line x1="80" y1="80" x2="640" y2="80" stroke="#596966" stroke-width="1.5"/>
+<line x1="80" y1="80" x2="80" y2="91" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m3b)"/>
+<line x1="220" y1="80" x2="220" y2="91" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m3b)"/>
+<line x1="360" y1="80" x2="360" y2="91" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m3b)"/>
+<line x1="500" y1="80" x2="500" y2="91" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m3b)"/>
+<line x1="640" y1="80" x2="640" y2="91" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m3b)"/>
+<rect x="16" y="94" width="128" height="28" rx="7" fill="#174C43"/>
+<text x="80" y="112" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Clear</text>
+<rect x="156" y="94" width="128" height="28" rx="7" fill="#2A6F66"/>
+<text x="220" y="112" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Complete</text>
+<rect x="296" y="94" width="128" height="28" rx="7" fill="#2A8C8C"/>
+<text x="360" y="112" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Consistent</text>
+<rect x="436" y="94" width="128" height="28" rx="7" fill="#A64E32"/>
+<text x="500" y="112" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Verifiable</text>
+<rect x="576" y="94" width="128" height="28" rx="7" fill="#E2BD69"/>
+<text x="640" y="112" text-anchor="middle" font-size="11" font-weight="700" fill="#1c2928">Traceable</text>
+<rect x="16" y="126" width="128" height="80" rx="8" fill="#E5EFEB" stroke="#174C43"/>
+<text x="80" y="144" text-anchor="middle" font-size="10.5" font-weight="600" fill="#174C43">"Ổn định" là gì?</text>
+<text x="80" y="162" text-anchor="middle" font-size="10.5" fill="#1c2928">→ nêu một hành vi</text>
+<text x="80" y="178" text-anchor="middle" font-size="10.5" fill="#1c2928">cụ thể, một câu</text>
+<text x="80" y="194" text-anchor="middle" font-size="10.5" fill="#1c2928">một việc</text>
+<rect x="156" y="126" width="128" height="80" rx="8" fill="#E5EFEB" stroke="#2A6F66"/>
+<text x="220" y="144" text-anchor="middle" font-size="10.5" font-weight="600" fill="#2A6F66">Mất tín hiệu thì sao?</text>
+<text x="220" y="162" text-anchor="middle" font-size="10.5" fill="#1c2928">→ thêm trạng thái</text>
+<text x="220" y="178" text-anchor="middle" font-size="10.5" fill="#1c2928">Reverse, sự kiện</text>
+<text x="220" y="194" text-anchor="middle" font-size="10.5" fill="#1c2928">và đáp ứng</text>
+<rect x="296" y="126" width="128" height="80" rx="8" fill="#E5EFEB" stroke="#2A8C8C"/>
+<text x="360" y="144" text-anchor="middle" font-size="10.5" font-weight="600" fill="#2A6F66">Có ngược req khác?</text>
+<text x="360" y="162" text-anchor="middle" font-size="10.5" fill="#1c2928">→ khớp req HMI,</text>
+<text x="360" y="178" text-anchor="middle" font-size="10.5" fill="#1c2928">dùng đúng tên</text>
+<text x="360" y="194" text-anchor="middle" font-size="10.5" fill="#1c2928">trong glossary</text>
+<rect x="436" y="126" width="128" height="80" rx="8" fill="#E5EFEB" stroke="#A64E32"/>
+<text x="500" y="144" text-anchor="middle" font-size="10.5" font-weight="600" fill="#A64E32">Đo bằng gì?</text>
+<text x="500" y="162" text-anchor="middle" font-size="10.5" fill="#1c2928">→ ngưỡng 300 ms,</text>
+<text x="500" y="178" text-anchor="middle" font-size="10.5" fill="#1c2928">đo trên HIL</text>
+<text x="500" y="194" text-anchor="middle" font-size="10.5" fill="#1c2928">lặp nhiều lần</text>
+<rect x="576" y="126" width="128" height="80" rx="8" fill="#E5EFEB" stroke="#B7791F"/>
+<text x="640" y="144" text-anchor="middle" font-size="10.5" font-weight="600" fill="#B7791F">Từ đâu, test nào?</text>
+<text x="640" y="162" text-anchor="middle" font-size="10.5" fill="#1c2928">→ gắn ID,</text>
+<text x="640" y="178" text-anchor="middle" font-size="10.5" fill="#1c2928">link lên nguồn,</text>
+<text x="640" y="194" text-anchor="middle" font-size="10.5" fill="#1c2928">link xuống test</text>
+<line x1="360" y1="208" x2="360" y2="223" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m3b)"/>
+<rect x="16" y="226" width="688" height="66" rx="8" fill="#174C43"/>
+<text x="360" y="245" text-anchor="middle" font-size="11" font-weight="700" fill="#E2BD69">Sau review · REQ-CDC-118 (giả định minh họa)</text>
+<text x="360" y="264" text-anchor="middle" font-size="10.5" fill="#fff">While the reverse gear is engaged, when the rear camera signal is lost,</text>
+<text x="360" y="281" text-anchor="middle" font-size="10.5" fill="#fff">the IVI shall show "Camera unavailable" within 300 ms.</text>
+</svg><figcaption>Mỗi câu hỏi review sửa một điểm yếu của câu nháp, và kết quả là một requirement rõ, đủ, khớp phần còn lại, đo được và có dấu vết.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Requirement tốt phải clear, complete, consistent, verifiable và traceable. Review theo năm câu hỏi đó, và dùng khuôn EARS để câu chữ đạt chuẩn ngay từ khi viết.</p></div>
+<h3 id="p2-4">2.4 Allocation từ system requirement xuống component</h3>
+<p>Allocation là việc chia một system requirement thành các phần nhỏ hơn và giao cho từng component. Mỗi phần nhận được một ngân sách: thời gian, bộ nhớ, mức an toàn hoặc trách nhiệm cụ thể.</p>
+<p>Những thứ thường được allocate:</p>
+<ul>
+<li><b>Trách nhiệm chức năng</b>: component nào làm bước nào trong chuỗi xử lý.</li>
+<li><b>Ngân sách thời gian</b>: độ trễ tối đa, chu kỳ chạy.</li>
+<li><b>Ngân sách tài nguyên</b>: CPU, RAM, băng thông bus, dung lượng flash.</li>
+<li><b>Mức integrity</b>: ASIL hoặc mức security mà phần đó phải đạt.</li>
+<li><b>Vị trí triển khai</b>: phần nào làm bằng hardware, phần nào bằng software, chạy trên VM hay partition nào.</li>
+</ul>
+<p>Ví dụ: system requirement "chuông cảnh báo thắt dây an toàn phát trong 1 s" (giả định minh họa) có thể phân bổ như sau:</p>
+<ul>
+<li>Gateway nhận và chuyển tín hiệu từ body ECU: tối đa 100 ms.</li>
+<li>Vehicle Signal Service lọc và công bố trạng thái: tối đa 200 ms.</li>
+<li>Audio Manager ưu tiên kênh cảnh báo và phát âm: tối đa 400 ms.</li>
+<li>Phần còn lại làm dự phòng cho tải cao.</li>
+</ul>
+<p>Hai điểm cần giữ. Thứ nhất, tổng ngân sách các phần không vượt mức cha. Thứ hai, mỗi requirement con có liên kết ngược về requirement cha, để khi cha đổi thì con được xem lại. Nếu một requirement không giao được cho component nào, đó là dấu hiệu kiến trúc đang thiếu khối.</p>
+<p>Một quy trình allocation gọn có sáu bước:</p>
+<ol>
+<li>Phân tích system requirement, tách chuỗi xử lý thành các bước.</li>
+<li>Chọn component đảm nhiệm từng bước theo kiến trúc đã có.</li>
+<li>Viết requirement con cho từng component, kèm ngân sách và mức integrity.</li>
+<li>Viết interface requirement cho chỗ nối giữa các component.</li>
+<li>Kiểm tra tổng ngân sách, độ phủ và liên kết ngược.</li>
+<li>Gắn verification: requirement con có test ở mức component, requirement cha có test tích hợp trên bench.</li>
+</ol>
+<figure class="fig"><svg viewBox="0 0 720 222" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Phân bổ ngân sách 1 giây của chuông cảnh báo thắt dây xuống các component">
+<defs>
+<marker id="s17-m4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Ngân sách 1 s chia xuống từng component</text>
+<rect x="16" y="40" width="688" height="30" rx="8" fill="#174C43"/>
+<text x="360" y="60" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">System requirement: chuông cảnh báo thắt dây phát trong ≤ 1000 ms</text>
+<line x1="50" y1="74" x2="50" y2="104" stroke="#596966" stroke-width="1.5" marker-start="url(#s17-m4)" marker-end="url(#s17-m4)"/>
+<line x1="153" y1="74" x2="153" y2="104" stroke="#596966" stroke-width="1.5" marker-start="url(#s17-m4)" marker-end="url(#s17-m4)"/>
+<line x1="360" y1="74" x2="360" y2="104" stroke="#596966" stroke-width="1.5" marker-start="url(#s17-m4)" marker-end="url(#s17-m4)"/>
+<text x="380" y="94" font-size="10" fill="#596966">phân bổ xuống · liên kết ngược lên</text>
+<rect x="16" y="108" width="68" height="42" rx="7" fill="#2A8C8C"/>
+<text x="50" y="125" text-anchor="middle" font-size="10" fill="#fff">Gateway</text>
+<text x="50" y="141" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">100 ms</text>
+<rect x="86" y="108" width="135" height="42" rx="7" fill="#2A6F66"/>
+<text x="153" y="125" text-anchor="middle" font-size="10" fill="#fff">Vehicle Signal Service</text>
+<text x="153" y="141" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">200 ms</text>
+<rect x="223" y="108" width="274" height="42" rx="7" fill="#A64E32"/>
+<text x="360" y="125" text-anchor="middle" font-size="10.5" fill="#fff">Audio Manager: ưu tiên kênh cảnh báo</text>
+<text x="360" y="141" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">400 ms</text>
+<rect x="499" y="108" width="205" height="42" rx="7" fill="#fff" stroke="#B7791F" stroke-width="1.5" stroke-dasharray="5 3"/>
+<text x="601" y="125" text-anchor="middle" font-size="10.5" fill="#1c2928">Dự phòng cho tải cao</text>
+<text x="601" y="141" text-anchor="middle" font-size="10.5" font-weight="700" fill="#B7791F">300 ms</text>
+<line x1="16" y1="160" x2="704" y2="160" stroke="#596966"/>
+<line x1="16" y1="160" x2="16" y2="165" stroke="#596966"/>
+<line x1="188" y1="160" x2="188" y2="165" stroke="#596966"/>
+<line x1="360" y1="160" x2="360" y2="165" stroke="#596966"/>
+<line x1="532" y1="160" x2="532" y2="165" stroke="#596966"/>
+<line x1="704" y1="160" x2="704" y2="165" stroke="#596966"/>
+<text x="16" y="177" font-size="10" fill="#596966">0</text>
+<text x="188" y="177" text-anchor="middle" font-size="10" fill="#596966">250</text>
+<text x="360" y="177" text-anchor="middle" font-size="10" fill="#596966">500</text>
+<text x="532" y="177" text-anchor="middle" font-size="10" fill="#596966">750</text>
+<text x="704" y="177" text-anchor="end" font-size="10" fill="#596966">1000 ms</text>
+<text x="16" y="200" font-size="11" fill="#1c2928"><tspan font-weight="700" fill="#174C43">Quy tắc 1:</tspan> 100 + 200 + 400 + 300 dự phòng = 1000 ms, không vượt mức cha.</text>
+<text x="16" y="216" font-size="11" fill="#1c2928"><tspan font-weight="700" fill="#174C43">Quy tắc 2:</tspan> mỗi requirement con trỏ ngược về cha, cha đổi thì con được xem lại.</text>
+</svg><figcaption>Ngân sách con cộng cả phần dự phòng phải vừa khít mức cha, và mỗi phần đều trỏ ngược về requirement gốc.</figcaption></figure>
+<p>Allocation matrix giúp nhìn toàn cảnh (giả định minh họa):</p>
+<div class="table-scroll"><table>
+<thead><tr><th>System requirement</th><th>Gateway</th><th>Vehicle Signal Service</th><th>Audio Manager</th><th>Cluster HMI</th></tr></thead>
+<tbody>
+<tr><td>SYS-090: chuông thắt dây ≤ 1 s</td><td>100 ms</td><td>200 ms</td><td>400 ms</td><td>–</td></tr>
+<tr><td>SYS-091: icon thắt dây hiện cùng lúc với chuông</td><td>100 ms</td><td>200 ms</td><td>–</td><td>300 ms</td></tr>
+<tr><td>SYS-092: chuông không bị nhạc che</td><td>–</td><td>–</td><td>ưu tiên kênh cảnh báo</td><td>–</td></tr>
+</tbody></table></div>
+<p>Đọc theo hàng để biết requirement đã được giao đủ chưa. Đọc theo cột để biết component đang gánh những gì, có quá tải không, và có component nào không gắn với requirement nào, dấu hiệu của chức năng thừa.</p>
+<p>Với requirement có ASIL, ISO 26262 cho phép <b>ASIL decomposition</b>: tách một requirement thành hai requirement dư thừa và đủ độc lập, mỗi phần mang mức thấp hơn, ví dụ ASIL D thành ASIL B(D) + ASIL B(D). Điều kiện là chứng minh được sự độc lập, ví dụ không chung nguồn lỗi. Nếu không tách, component nhận requirement thừa hưởng ASIL gốc. Vì vậy nhiều thiết kế CDC đặt đường hiển thị telltale ở một khối nhỏ được kiểm soát chặt, tách khỏi phần đồ họa phong phú.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Allocation chia trách nhiệm, ngân sách thời gian, tài nguyên và mức integrity xuống component. Tổng phải khớp mức cha, liên kết luôn hai chiều, và allocation matrix cho thấy chỗ hở hoặc chỗ quá tải.</p></div>
+<h3 id="p2-5">2.5 Data ownership, schema, lifecycle, timing, persistence và integrity</h3>
+<p>Mỗi phần tử dữ liệu quan trọng nên được mô tả theo sáu câu hỏi:</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Khía cạnh</th><th>Câu hỏi</th><th>Ví dụ: hồ sơ người lái</th></tr></thead>
+<tbody>
+<tr><td>Ownership</td><td>Component nào được ghi?</td><td>Profile Service là nơi duy nhất ghi.</td></tr>
+<tr><td>Schema</td><td>Cấu trúc, kiểu, đơn vị?</td><td>ID, vị trí ghế, gương, theme, có số phiên bản.</td></tr>
+<tr><td>Lifecycle</td><td>Tạo, sửa, xóa khi nào?</td><td>Tạo khi đăng ký, xóa khi khôi phục cài đặt gốc.</td></tr>
+<tr><td>Timing</td><td>Cập nhật bao lâu một lần, độ tươi?</td><td>Đọc lúc khởi động, ghi khi người dùng lưu.</td></tr>
+<tr><td>Persistence</td><td>Lưu ở đâu, có sống qua mất nguồn?</td><td>Flash, ghi theo kiểu atomic.</td></tr>
+<tr><td>Integrity</td><td>Phát hiện hỏng dữ liệu thế nào?</td><td>CRC, giá trị mặc định khi hỏng.</td></tr>
+</tbody></table></div>
+<h4>a) Ownership</h4>
+<p>Một owner duy nhất tránh được cảnh hai component cùng ghi rồi đè nhau. Ví dụ, nếu IVI và Seat ECU cùng ghi vị trí ghế, ghế có thể nhảy về giá trị cũ sau khi khởi động lại.</p>
+<p>Owner chịu trách nhiệm về giá trị đúng, giá trị mặc định và mọi thay đổi schema. Bên khác muốn đổi giá trị thì gửi yêu cầu cho owner qua interface, ví dụ IVI gọi <code>setSeatPosition()</code> để Profile Service kiểm tra rồi ghi. Owner cũng là đầu mối trả lời mọi câu hỏi về dữ liệu đó.</p>
+<figure class="fig"><svg viewBox="0 0 720 250" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="So sánh hai component cùng ghi dữ liệu với một owner duy nhất">
+<defs>
+<marker id="s17-m5r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A93226"/></marker>
+<marker id="s17-m5g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#174C43"/></marker>
+<marker id="s17-m5t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2A8C8C"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Ai được ghi vị trí ghế trong hồ sơ người lái?</text>
+<rect x="16" y="40" width="330" height="198" rx="10" fill="#fff" stroke="#A93226"/>
+<text x="181" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="#A93226">Hai component cùng ghi</text>
+<rect x="36" y="76" width="110" height="32" rx="8" fill="#2A8C8C"/>
+<text x="91" y="96" text-anchor="middle" font-size="11" fill="#fff">IVI</text>
+<rect x="216" y="76" width="110" height="32" rx="8" fill="#2A8C8C"/>
+<text x="271" y="96" text-anchor="middle" font-size="11" fill="#fff">Seat ECU</text>
+<rect x="111" y="150" width="140" height="34" rx="8" fill="#E5EFEB" stroke="#A93226"/>
+<text x="181" y="171" text-anchor="middle" font-size="11" fill="#1c2928">Vị trí ghế</text>
+<line x1="95" y1="110" x2="146" y2="147" stroke="#A93226" stroke-width="1.8" marker-end="url(#s17-m5r)"/>
+<line x1="267" y1="110" x2="216" y2="147" stroke="#A93226" stroke-width="1.8" marker-end="url(#s17-m5r)"/>
+<text x="110" y="134" text-anchor="end" font-size="10.5" fill="#A93226">ghi</text>
+<text x="252" y="134" font-size="10.5" fill="#A93226">ghi</text>
+<text x="181" y="208" text-anchor="middle" font-size="10.5" fill="#A93226">Hai bên đè nhau: sau khởi động lại,</text>
+<text x="181" y="224" text-anchor="middle" font-size="10.5" fill="#A93226">ghế có thể nhảy về giá trị cũ</text>
+<rect x="374" y="40" width="330" height="198" rx="10" fill="#fff" stroke="#174C43"/>
+<text x="539" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="#174C43">Một owner, nhiều bên đọc</text>
+<rect x="390" y="74" width="158" height="32" rx="8" fill="#174C43"/>
+<text x="469" y="94" text-anchor="middle" font-size="10.5" fill="#fff">Profile Service (owner)</text>
+<line x1="469" y1="107" x2="469" y2="123" stroke="#174C43" stroke-width="1.8" marker-end="url(#s17-m5g)"/>
+<text x="477" y="119" font-size="10" fill="#174C43">ghi</text>
+<rect x="390" y="126" width="158" height="42" rx="8" fill="#E5EFEB" stroke="#174C43"/>
+<text x="469" y="143" text-anchor="middle" font-size="10.5" fill="#1c2928">Hồ sơ người lái</text>
+<text x="469" y="159" text-anchor="middle" font-size="10" fill="#596966">schema có số phiên bản</text>
+<line x1="469" y1="169" x2="469" y2="185" stroke="#174C43" stroke-width="1.8" marker-end="url(#s17-m5g)"/>
+<rect x="390" y="188" width="158" height="32" rx="8" fill="#fff" stroke="#B7791F"/>
+<text x="469" y="208" text-anchor="middle" font-size="10.5" fill="#1c2928">Flash · ghi atomic · CRC</text>
+<text x="634" y="88" text-anchor="middle" font-size="10" fill="#596966">chỉ đọc</text>
+<rect x="580" y="96" width="108" height="28" rx="7" fill="#fff" stroke="#2A8C8C"/>
+<text x="634" y="114" text-anchor="middle" font-size="10.5" fill="#1c2928">IVI</text>
+<rect x="580" y="132" width="108" height="28" rx="7" fill="#fff" stroke="#2A8C8C"/>
+<text x="634" y="150" text-anchor="middle" font-size="10.5" fill="#1c2928">Seat ECU</text>
+<rect x="580" y="168" width="108" height="28" rx="7" fill="#fff" stroke="#2A8C8C"/>
+<text x="634" y="186" text-anchor="middle" font-size="10.5" fill="#1c2928">Cluster</text>
+<line x1="549" y1="143" x2="577" y2="112" stroke="#2A8C8C" stroke-width="1.5" marker-end="url(#s17-m5t)"/>
+<line x1="549" y1="147" x2="577" y2="146" stroke="#2A8C8C" stroke-width="1.5" marker-end="url(#s17-m5t)"/>
+<line x1="549" y1="151" x2="577" y2="180" stroke="#2A8C8C" stroke-width="1.5" marker-end="url(#s17-m5t)"/>
+</svg><figcaption>Chỉ một owner được ghi, các bên khác chỉ đọc, nên không còn cảnh hai bên đè giá trị của nhau.</figcaption></figure>
+<h4>b) Schema</h4>
+<p>Schema mô tả tên, kiểu, đơn vị, khoảng giá trị, độ phân giải và các giá trị đặc biệt như "không hợp lệ" hay "chưa có". Nên viết schema ở dạng máy đọc được để sinh code và kiểm tự động: ARXML trong AUTOSAR, Franca IDL cho service SOME/IP, AIDL trong Android, Protobuf cho dữ liệu gửi lên cloud, hoặc cây tín hiệu COVESA VSS.</p>
+<pre><code>TirePressureWarning            schema v1.0
+  value  : enum {NONE, LOW_FL, LOW_FR, LOW_RL, LOW_RR, MULTIPLE}
+  status : enum {VALID, UNKNOWN, FAULT}
+  chu kỳ : 100 ms, timeout 1 s
+  mất tín hiệu quá timeout: status = UNKNOWN
+(giả định minh họa)</code></pre>
+<p>Dữ liệu được lưu lâu cần thêm số phiên bản schema trong chính bản ghi, để phần mềm mới sau OTA biết cách đọc hoặc chuyển đổi dữ liệu cũ.</p>
+<h4>c) Lifecycle</h4>
+<p>Mỗi dữ liệu đi qua các giai đoạn tạo, dùng, cập nhật, lưu trữ và xóa. Với CDC, cần chốt hành vi ở các sự kiện vòng đời: đổi chủ xe (xóa hồ sơ, danh bạ, lịch sử điểm đến), khôi phục cài đặt gốc, OTA đổi schema (chuyển đổi dữ liệu cũ), thay CDC khi bảo hành (dữ liệu nào được chuyển sang máy mới). Dữ liệu cá nhân còn phải theo thời hạn lưu do luật bảo vệ dữ liệu ở thị trường đó quy định.</p>
+<h4>d) Timing</h4>
+<p>Dữ liệu truyền qua bus hay service cần ba tham số: chu kỳ gửi, độ trễ tối đa từ nguồn đến bên dùng, và tuổi tối đa còn chấp nhận được. Bên dùng phải biết lúc nào giá trị đã cũ, nhờ timestamp hoặc timeout. Ví dụ tốc độ xe được gửi mỗi 20 ms; quá 200 ms không có giá trị mới thì cluster coi là stale và hiện trạng thái lỗi (giả định minh họa). Một giá trị cũ được hiển thị như giá trị mới nguy hiểm hơn một ô trống.</p>
+<h4>e) Persistence</h4>
+<p>Cần quyết định dữ liệu nào chỉ sống trong RAM, dữ liệu nào ghi xuống flash và có phải sống qua OTA hay không. Flash có giới hạn số lần ghi, nên dữ liệu đổi liên tục như quãng đường đã đi phải gom lại và ghi theo chu kỳ hoặc khi tắt máy. Việc ghi phải chịu được mất nguồn giữa chừng: ghi bản mới vào vùng khác, kiểm tra xong mới chuyển con trỏ. A/B slot và journaling đều theo ý này.</p>
+<figure class="fig"><svg viewBox="0 0 720 270" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Ghi dữ liệu kiểu A/B slot có CRC để chịu được mất nguồn giữa chừng">
+<defs>
+<marker id="s17-m5b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Ghi atomic kiểu A/B: mất nguồn giữa chừng vẫn còn một bản tốt</text>
+<rect x="16" y="40" width="160" height="150" rx="9" fill="#fff" stroke="#174C43"/>
+<text x="96" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#174C43">1 · Bản đang dùng</text>
+<rect x="28" y="74" width="136" height="32" rx="7" fill="#174C43"/>
+<text x="96" y="94" text-anchor="middle" font-size="10.5" fill="#fff">A · v7 · CRC đúng</text>
+<rect x="28" y="116" width="136" height="32" rx="7" fill="#E5EFEB" stroke="#596966"/>
+<text x="96" y="136" text-anchor="middle" font-size="10.5" fill="#1c2928">B · v6 · bản cũ</text>
+<line x1="28" y1="164" x2="164" y2="164" stroke="#E5EFEB"/>
+<text x="96" y="181" text-anchor="middle" font-size="10.5" font-weight="600" fill="#A64E32">con trỏ → A</text>
+<line x1="177" y1="115" x2="190" y2="115" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m5b)"/>
+<rect x="192" y="40" width="160" height="150" rx="9" fill="#fff" stroke="#174C43"/>
+<text x="272" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#174C43">2 · Ghi bản mới vào B</text>
+<rect x="204" y="74" width="136" height="32" rx="7" fill="#174C43"/>
+<text x="272" y="94" text-anchor="middle" font-size="10.5" fill="#fff">A · v7 · CRC đúng</text>
+<rect x="204" y="116" width="136" height="32" rx="7" fill="#fff" stroke="#B7791F" stroke-width="1.5" stroke-dasharray="5 3"/>
+<text x="272" y="136" text-anchor="middle" font-size="10.5" fill="#B7791F">B · đang ghi v8</text>
+<line x1="204" y1="164" x2="340" y2="164" stroke="#E5EFEB"/>
+<text x="272" y="181" text-anchor="middle" font-size="10.5" font-weight="600" fill="#A64E32">con trỏ vẫn → A</text>
+<line x1="353" y1="115" x2="366" y2="115" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m5b)"/>
+<rect x="368" y="40" width="160" height="150" rx="9" fill="#fff" stroke="#174C43"/>
+<text x="448" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#174C43">3 · Đọc lại, kiểm CRC</text>
+<rect x="380" y="74" width="136" height="32" rx="7" fill="#174C43"/>
+<text x="448" y="94" text-anchor="middle" font-size="10.5" fill="#fff">A · v7 · CRC đúng</text>
+<rect x="380" y="116" width="136" height="32" rx="7" fill="#fff" stroke="#2A8C8C" stroke-width="1.5"/>
+<text x="448" y="136" text-anchor="middle" font-size="10.5" fill="#2A6F66">B · v8 · kiểm CRC</text>
+<line x1="380" y1="164" x2="516" y2="164" stroke="#E5EFEB"/>
+<text x="448" y="181" text-anchor="middle" font-size="10.5" font-weight="600" fill="#A64E32">con trỏ vẫn → A</text>
+<line x1="529" y1="115" x2="542" y2="115" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m5b)"/>
+<rect x="544" y="40" width="160" height="150" rx="9" fill="#fff" stroke="#174C43"/>
+<text x="624" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#174C43">4 · Chuyển con trỏ</text>
+<rect x="556" y="74" width="136" height="32" rx="7" fill="#E5EFEB" stroke="#596966"/>
+<text x="624" y="94" text-anchor="middle" font-size="10.5" fill="#1c2928">A · v7 · dự phòng</text>
+<rect x="556" y="116" width="136" height="32" rx="7" fill="#174C43"/>
+<text x="624" y="136" text-anchor="middle" font-size="10.5" fill="#fff">B · v8 · CRC đúng</text>
+<line x1="556" y1="164" x2="692" y2="164" stroke="#E5EFEB"/>
+<text x="624" y="181" text-anchor="middle" font-size="10.5" font-weight="600" fill="#A64E32">con trỏ → B</text>
+<rect x="16" y="202" width="688" height="56" rx="9" fill="#fff" stroke="#A93226" stroke-width="1.5"/>
+<text x="30" y="223" font-size="11" fill="#1c2928"><tspan font-weight="700" fill="#A93226">Mất nguồn ở bước 2:</tspan> slot B sai CRC, khởi động lại đọc slot A (v7), không mất cấu hình đang dùng.</text>
+<text x="30" y="244" font-size="11" fill="#1c2928"><tspan font-weight="700" fill="#A93226">Khi đọc:</tspan> chọn slot mới nhất có CRC đúng; cả hai cùng hỏng thì dùng giá trị mặc định và ghi DTC.</text>
+</svg><figcaption>Bản đang dùng không bị chạm cho tới khi bản mới được kiểm xong, nên mất nguồn ở bất kỳ bước nào cũng còn một bản hợp lệ để đọc.</figcaption></figure>
+<h4>f) Integrity</h4>
+<p>Integrity có hai mặt. Mặt thứ nhất là phát hiện hỏng ngẫu nhiên: CRC cho dữ liệu lưu; với dữ liệu truyền, AUTOSAR E2E protection dùng CRC, sequence counter và kiểm timeout để phát hiện gói bị hỏng, mất, lặp hay sai thứ tự. Mặt thứ hai là chống sửa có chủ đích: MAC hoặc chữ ký số, ví dụ SecOC cho message trên CAN hay chữ ký cho file cấu hình. Khi phát hiện hỏng, phản ứng phải được định trước: dùng giá trị mặc định an toàn, chuyển sang bản dự phòng, ghi DTC.</p>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Mỗi dữ liệu quan trọng cần một owner, một schema có phiên bản, vòng đời rõ, tham số timing kèm cách xử lý giá trị cũ, cách lưu chịu được mất nguồn và cơ chế phát hiện hỏng hay bị sửa.</p></div>
+<h3 id="p2-6">2.6 Interface contract và backward compatibility</h3>
+<p>Interface contract là thỏa thuận giữa bên cung cấp và bên dùng một interface. Nó gồm tên và kiểu dữ liệu, ý nghĩa, đơn vị, chu kỳ, giá trị lỗi, điều kiện trước và sau, cùng hành vi khi timeout.</p>
+<pre><code>Interface : VehicleSpeedService   v2.1.0   owner: nhóm Vehicle Signal
+Phần tử   : speedMps : float32, đơn vị m/s, dải 0..90, độ phân giải 0,01
+Ý nghĩa   : tốc độ đã lọc, dùng để hiển thị, không dùng để điều khiển
+Timing    : publish mỗi 20 ms, trễ ≤ 10 ms kể từ khi nhận khung CAN
+Lỗi       : status = UNKNOWN nếu mất nguồn tín hiệu quá 200 ms
+Quyền     : chỉ đọc, client cần quyền VEHICLE_SPEED
+Version   : giữ v1.x (km/h) song song đến hết release R24
+(giả định minh họa)</code></pre>
+<p>Có thể nhìn contract theo bốn lớp: syntax (tên, kiểu), semantics (ý nghĩa, đơn vị, dải), behavior (timing, thứ tự, lỗi, timeout) và quản trị (owner, version, chính sách deprecated). Compiler chỉ bắt được lỗi ở lớp syntax. Phần lớn lỗi tích hợp khó nằm ở ba lớp còn lại, nên chúng phải được viết ra và được test.</p>
+<p>Backward compatibility nghĩa là bên cung cấp phiên bản mới vẫn phục vụ đúng bên dùng cũ. Điều này quan trọng với CDC vì OTA có thể cập nhật từng phần: Navigation app mới nhưng Vehicle Signal Service vẫn cũ, hoặc ngược lại.</p>
+<p>Chiều ngược lại là <b>forward compatibility</b>: bên dùng cũ vẫn chạy được khi nhận dữ liệu từ bên cung cấp mới, ví dụ bỏ qua trường lạ thay vì crash. Trong đội xe luôn tồn tại nhiều tổ hợp phiên bản, nên cả hai chiều đều cần.</p>
+<p>Quy ước Semantic Versioning (MAJOR.MINOR.PATCH) giúp bên dùng đọc được mức rủi ro: PATCH sửa lỗi không đổi interface, MINOR thêm khả năng mới mà vẫn tương thích ngược, MAJOR có thay đổi phá vỡ. SOME/IP mang major version và minor version của service để bên dùng tìm đúng bản trong service discovery. Android dùng stable AIDL có phiên bản và đóng băng từng bản đã phát hành.</p>
+<ul>
+<li>Thêm trường tùy chọn: thường an toàn.</li>
+<li>Đổi đơn vị, đổi ý nghĩa, xóa trường: phá vỡ tương thích, cần tăng major version.</li>
+<li>Giữ phiên bản cũ song song một thời gian, đánh dấu deprecated trước khi gỡ.</li>
+</ul>
+<div class="table-scroll"><table>
+<thead><tr><th>Thay đổi</th><th>Ảnh hưởng tới bên dùng cũ</th><th>Cách xử lý</th></tr></thead>
+<tbody>
+<tr><td>Thêm trường tùy chọn có giá trị mặc định</td><td>Tương thích nếu bên dùng bỏ qua trường lạ</td><td>Tăng MINOR</td></tr>
+<tr><td>Thêm giá trị enum</td><td>Bên dùng cũ có thể rơi vào nhánh mặc định</td><td>Tăng MINOR; contract phải nói bên dùng xử lý giá trị lạ thế nào</td></tr>
+<tr><td>Đổi đơn vị hoặc ý nghĩa</td><td>Phá vỡ, thường không gây lỗi biên dịch</td><td>Tăng MAJOR, dùng trường mới tên mới</td></tr>
+<tr><td>Xóa trường, đổi kiểu</td><td>Phá vỡ</td><td>Tăng MAJOR, deprecated trước, chạy song song</td></tr>
+<tr><td>Nới timing, ví dụ chu kỳ dài hơn</td><td>Phá vỡ về hành vi dù syntax không đổi</td><td>Coi là đổi contract, cần bên dùng đồng ý</td></tr>
+<tr><td>Sửa lỗi, giữ nguyên hành vi đã công bố</td><td>Tương thích</td><td>Tăng PATCH</td></tr>
+</tbody></table></div>
+<p>Ví dụ: đổi <code>vehicleSpeed</code> từ km/h sang m/s mà giữ nguyên tên sẽ làm cluster hiển thị sai mà không báo lỗi. Cách an toàn là tạo trường mới có tên rõ đơn vị và chạy contract test cho cả hai phiên bản.</p>
+<p>Contract test nên chạy trong CI. Mỗi bên dùng mô tả kỳ vọng của mình thành test, bên cung cấp chạy toàn bộ các test đó trước khi merge. Đây là ý tưởng consumer-driven contract mà các công cụ như Pact hỗ trợ. Khi một thay đổi ở Vehicle Signal Service làm vỡ kỳ vọng của cluster, build bị chặn từ trên server, trước khi lên xe.</p>
+<figure class="fig"><svg viewBox="0 0 720 240" font-family="Segoe UI, Tahoma, sans-serif" role="img" aria-label="Dòng thời gian phiên bản interface với bên dùng cũ và bên dùng mới">
+<defs>
+<marker id="s17-m6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#596966"/></marker>
+</defs>
+<text x="16" y="24" font-size="13.5" font-weight="700" fill="#174C43">Interface đổi phiên bản mà vẫn giữ bên dùng cũ</text>
+<rect x="15" y="38" width="150" height="50" rx="8" fill="#174C43"/>
+<text x="90" y="58" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">v1.0</text>
+<text x="90" y="76" text-anchor="middle" font-size="10.5" fill="#fff">vehicleSpeed · km/h</text>
+<rect x="195" y="38" width="150" height="50" rx="8" fill="#2A8C8C"/>
+<text x="270" y="58" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">v1.1 · minor</text>
+<text x="270" y="76" text-anchor="middle" font-size="10.5" fill="#fff">thêm trường tùy chọn</text>
+<rect x="375" y="38" width="150" height="50" rx="8" fill="#A64E32"/>
+<text x="450" y="58" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">v2.0 · major</text>
+<text x="450" y="76" text-anchor="middle" font-size="10.5" fill="#fff">trường mới ghi rõ m/s</text>
+<rect x="555" y="38" width="150" height="50" rx="8" fill="#596966"/>
+<text x="630" y="58" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Gỡ v1</text>
+<text x="630" y="76" text-anchor="middle" font-size="10.5" fill="#fff">sau thời gian deprecated</text>
+<line x1="24" y1="112" x2="704" y2="112" stroke="#596966" stroke-width="1.5" marker-end="url(#s17-m6)"/>
+<line x1="90" y1="88" x2="90" y2="106" stroke="#596966"/>
+<line x1="270" y1="88" x2="270" y2="106" stroke="#596966"/>
+<line x1="450" y1="88" x2="450" y2="106" stroke="#596966"/>
+<line x1="630" y1="88" x2="630" y2="106" stroke="#596966"/>
+<circle cx="90" cy="112" r="6" fill="#174C43"/>
+<circle cx="270" cy="112" r="6" fill="#2A8C8C"/>
+<circle cx="450" cy="112" r="6" fill="#A64E32"/>
+<circle cx="630" cy="112" r="6" fill="#596966"/>
+<rect x="90" y="134" width="360" height="24" rx="6" fill="#E5EFEB" stroke="#174C43"/>
+<text x="270" y="150" text-anchor="middle" font-size="10.5" fill="#1c2928">Bên dùng cũ (cluster) đọc v1, đơn vị km/h</text>
+<rect x="450" y="134" width="180" height="24" rx="6" fill="#fff" stroke="#B7791F" stroke-dasharray="5 3"/>
+<text x="540" y="150" text-anchor="middle" font-size="10.5" fill="#B7791F">v1 deprecated, vẫn chạy</text>
+<rect x="450" y="166" width="254" height="24" rx="6" fill="#E5EFEB" stroke="#A64E32"/>
+<text x="577" y="182" text-anchor="middle" font-size="10.5" fill="#1c2928">Bên dùng mới (Navigation) đọc v2</text>
+<path d="M450,200 V206 H630 V200" fill="none" stroke="#2A6F66" stroke-width="1.5"/>
+<text x="540" y="224" text-anchor="middle" font-size="10.5" fill="#2A6F66">contract test cho cả v1 và v2</text>
+<text x="16" y="182" font-size="10.5" font-weight="600" fill="#A93226">Tránh: đổi km/h → m/s</text>
+<text x="16" y="198" font-size="10.5" fill="#A93226">mà giữ tên vehicleSpeed</text>
+<text x="16" y="214" font-size="10.5" fill="#A93226">→ cluster hiển thị sai, không báo lỗi</text>
+</svg><figcaption>Thay đổi phá vỡ tương thích đi kèm major version và một giai đoạn chạy song song, để bên dùng cũ không bị gãy.</figcaption></figure>
+<div class="box remember"><p class="ttl">Tóm lại</p><p>Contract ghi rõ syntax, ý nghĩa, timing, lỗi và chính sách version của interface. Mọi thay đổi phải giữ được bên dùng cũ, hoặc tăng MAJOR, chạy song song và được contract test bảo vệ.</p></div>
+<div class="next-prev"><a href="16_Architecture_Decision_Trade-off_Analysis.html">← 16 · Architecture Decision &amp; Trade-off Analysis</a><a href="19_Quality_Cloud_Migration_DevOps_Governed_AI.html">19 · Quality, Cloud/Migration, DevOps &amp; Governed AI →</a></div>
+</article>
+  <footer class="article-footer"><a class="nav-btn" href="../../dainv13.html" onclick="if(history.length>1){history.back();return false}" title="Quay lại trang trước"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg><span>Quay lại</span></a><a class="nav-btn nav-btn--primary" href="../../dainv13.html" title="Về trang chủ học tập"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Trang chủ</span></a></footer>
+  </main>
+</div>
+<script src="../assets/glossary-data.js"></script>
+<script src="../assets/term-glossary.js" data-unit="B.3"></script>
+</body>
+</html>
