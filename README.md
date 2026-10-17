@@ -106,13 +106,19 @@ Các thay đổi trong bảng chi được tự lưu vào D1 sau khi hoàn tất
 
 ## Deploy
 
+Sau khi đăng nhập Wrangler (`& $wrangler login`) và tạo D1, cập nhật `database_id` trong `wrangler.toml`. Để thiết lập credentials production mà không nhập mật khẩu vào chat, chạy script sau trong PowerShell; mật khẩu được nhập ở prompt bảo mật và khóa phiên được tạo ngẫu nhiên:
+
 ```powershell
-& $wrangler d1 migrations apply dainv13-group-expenses --remote
-& $wrangler d1 execute dainv13-group-expenses --remote --file .local\initial-detail.sql
-& $wrangler deploy
+powershell -ExecutionPolicy Bypass -File .\Set-CloudflareSecrets.ps1
 ```
 
-`wrangler.toml` phải có đúng database ID Cloudflare trước khi deploy. Trang sẽ được phục vụ qua HTTPS trên địa chỉ `*.workers.dev`; chưa cần mua domain.
+Script dùng Wrangler local trong `.local`; các secrets được gửi trực tiếp đến Cloudflare Workers, không ghi vào tệp dự án. Không deploy ứng dụng công khai trước khi thiết lập đủ secrets Admin.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Deploy-Cloudflare.ps1
+```
+
+Script kiểm tra đăng nhập Cloudflare và đủ secrets, áp dụng các migration còn thiếu vào D1 remote, deploy Worker/assets, rồi kiểm tra endpoint trạng thái. Dùng lại cùng lệnh sau mỗi lần muốn đưa thay đổi mới lên production. `wrangler.toml` chứa tên Worker và D1 production. Database được giữ nguyên qua các lần deploy; không có bước nhập dữ liệu local/workbook tự động. Sao lưu D1 định kỳ trước khi đưa dữ liệu thật vào.
 
 ## Quyền truy cập và sao lưu
 

@@ -1,4 +1,4 @@
-name = "dainv13-group-expenses"
+name = "leoasland"
 main = "worker/index.js"
 compatibility_date = "2026-10-17"
 
@@ -9,5 +9,5 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "dainv13-group-expenses"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "c50c97ce-be1d-49f5-8f4a-2d8c08d93a62"
 migrations_dir = "migrations"
