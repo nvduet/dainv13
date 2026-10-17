@@ -27,13 +27,13 @@ if ($username.Contains("`r") -or $username.Contains("`n")) {
     throw "The username cannot contain a newline."
 }
 
-$securePassword = Read-Host "New production Admin password (12+ characters)" -AsSecureString
+$securePassword = Read-Host "New production Admin password (at least 1 character)" -AsSecureString
 $passwordPointer = [IntPtr]::Zero
 $password = $null
 $sessionSecret = $null
 try {
-    if ($securePassword.Length -lt 12) {
-        throw "The Admin password must contain at least 12 characters."
+    if ($securePassword.Length -lt 1) {
+        throw "The Admin password must contain at least 1 character."
     }
 
     $passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)

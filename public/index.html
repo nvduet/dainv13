@@ -13,8 +13,8 @@
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="/" aria-label="Expense - Trang chủ">
-        <span>Expense</span>
+      <a class="brand" href="/" aria-label="Chill guys - Trang chủ">
+        <span>Chill guys</span>
       </a>
       <div class="header-actions">
         <span id="admin-state" class="admin-state">Guest</span>
@@ -38,6 +38,7 @@
             <h4>Bảng "Detail"</h4>
             <div class="width-inputs">
               <label>Người chi: <input type="number" id="col-width-payer" min="24" max="2000" value="110" required>px</label>
+              <label>Date: <input type="number" id="col-width-date" min="24" max="2000" value="110" required>px</label>
               <label>Nội dung: <input type="number" id="col-width-description" min="24" max="2000" value="145" required>px</label>
               <label>Chi phí: <input type="number" id="col-width-amount" min="24" max="2000" value="100" required>px</label>
               <label>Cột thành viên <span id="expense-member-column-count"></span>: <input type="number" id="col-width-member" min="24" max="2000" value="80" required>px</label>
@@ -129,6 +130,17 @@
           </div>
         </div>
 
+        <div class="admin-subcard history-points-card">
+          <div class="history-points-heading">
+            <div>
+              <h3>Điểm khôi phục</h3>
+              <p class="section-description">Lưu/khôi phục dữ liệu hai bảng; không bao gồm cấu hình giao diện. Tối đa 50 điểm gần nhất.</p>
+            </div>
+            <button id="store-history-point" class="button button-dark button-small" type="button">Store</button>
+          </div>
+          <div id="history-points" class="history-point-list"></div>
+        </div>
+
         <details id="audit-details" class="audit-details">
           <summary>Nhật ký thay đổi gần đây</summary>
           <div id="audit-list" class="audit-list"></div>
@@ -137,6 +149,7 @@
 
       <footer class="site-footer">
         <span>Expense · VND</span>
+        <span>created by xữa ông thọ</span>
       </footer>
     </main>
 

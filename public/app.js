@@ -5,12 +5,13 @@ const state = {
   expenses: [],
   payments: [],
   isAdmin: false,
-  draftRows: 0,
+  historyPoints: [],
 };
 
 const DEFAULT_COLUMN_WIDTHS = {
   expense: {
     payer: 110,
+    date: 110,
     description: 145,
     amount: 100,
     member: 80,
@@ -46,8 +47,9 @@ function applyExpenseColumnWidths() {
   if (!styleEl) return;
 
   styleEl.textContent = `
-    .expense-table { width: ${w.payer + w.description + w.amount + state.members.length * w.member + w.count + w.avg + w.actions}px !important; min-width: 0 !important; max-width: none !important; table-layout: fixed !important; }
+    .expense-table { width: ${w.payer + w.date + w.description + w.amount + state.members.length * w.member + w.count + w.avg + w.actions}px !important; min-width: 0 !important; max-width: none !important; table-layout: fixed !important; }
     .expense-table .expense-payer { width: ${w.payer}px !important; min-width: ${w.payer}px !important; max-width: ${w.payer}px !important; }
+    .expense-table .expense-date { width: ${w.date}px !important; min-width: ${w.date}px !important; max-width: ${w.date}px !important; }
     .expense-table .expense-description { width: ${w.description}px !important; min-width: ${w.description}px !important; max-width: ${w.description}px !important; }
     .expense-table .expense-amount { width: ${w.amount}px !important; min-width: ${w.amount}px !important; max-width: ${w.amount}px !important; }
     .expense-table .member-check { width: ${w.member}px !important; min-width: ${w.member}px !important; max-width: ${w.member}px !important; }
@@ -145,8 +147,10 @@ function formatVnd(amount) {
 }
 
 function formatVndInput(value) {
-  const digits = String(value).replace(/\D/g, "");
-  return digits ? `${BigInt(digits).toLocaleString("vi-VN")}đ` : "";
+  const text = String(value);
+  const negative = /^\s*-/.test(text);
+  const digits = text.replace(/\D/g, "");
+  return digits ? `${negative ? "-" : ""}${BigInt(digits).toLocaleString("vi-VN")}đ` : "";
 }
 
 function formatVndInputAtCursor(input) {
@@ -212,22 +216,28 @@ function getExpensePreview() {
       if (!amountVnd) return [];
 
       const expense = state.expenses.find((item) => item.id === row.dataset.expenseId);
+      const payerId = row.querySelector(".payer-input").value;
+      const description = row.querySelector(".description-input").value.trim();
+      const participantIds = [...row.querySelectorAll("input[type=checkbox]:checked")]
+        .map((checkbox) => checkbox.dataset.memberId);
+      if (!payerId || !description || participantIds.length === 0) return [];
       return [{
         ...expense,
         id: row.dataset.expenseId,
-        payerId: row.querySelector(".payer-input").value,
+        payerId,
+        description,
         amountVnd,
-        participantIds: [...row.querySelectorAll("input[type=checkbox]:checked")]
-          .map((checkbox) => checkbox.dataset.memberId),
+        participantIds,
       }];
     });
 }
 
 function renderHeader() {
   document.querySelector("#member-count").textContent = String(state.members.length);
-  document.querySelector("#expense-count").textContent = String(state.expenses.length);
+  const completeExpenses = getExpensePreview();
+  document.querySelector("#expense-count").textContent = String(completeExpenses.length);
   document.querySelector("#total-spent").textContent = formatVnd(
-    state.expenses.reduce((total, expense) => total + expense.amountVnd, 0),
+    completeExpenses.reduce((total, expense) => total + expense.amountVnd, 0),
   );
   document.querySelector("#admin-state").hidden = state.isAdmin;
   document.querySelector("#login-button").hidden = state.isAdmin;
@@ -238,6 +248,7 @@ function renderHeader() {
 
 const autoSaveTimers = new WeakMap();
 const savingRows = new WeakSet();
+const pendingExpenseChanges = new WeakMap();
 const savingTransferInputs = new WeakSet();
 
 function setSaveStatus(message, status = "saved") {
@@ -251,6 +262,7 @@ function renderExpenses() {
   const body = document.querySelector("#expense-body");
   head.innerHTML = `<tr>
     <th class="expense-payer">Người chi</th>
+    <th class="expense-date">Date</th>
     <th class="expense-description">Nội dung</th>
     <th class="expense-amount">Chi phí</th>
     ${state.members.map((member) => `<th class="member-check">${escapeHtml(member.name)}</th>`).join("")}
@@ -259,62 +271,40 @@ function renderExpenses() {
     <th class="member-actions">Xóa</th>
   </tr>`;
 
-  const rows = [...state.expenses.map((expense) => ({ ...expense, isDraft: false }))];
-  for (let index = 0; index < state.draftRows; index += 1) {
-    rows.push({
-      id: `draft-${index}`,
-      payerId: state.members[0]?.id || "",
-      description: "",
-      amountVnd: 0,
-      participantIds: [],
-      isDraft: true,
-    });
-  }
+  const rows = state.expenses;
 
   if (rows.length === 0) {
-    body.innerHTML = `<tr><td class="empty-cell" colspan="${state.members.length + 6}">Chưa có khoản chi — thêm dòng đầu tiên nhé ✿</td></tr>`;
+    body.innerHTML = `<tr><td class="empty-cell" colspan="${state.members.length + 7}">Chưa có khoản chi — thêm dòng đầu tiên nhé ✿</td></tr>`;
     return;
   }
   body.innerHTML = rows.map((expense) => {
     const selectedMembers = state.members.filter((member) => expense.participantIds.includes(member.id));
     const count = selectedMembers.length;
     const avg = count ? (expense.amountVnd / count) : 0;
-    return `<tr data-expense-id="${escapeHtml(expense.id)}" data-draft="${expense.isDraft}">
+    return `<tr data-expense-id="${escapeHtml(expense.id)}">
       <td class="expense-payer"><select class="payer-input" aria-label="Người chi">
         <option value="">Chọn người</option>
         ${state.members.map((member) => `<option value="${escapeHtml(member.id)}" ${member.id === expense.payerId ? "selected" : ""}>${escapeHtml(member.name)}</option>`).join("")}
       </select></td>
+      <td class="expense-date"><input class="date-input" type="date" value="${escapeHtml(expense.date || "")}" aria-label="Ngày khoản chi"></td>
       <td class="expense-description"><input class="description-input" type="text" maxlength="200" value="${escapeHtml(expense.description)}" placeholder="Nội dung khoản chi" aria-label="Nội dung"></td>
       <td class="expense-amount"><input class="amount-input" type="text" inputmode="decimal" value="${expense.amountVnd ? formatThousandInput(expense.amountVnd) : ""}" placeholder="0" aria-label="Chi phí, nghìn đồng"></td>
       ${state.members.map((member) => `<td class="member-check"><input type="checkbox" data-member-id="${escapeHtml(member.id)}" aria-label="Chia cho ${escapeHtml(member.name)}" ${expense.participantIds.includes(member.id) ? "checked" : ""}></td>`).join("")}
       <td class="share-avg expense-count">${count || "—"}</td>
       <td class="share-avg expense-average">${count ? formatAverageThousand(expense.amountVnd, count) : "—"}</td>
       <td class="member-actions">
-        ${expense.isDraft ? `<button class="icon-button delete" type="button" data-action="delete-expense-row" aria-label="Xóa dòng này" title="Xóa">×</button>` : `<button class="icon-button delete" type="button" data-action="delete-expense" aria-label="Xóa khoản chi" title="Xóa">×</button>`}
+        <button class="icon-button delete" type="button" data-action="delete-expense" aria-label="Xóa khoản chi" title="Xóa">×</button>
       </td>
     </tr>`;
   }).join("");
 }
 
-function readExpensePayload(row) {
-  const payerId = row.querySelector(".payer-input").value;
-  const description = row.querySelector(".description-input").value.trim();
-  const amountText = row.querySelector(".amount-input").value.trim();
-  let amountVnd;
-  try {
-    amountVnd = parseThousandInput(amountText);
-  } catch (caught) {
-    return { error: caught.message };
-  }
-  const participantIds = [...row.querySelectorAll("input[type=checkbox]:checked")]
-    .map((checkbox) => checkbox.dataset.memberId);
-  if (!payerId) return { error: "Chưa lưu: hãy chọn người chi." };
-  if (!description) return { error: "Chưa lưu: hãy nhập nội dung khoản chi." };
-  if (!amountVnd) return { error: "Chưa lưu: hãy nhập số tiền lớn hơn 0." };
-  if (participantIds.length === 0) return { error: "Chưa lưu: hãy tick ít nhất một người chia." };
-  return {
-    payload: { payerId, description, amountVnd, participantIds },
-  };
+function updateExpenseField(row, field, value, delay = 800) {
+  const changes = pendingExpenseChanges.get(row) || {};
+  changes[field] = value;
+  pendingExpenseChanges.set(row, changes);
+  row.dataset.saveError = "false";
+  scheduleAutoSave(row, delay);
 }
 
 async function saveExpenseRow(row, { keepalive = false } = {}) {
@@ -322,43 +312,38 @@ async function saveExpenseRow(row, { keepalive = false } = {}) {
     row.dataset.pendingSave = "true";
     return;
   }
-  const result = readExpensePayload(row);
-  if (result.error) {
-    setSaveStatus(result.error, "error");
-    return;
-  }
-  const isDraft = row.dataset.draft === "true";
+  const changes = pendingExpenseChanges.get(row);
+  if (!changes || Object.keys(changes).length === 0) return;
+  const submitted = { ...changes };
   row.dataset.pendingSave = "false";
   savingRows.add(row);
   setSaveStatus("Đang lưu vào cơ sở dữ liệu…", "saving");
   try {
-    const response = await api(isDraft ? "/api/expenses" : `/api/expenses/${encodeURIComponent(row.dataset.expenseId)}`, {
-      method: isDraft ? "POST" : "PUT",
-      body: JSON.stringify(result.payload),
-      keepalive: true,
+    const response = await api(`/api/expenses/${encodeURIComponent(row.dataset.expenseId)}`, {
+      method: "PUT",
+      body: JSON.stringify(submitted),
+      keepalive,
     });
-    if (isDraft) {
-      row.dataset.draft = "false";
-      row.dataset.expenseId = response.expense.id;
-      state.draftRows = Math.max(0, state.draftRows - 1);
+    const latest = pendingExpenseChanges.get(row) || {};
+    for (const [field, value] of Object.entries(submitted)) {
+      if (Object.is(latest[field], value)) delete latest[field];
     }
-    const savedExpense = {
-      ...state.expenses.find((expense) => expense.id === response.expense.id),
-      ...response.expense,
-    };
+    pendingExpenseChanges.set(row, latest);
+    const savedExpense = { ...response.expense };
     const savedIndex = state.expenses.findIndex((expense) => expense.id === savedExpense.id);
-    if (savedIndex === -1) state.expenses.push(savedExpense);
-    else state.expenses[savedIndex] = savedExpense;
+    if (savedIndex !== -1) state.expenses[savedIndex] = savedExpense;
     if (keepalive) {
       setSaveStatus("Đã gửi lưu dữ liệu.", "saved");
       return;
     }
-    if (row.dataset.pendingSave === "true") return;
     setSaveStatus("Đã lưu vào cơ sở dữ liệu.", "saved");
     renderHeader();
     renderSummary();
-    showNotice(isDraft ? "Đã thêm khoản chi." : "Đã lưu khoản chi.");
+    if (row.dataset.pendingSave !== "true" && Object.keys(latest).length === 0) {
+      showNotice("Đã lưu thay đổi khoản chi.");
+    }
   } catch (caught) {
+    row.dataset.saveError = "true";
     setSaveStatus(`Chưa lưu: ${caught.message}`, "error");
     if (!keepalive) showNotice(caught.message, "error");
   } finally {
@@ -377,6 +362,45 @@ function scheduleAutoSave(row, delay = 800) {
     autoSaveTimers.delete(row);
     saveExpenseRow(row);
   }, delay));
+}
+
+async function flushExpenseRows(rows = [...document.querySelectorAll("#expense-body tr[data-expense-id]")]) {
+  for (const row of rows) {
+    while (row.isConnected) {
+      const changes = pendingExpenseChanges.get(row);
+      if ((!changes || Object.keys(changes).length === 0) && !savingRows.has(row)) break;
+      if (row.dataset.saveError === "true") {
+        throw new Error("Có thay đổi khoản chi chưa lưu. Hãy xử lý lỗi lưu trước khi tiếp tục.");
+      }
+      clearTimeout(autoSaveTimers.get(row));
+      autoSaveTimers.delete(row);
+      if (savingRows.has(row)) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      } else {
+        await saveExpenseRow(row);
+      }
+    }
+  }
+}
+
+async function flushPendingTransferInputs() {
+  for (const input of document.querySelectorAll("#summary-body .paid-transfer-input[data-dirty='true']")) {
+    while (input.isConnected && input.dataset.dirty === "true") {
+      if (savingTransferInputs.has(input)) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      } else {
+        await savePaidTransferTotal(input);
+        if (input.isConnected && input.dataset.dirty === "true") {
+          throw new Error("Có thay đổi chuyển khoản chưa lưu. Hãy xử lý lỗi lưu trước khi tiếp tục.");
+        }
+      }
+    }
+  }
+}
+
+async function flushPendingChanges() {
+  await flushExpenseRows();
+  await flushPendingTransferInputs();
 }
 
 function renderSummary() {
@@ -406,12 +430,24 @@ function renderSummary() {
         ? summary.map((member) => {
           const className = typeof row.className === "function" ? row.className(member) : row.className || "";
           const value = row.label === "Đã chuyển khoản" && state.isAdmin
-            ? `<input class="paid-transfer-input" type="text" inputmode="numeric" value="${formatVndInput(member.paidToAdminVnd)}" aria-label="Tổng đã chuyển khoản của ${escapeHtml(member.name)}" data-member-id="${escapeHtml(member.id)}">`
+            ? `<input class="paid-transfer-input" type="text" inputmode="text" value="${formatVndInput(member.paidToAdminVnd)}" aria-label="Tổng đã chuyển khoản của ${escapeHtml(member.name)}" data-member-id="${escapeHtml(member.id)}">`
             : row.value(member);
           return `<td class="summary-member ${className}">${value}</td>`;
         }).join("")
         : `<td class="summary-member empty-cell">Thêm thành viên để bắt đầu sổ chi nhé.</td>`}
     </tr>`).join("");
+  if (state.isAdmin && summary.length) {
+    tbody.innerHTML += `
+      <tr>
+        <th class="summary-label" scope="row">Dones</th>
+        ${summary.map((member) => {
+          return `<td class="summary-member">
+            <button class="button button-dark button-small done-transfer-button" type="button"
+              data-action="done-transfer" data-member-id="${escapeHtml(member.id)}">Done</button>
+          </td>`;
+        }).join("")}
+      </tr>`;
+  }
 
   const pending = state.payments.filter((payment) => payment.status === "pending");
   document.querySelector("#payment-pending-count").textContent =
@@ -448,8 +484,8 @@ function renderPendingPayments() {
 }
 
 function render() {
-  renderHeader();
   renderExpenses();
+  renderHeader();
   renderSummary();
   if (state.isAdmin) {
     renderMembers();
@@ -474,6 +510,7 @@ function updateExpensePreview(row) {
   cells[1].textContent = count && amountVnd
     ? formatAverageThousand(amountVnd, count)
     : "—";
+  renderHeader();
   renderSummary();
 }
 
@@ -484,7 +521,10 @@ async function savePaidTransferTotal(input, { keepalive = false } = {}) {
   }
   const submittedValue = input.value;
   const digits = submittedValue.replace(/\D/g, "");
-  const amountValue = digits ? BigInt(digits) : 0n;
+  const negative = /^\s*-/.test(submittedValue);
+  const amountValue = digits
+    ? BigInt(digits) * (negative ? -1n : 1n)
+    : 0n;
   if (amountValue > 1_000_000_000_000n) {
     showNotice("Tổng tiền chuyển khoản không được vượt quá 1.000.000.000.000đ.", "error");
     return;
@@ -531,6 +571,26 @@ async function loadState() {
   document.documentElement.style.setProperty("--font-scale", String(data.fontSize / 100));
   renderColumnWidths();
   render();
+  if (state.isAdmin) await loadHistoryPoints();
+  else document.querySelector("#history-points").textContent = "";
+}
+
+async function loadHistoryPoints() {
+  try {
+    const data = await api("/api/admin/history-points");
+    state.historyPoints = data.points;
+    const container = document.querySelector("#history-points");
+    container.innerHTML = state.historyPoints.length
+      ? state.historyPoints.map((point) => `
+        <div class="history-point-item">
+          <span>${escapeHtml(point.createdAt)} · ${point.memberCount} thành viên · ${point.expenseCount} khoản chi</span>
+          <button class="button button-light button-small" type="button"
+            data-action="restore-history-point" data-point-id="${escapeHtml(point.id)}">Khôi phục</button>
+        </div>`).join("")
+      : `<p class="section-description">Chưa có điểm lưu nào.</p>`;
+  } catch (caught) {
+    document.querySelector("#history-points").textContent = `Không tải được danh sách: ${caught.message}`;
+  }
 }
 
 async function handleClick(event) {
@@ -539,16 +599,49 @@ async function handleClick(event) {
   const action = button.dataset.action;
   try {
     if (action === "delete-expense-row") {
-      const row = button.closest("tr");
-      state.draftRows = Math.max(0, state.draftRows - 1);
-      renderExpenses();
-      showNotice("Đã xóa dòng mới.");
+      return;
+    }
+    if (action === "restore-history-point") {
+      const point = state.historyPoints.find((item) => item.id === button.dataset.pointId);
+      const confirmed = await showActionDialog({
+        title: "Khôi phục điểm dữ liệu?",
+        message: `Dữ liệu Detail và Summary sẽ được thay bằng điểm lưu ${point?.createdAt || ""}. Cấu hình giao diện và nhật ký sẽ không bị thay đổi.`,
+        confirmLabel: "Khôi phục",
+        danger: true,
+      });
+      if (!confirmed) return;
+      await flushPendingChanges();
+      await api(`/api/admin/history-points/${encodeURIComponent(button.dataset.pointId)}/restore`, {
+        method: "POST",
+        body: "{}",
+      });
+      await loadState();
+      showNotice("Đã khôi phục dữ liệu từ điểm đã chọn.");
       return;
     }
     if (action === "delete-expense") {
-      await api(`/api/expenses/${encodeURIComponent(button.closest("tr").dataset.expenseId)}`, { method: "DELETE" });
+      const row = button.closest("tr");
+      await flushExpenseRows([row]);
+      await api(`/api/expenses/${encodeURIComponent(row.dataset.expenseId)}`, { method: "DELETE" });
       await loadState();
       showNotice("Đã xóa khoản chi.");
+      return;
+    }
+    if (action === "done-transfer") {
+      if (!state.isAdmin) return;
+      const member = calculateBalances(state.members, getExpensePreview(), state.payments)
+        .find((item) => item.id === button.dataset.memberId);
+      if (!member) throw new Error("Không tìm thấy thành viên để cập nhật.");
+      const targetVnd = member.shareVnd - member.paidExpenseVnd;
+      if (!Number.isSafeInteger(targetVnd) || Math.abs(targetVnd) > 1_000_000_000_000) {
+        throw new Error("Số tiền mục tiêu vượt giới hạn cho phép.");
+      }
+      const input = [...document.querySelectorAll(".paid-transfer-input")]
+        .find((item) => item.dataset.memberId === member.id);
+      if (!input) throw new Error("Không tìm thấy ô Đã chuyển khoản tương ứng.");
+      input.value = formatVndInput(targetVnd);
+      input.dataset.dirty = "true";
+      await savePaidTransferTotal(input);
       return;
     }
     if (action === "rename-member") {
@@ -668,6 +761,8 @@ async function loadAudit() {
     const actionLabels = {
       create: "tạo",
       update: "sửa",
+      store: "lưu điểm khôi phục",
+      restore: "khôi phục điểm dữ liệu",
       participant_add: "đánh dấu tham gia",
       participant_remove: "bỏ đánh dấu tham gia",
       delete: "xóa",
@@ -682,6 +777,7 @@ async function loadAudit() {
     const memberById = new Map(state.members.map((member) => [member.id, member.name]));
     const fieldLabels = {
       payerId: "Người chi",
+      date: "Ngày",
       description: "Nội dung",
       amountVnd: "Số tiền",
     };
@@ -725,9 +821,23 @@ applySummaryColumnWidths();
 document.querySelector("#expense-body").addEventListener("input", (event) => {
   const row = event.target.closest("tr");
   if (!row) return;
-  if (event.target.matches(".amount-input")) updateExpensePreview(row);
-  if (event.target.matches(".amount-input") || event.target.matches(".description-input") || event.target.matches(".payer-input")) {
-    scheduleAutoSave(row);
+  if (event.target.matches(".description-input")) {
+    updateExpenseField(row, "description", event.target.value);
+    updateExpensePreview(row);
+  }
+  if (event.target.matches(".amount-input")) {
+    updateExpensePreview(row);
+    if (!event.target.value.trim()) {
+      updateExpenseField(row, "amountVnd", 0);
+    } else {
+      try {
+        updateExpenseField(row, "amountVnd", parseThousandInput(event.target.value));
+      } catch (caught) {
+        const changes = pendingExpenseChanges.get(row);
+        if (changes) delete changes.amountVnd;
+        setSaveStatus(`Chưa lưu: ${caught.message}`, "error");
+      }
+    }
   }
 });
 document.querySelector("#expense-body").addEventListener("change", (event) => {
@@ -735,10 +845,13 @@ document.querySelector("#expense-body").addEventListener("change", (event) => {
   if (!row) return;
   if (row && event.target.matches("input[type=checkbox]")) {
     updateExpensePreview(row);
-    scheduleAutoSave(row, 100);
+    updateExpenseField(row, "participantIds", [...row.querySelectorAll("input[type=checkbox]:checked")]
+      .map((checkbox) => checkbox.dataset.memberId), 100);
   } else if (row && event.target.matches(".payer-input")) {
-    renderSummary();
-    scheduleAutoSave(row, 100);
+    updateExpensePreview(row);
+    updateExpenseField(row, "payerId", event.target.value || null, 100);
+  } else if (row && event.target.matches(".date-input")) {
+    updateExpenseField(row, "date", event.target.value || null, 100);
   }
 });
 document.querySelector("#summary-body").addEventListener("change", (event) => {
@@ -750,14 +863,32 @@ document.querySelector("#summary-body").addEventListener("input", (event) => {
     formatVndInputAtCursor(event.target);
   }
 });
-document.querySelector("#add-expense").addEventListener("click", () => {
-  if (state.members.length === 0) {
-    showNotice("Admin cần thêm thành viên trước khi nhập khoản chi.", "error");
-    return;
+document.querySelector("#add-expense").addEventListener("click", async () => {
+  try {
+    const { expense } = await api("/api/expenses", { method: "POST", body: "{}" });
+    state.expenses.push(expense);
+    renderExpenses();
+    document.querySelector(`#expense-body tr[data-expense-id="${CSS.escape(expense.id)}"] .payer-input`)?.focus();
+    renderHeader();
+    renderSummary();
+  } catch (caught) {
+    showNotice(caught.message, "error");
   }
-  state.draftRows += 1;
-  renderExpenses();
-  document.querySelector("#expense-body tr:last-child .description-input")?.focus();
+});
+
+document.querySelector("#store-history-point").addEventListener("click", async () => {
+  const button = document.querySelector("#store-history-point");
+  button.disabled = true;
+  try {
+    await flushPendingChanges();
+    await api("/api/admin/history-points", { method: "POST", body: "{}" });
+    await loadHistoryPoints();
+    showNotice("Đã lưu điểm khôi phục.");
+  } catch (caught) {
+    showNotice(caught.message, "error");
+  } finally {
+    button.disabled = false;
+  }
 });
 
 document.querySelector("#login-button").addEventListener("click", () => {

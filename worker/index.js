@@ -7,6 +7,7 @@ const DEFAULT_FONT_SIZE = 100;
 const DEFAULT_COLUMN_WIDTHS = {
   expense: {
     payer: 110,
+    date: 110,
     description: 145,
     amount: 100,
     member: 80,
@@ -22,6 +23,7 @@ const DEFAULT_COLUMN_WIDTHS = {
 const COLUMN_WIDTH_LIMITS = {
   expense: {
     payer: [24, 2000],
+    date: [24, 2000],
     description: [24, 2000],
     amount: [24, 2000],
     member: [24, 2000],
@@ -72,25 +74,23 @@ function validName(value) {
   return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 80;
 }
 
-function validText(value) {
-  return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 200;
-}
-
 function validAmount(value) {
   return Number.isSafeInteger(value) && value > 0 && value <= MAX_AMOUNT_VND;
 }
 
-function validNonNegativeAmount(value) {
-  return Number.isSafeInteger(value) && value >= 0 && value <= MAX_AMOUNT_VND;
+function validSignedAmount(value) {
+  return Number.isSafeInteger(value) &&
+    value >= -MAX_AMOUNT_VND &&
+    value <= MAX_AMOUNT_VND;
 }
 
 function validId(value) {
   return typeof value === "string" && value.length >= 1 && value.length <= 80;
 }
 
-function validIds(value) {
+function validIds(value, { allowEmpty = false } = {}) {
   return Array.isArray(value) &&
-    value.length > 0 &&
+    (allowEmpty || value.length > 0) &&
     value.length <= MAX_MEMBERS &&
     value.every(validId) &&
     new Set(value).size === value.length;
@@ -212,6 +212,7 @@ function audit(env, actor, action, entity, entityId, before, after) {
 async function getExpense(env, id) {
   const expense = await env.DB.prepare(`
     SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd,
+           expense_date AS date,
            created_at AS createdAt, updated_at AS updatedAt
     FROM expenses WHERE id = ?
   `).bind(id).first();
@@ -223,17 +224,54 @@ async function getExpense(env, id) {
   return { ...expense, participantIds: participants.results.map((row) => row.memberId) };
 }
 
-async function validateExpense(env, body) {
-  if (!validId(body.payerId)) return "Chọn người đã thanh toán khoản chi.";
-  if (!validText(body.description)) return "Nội dung cần có từ 1 đến 200 ký tự.";
-  if (!validAmount(body.amountVnd)) return "Số tiền phải là số đồng nguyên dương hợp lệ.";
-  if (!validIds(body.participantIds)) return "Chọn ít nhất một người chia khoản chi.";
-  const ids = [...new Set([body.payerId, ...body.participantIds])];
-  const placeholders = ids.map(() => "?").join(",");
-  const result = await env.DB.prepare(
-    `SELECT COUNT(*) AS count FROM members WHERE id IN (${placeholders})`,
-  ).bind(...ids).first();
-  if (Number(result.count) !== ids.length) return "Một hoặc nhiều thành viên không còn tồn tại.";
+function validExpenseDate(value) {
+  if (value === null || value === "") return true;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+}
+
+async function validateExpensePatch(env, body, before) {
+  const allowedFields = new Set(["payerId", "date", "description", "amountVnd", "participantIds"]);
+  const fields = Object.keys(body);
+  if (fields.length === 0 || fields.some((field) => !allowedFields.has(field))) {
+    return "Không có trường khoản chi hợp lệ để lưu.";
+  }
+  if (Object.hasOwn(body, "payerId") &&
+      body.payerId !== null && body.payerId !== "" && !validId(body.payerId)) {
+    return "Người chi không hợp lệ.";
+  }
+  if (Object.hasOwn(body, "date") && !validExpenseDate(body.date)) {
+    return "Ngày phải có định dạng YYYY-MM-DD hợp lệ.";
+  }
+  if (Object.hasOwn(body, "description") &&
+      (typeof body.description !== "string" || body.description.length > 200)) {
+    return "Nội dung không được dài quá 200 ký tự.";
+  }
+  if (Object.hasOwn(body, "amountVnd") &&
+      (!Number.isSafeInteger(body.amountVnd) || body.amountVnd < 0 || body.amountVnd > MAX_AMOUNT_VND)) {
+    return "Số tiền phải là số đồng nguyên từ 0 đến giới hạn cho phép.";
+  }
+  if (Object.hasOwn(body, "participantIds") && !validIds(body.participantIds, { allowEmpty: true })) {
+    return "Danh sách người tham gia không hợp lệ.";
+  }
+  const ids = new Set();
+  if (Object.hasOwn(body, "payerId") && body.payerId) ids.add(body.payerId);
+  else if (before.payerId) ids.add(before.payerId);
+  const participantIds = Object.hasOwn(body, "participantIds")
+    ? body.participantIds
+    : before.participantIds;
+  participantIds.forEach((id) => ids.add(id));
+  if (ids.size > 0) {
+    const memberIds = [...ids];
+    const placeholders = memberIds.map(() => "?").join(",");
+    const result = await env.DB.prepare(
+      `SELECT COUNT(*) AS count FROM members WHERE id IN (${placeholders})`,
+    ).bind(...memberIds).first();
+    if (Number(result.count) !== memberIds.length) {
+      return "Một hoặc nhiều thành viên không còn tồn tại.";
+    }
+  }
   return null;
 }
 
@@ -241,7 +279,7 @@ async function memberBalance(env, memberId) {
   const [membersResult, expensesResult, participantResult, paymentsResult, adjustmentsResult] = await Promise.all([
     env.DB.prepare("SELECT id, name, position FROM members ORDER BY position, name COLLATE NOCASE").all(),
     env.DB.prepare(`
-      SELECT id, amount_vnd AS amountVnd, payer_id AS payerId
+      SELECT id, amount_vnd AS amountVnd, payer_id AS payerId, description
       FROM expenses ORDER BY position, created_at, id
     `).all(),
     env.DB.prepare(`
@@ -269,7 +307,8 @@ async function memberBalance(env, memberId) {
     ...expense,
     amountVnd: Number(expense.amountVnd),
     participantIds: participantIds.get(expense.id) || [],
-  }));
+  })).filter((expense) => expense.payerId && expense.description.trim() &&
+    expense.amountVnd > 0 && expense.participantIds.length > 0);
   const payments = paymentsResult.results.map((payment) => ({
     ...payment,
     amountVnd: Number(payment.amountVnd),
@@ -288,7 +327,7 @@ async function state(request, env) {
     env.DB.prepare("SELECT id, name, position FROM members ORDER BY position, name COLLATE NOCASE").all(),
     env.DB.prepare(`
       SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd,
-             created_at AS createdAt, updated_at AS updatedAt
+             expense_date AS date, created_at AS createdAt, updated_at AS updatedAt
       FROM expenses ORDER BY position, created_at, id
     `).all(),
     env.DB.prepare("SELECT expense_id AS expenseId, member_id AS memberId FROM expense_participants").all(),
@@ -379,14 +418,17 @@ async function handleApi(request, env) {
     "POST /api/admin/refunds",
     "PUT /api/admin/payments/total",
     "PUT /api/admin/font-size",
+    "POST /api/admin/history-points",
   ]);
   const routeKey = `${method} ${path}`;
   if ((adminOnly.has(routeKey) || /^PATCH \/api\/members\/[^/]+$/.test(routeKey) ||
        /^DELETE \/api\/members\/[^/]+$/.test(routeKey) ||
        /^POST \/api\/payments\/[^/]+\/confirm$/.test(routeKey) ||
        /^DELETE \/api\/payments\/[^/]+$/.test(routeKey) ||
+       (method === "POST" && /^\/api\/admin\/history-points\/[^/]+\/restore$/.test(path)) ||
        (method === "PUT" && path === "/api/admin/column-widths") ||
-       path === "/api/admin/audit") && !admin) {
+       path === "/api/admin/audit" ||
+       path === "/api/admin/history-points") && !admin) {
     return error("Chỉ Admin đã đăng nhập mới được thực hiện thao tác này.", 401);
   }
 
@@ -397,6 +439,132 @@ async function handleApi(request, env) {
       FROM audit_log ORDER BY id DESC LIMIT 200
     `).all();
     return json({ entries: result.results });
+  }
+
+  if (path === "/api/admin/history-points" && method === "GET") {
+    const result = await env.DB.prepare(`
+      SELECT id, created_at AS createdAt, member_count AS memberCount,
+             expense_count AS expenseCount
+      FROM history_points ORDER BY created_at DESC, rowid DESC LIMIT 50
+    `).all();
+    return json({ points: result.results });
+  }
+
+  if (method === "POST" && path === "/api/admin/history-points") {
+    if (!await rateLimit(request, env, "write", 500, 15 * 60 * 1000)) {
+      return error("Đã vượt giới hạn thao tác. Hãy thử lại sau.", 429);
+    }
+    const [membersResult, expensesResult, participantsResult, paymentsResult, adjustmentsResult] =
+      await env.DB.batch([
+        env.DB.prepare("SELECT id, name, position, created_at AS createdAt FROM members ORDER BY position, name COLLATE NOCASE"),
+        env.DB.prepare(`SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd,
+          expense_date AS date, position, created_at AS createdAt, updated_at AS updatedAt
+          FROM expenses ORDER BY position, created_at, id`),
+        env.DB.prepare("SELECT expense_id AS expenseId, member_id AS memberId FROM expense_participants ORDER BY expense_id, member_id"),
+        env.DB.prepare(`SELECT id, member_id AS memberId, direction, amount_vnd AS amountVnd,
+          status, created_at AS createdAt, confirmed_at AS confirmedAt, confirmed_by AS confirmedBy
+          FROM payments ORDER BY created_at, id`),
+        env.DB.prepare(`SELECT id, member_id AS memberId, amount_delta_vnd AS amountVnd,
+          created_by AS createdBy, created_at AS createdAt
+          FROM payment_adjustments ORDER BY created_at, id`),
+      ]);
+    const snapshot = {
+      members: membersResult.results,
+      expenses: expensesResult.results,
+      participants: participantsResult.results,
+      payments: paymentsResult.results,
+      adjustments: adjustmentsResult.results,
+    };
+    const id = crypto.randomUUID();
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO history_points (id, snapshot_json, member_count, expense_count)
+        VALUES (?, ?, ?, ?)
+      `).bind(id, JSON.stringify(snapshot), snapshot.members.length, snapshot.expenses.length),
+      env.DB.prepare(`
+        DELETE FROM history_points
+        WHERE id NOT IN (
+          SELECT id FROM history_points ORDER BY created_at DESC, rowid DESC LIMIT 50
+        )
+      `),
+      audit(env, "admin", "store", "history_point", id, null, {
+        memberCount: snapshot.members.length,
+        expenseCount: snapshot.expenses.length,
+      }),
+    ]);
+    return json({ point: { id, memberCount: snapshot.members.length, expenseCount: snapshot.expenses.length } }, 201);
+  }
+
+  const historyRestoreMatch = path.match(/^\/api\/admin\/history-points\/([^/]+)\/restore$/);
+  if (method === "POST" && historyRestoreMatch) {
+    if (!await rateLimit(request, env, "write", 500, 15 * 60 * 1000)) {
+      return error("Đã vượt giới hạn thao tác. Hãy thử lại sau.", 429);
+    }
+    const id = decodeURIComponent(historyRestoreMatch[1]);
+    const point = await env.DB.prepare(
+      "SELECT snapshot_json AS snapshotJson FROM history_points WHERE id = ?",
+    ).bind(id).first();
+    if (!point) return error("Không tìm thấy điểm khôi phục.", 404);
+    let snapshot;
+    try {
+      snapshot = JSON.parse(point.snapshotJson);
+    } catch {
+      return error("Dữ liệu điểm khôi phục bị lỗi.", 500);
+    }
+    if (!snapshot || !Array.isArray(snapshot.members) || !Array.isArray(snapshot.expenses) ||
+        !Array.isArray(snapshot.participants) || !Array.isArray(snapshot.payments) ||
+        !Array.isArray(snapshot.adjustments)) {
+      return error("Cấu trúc điểm khôi phục không hợp lệ.", 500);
+    }
+    const snapshotJson = JSON.stringify(snapshot);
+    const statements = [
+      env.DB.prepare("DELETE FROM expenses"),
+      env.DB.prepare("DELETE FROM payments"),
+      env.DB.prepare("DELETE FROM payment_adjustments"),
+      env.DB.prepare("DELETE FROM members"),
+      env.DB.prepare(`
+        INSERT INTO members (id, name, position, created_at)
+        SELECT json_extract(value, '$.id'), json_extract(value, '$.name'),
+          json_extract(value, '$.position'), json_extract(value, '$.createdAt')
+        FROM json_each(?, '$.members')
+      `).bind(snapshotJson),
+      env.DB.prepare(`
+        INSERT INTO expenses (id, payer_id, description, amount_vnd, expense_date,
+          position, created_at, updated_at)
+        SELECT json_extract(value, '$.id'), json_extract(value, '$.payerId'),
+          json_extract(value, '$.description'), json_extract(value, '$.amountVnd'),
+          json_extract(value, '$.date'), json_extract(value, '$.position'),
+          json_extract(value, '$.createdAt'), json_extract(value, '$.updatedAt')
+        FROM json_each(?, '$.expenses')
+      `).bind(snapshotJson),
+      env.DB.prepare(`
+        INSERT INTO expense_participants (expense_id, member_id)
+        SELECT json_extract(value, '$.expenseId'), json_extract(value, '$.memberId')
+        FROM json_each(?, '$.participants')
+      `).bind(snapshotJson),
+      env.DB.prepare(`
+        INSERT INTO payments (id, member_id, direction, amount_vnd, status,
+          created_at, confirmed_at, confirmed_by)
+        SELECT json_extract(value, '$.id'), json_extract(value, '$.memberId'),
+          json_extract(value, '$.direction'), json_extract(value, '$.amountVnd'),
+          json_extract(value, '$.status'), json_extract(value, '$.createdAt'),
+          json_extract(value, '$.confirmedAt'), json_extract(value, '$.confirmedBy')
+        FROM json_each(?, '$.payments')
+      `).bind(snapshotJson),
+      env.DB.prepare(`
+        INSERT INTO payment_adjustments (id, member_id, amount_delta_vnd, created_by, created_at)
+        SELECT json_extract(value, '$.id'), json_extract(value, '$.memberId'),
+          json_extract(value, '$.amountVnd'), json_extract(value, '$.createdBy'),
+          json_extract(value, '$.createdAt')
+        FROM json_each(?, '$.adjustments')
+      `).bind(snapshotJson),
+      audit(env, "admin", "restore", "history_point", id, null, {
+        memberCount: snapshot.members.length,
+        expenseCount: snapshot.expenses.length,
+      }),
+    ];
+    await env.DB.batch(statements);
+    return json({ restored: true });
   }
 
   if (method !== "GET" && !(await rateLimit(
@@ -441,7 +609,7 @@ async function handleApi(request, env) {
 
   if (method === "PUT" && path === "/api/admin/payments/total") {
     const body = await readJson(request);
-    if (!validId(body.memberId) || !validNonNegativeAmount(body.amountVnd)) {
+    if (!validId(body.memberId) || !validSignedAmount(body.amountVnd)) {
       return error("Chọn thành viên và nhập tổng tiền chuyển khoản hợp lệ.");
     }
     const member = await env.DB.prepare("SELECT id, name FROM members WHERE id = ?")
@@ -487,30 +655,25 @@ async function handleApi(request, env) {
   }
 
   if (method === "POST" && path === "/api/expenses") {
-    const body = await readJson(request);
-    const problem = await validateExpense(env, body);
-    if (problem) return error(problem);
     const id = crypto.randomUUID();
     const position = await env.DB.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS next FROM expenses").first();
     const expense = {
       id,
-      payerId: body.payerId,
-      description: body.description.trim(),
-      amountVnd: body.amountVnd,
-      participantIds: body.participantIds,
+      payerId: null,
+      date: null,
+      description: "",
+      amountVnd: 0,
+      participantIds: [],
     };
     const statements = [
       env.DB.prepare(`
-        INSERT INTO expenses (id, payer_id, description, amount_vnd, position)
-        VALUES (?, ?, ?, ?, ?)
-      `).bind(id, expense.payerId, expense.description, expense.amountVnd, Number(position.next)),
-      ...expense.participantIds.map((memberId) => env.DB.prepare(`
-        INSERT INTO expense_participants (expense_id, member_id) VALUES (?, ?)
-      `).bind(id, memberId)),
+        INSERT INTO expenses (id, payer_id, description, amount_vnd, expense_date, position)
+        VALUES (?, NULL, '', 0, NULL, ?)
+      `).bind(id, Number(position.next)),
       audit(env, admin ? "admin" : "public", "create", "expense", id, null, expense),
     ];
     await env.DB.batch(statements);
-    return json({ expense }, 201);
+    return json({ expense: { ...expense, createdAt: null, updatedAt: null } }, 201);
   }
 
   const expenseMatch = path.match(/^\/api\/expenses\/([^/]+)$/);
@@ -526,17 +689,28 @@ async function handleApi(request, env) {
       return json({ deleted: true });
     }
     const body = await readJson(request);
-    const problem = await validateExpense(env, body);
+    const problem = await validateExpensePatch(env, body, before);
     if (problem) return error(problem);
     const after = {
-      id,
-      payerId: body.payerId,
-      description: body.description.trim(),
-      amountVnd: body.amountVnd,
-      participantIds: body.participantIds,
+      ...before,
+      payerId: Object.hasOwn(body, "payerId")
+        ? body.payerId || null
+        : before.payerId,
+      date: Object.hasOwn(body, "date")
+        ? body.date || null
+        : before.date,
+      description: Object.hasOwn(body, "description")
+        ? body.description.trim()
+        : before.description,
+      amountVnd: Object.hasOwn(body, "amountVnd")
+        ? body.amountVnd
+        : before.amountVnd,
+      participantIds: Object.hasOwn(body, "participantIds")
+        ? body.participantIds
+        : before.participantIds,
     };
     const auditStatements = [];
-    for (const field of ["payerId", "description", "amountVnd"]) {
+    for (const field of ["payerId", "date", "description", "amountVnd"]) {
       if (before[field] !== after[field]) {
         auditStatements.push(audit(
           env,
@@ -577,18 +751,29 @@ async function handleApi(request, env) {
         ));
       }
     }
+    const fieldColumns = {
+      payerId: "payer_id",
+      date: "expense_date",
+      description: "description",
+      amountVnd: "amount_vnd",
+    };
+    const changedFields = Object.keys(fieldColumns).filter((field) => Object.hasOwn(body, field));
+    const updateValues = changedFields.map((field) => after[field]);
+    const updateColumns = changedFields.map((field) => `${fieldColumns[field]} = ?`);
     await env.DB.batch([
       env.DB.prepare(`
-        UPDATE expenses SET payer_id = ?, description = ?, amount_vnd = ?,
-          updated_at = CURRENT_TIMESTAMP WHERE id = ?
-      `).bind(after.payerId, after.description, after.amountVnd, id),
-      env.DB.prepare("DELETE FROM expense_participants WHERE expense_id = ?").bind(id),
-      ...after.participantIds.map((memberId) => env.DB.prepare(`
-        INSERT INTO expense_participants (expense_id, member_id) VALUES (?, ?)
-      `).bind(id, memberId)),
+        UPDATE expenses SET ${[...updateColumns, "updated_at = CURRENT_TIMESTAMP"].join(", ")}
+        WHERE id = ?
+      `).bind(...updateValues, id),
+      ...(Object.hasOwn(body, "participantIds") ? [
+        env.DB.prepare("DELETE FROM expense_participants WHERE expense_id = ?").bind(id),
+        ...after.participantIds.map((memberId) => env.DB.prepare(`
+          INSERT INTO expense_participants (expense_id, member_id) VALUES (?, ?)
+        `).bind(id, memberId)),
+      ] : []),
       ...auditStatements,
     ]);
-    return json({ expense: after });
+    return json({ expense: await getExpense(env, id) });
   }
 
   if (method === "POST" && path === "/api/members") {

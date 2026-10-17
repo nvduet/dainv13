@@ -73,7 +73,7 @@ Nếu vừa cài Node.js mà PowerShell báo không tìm thấy `node`, đóng/m
 ## Kiểm thử phép tính
 
 ```powershell
-node --test tests/accounting.test.mjs
+node --test tests\accounting.test.mjs tests\worker.test.mjs
 ```
 
 ## Cấu hình đăng nhập Admin
@@ -94,15 +94,15 @@ ADMIN_SESSION_SECRET=thay-bang-chuoi-bi-mat-ngau-nhien-dai
 & $wrangler secret put ADMIN_SESSION_SECRET
 ```
 
-Nhập giá trị khi Wrangler hỏi. Không dùng mật khẩu đã gửi trong trao đổi; hãy đặt mật khẩu mạnh riêng cho production. Secret phiên nên là chuỗi ngẫu nhiên dài. Không đưa `.dev.vars`, mật khẩu, hoặc secret vào Git.
+Mật khẩu Admin chỉ cần có ít nhất một ký tự; không có yêu cầu độ dài khác. Vì vậy hãy dùng mật khẩu mạnh và không chia sẻ mật khẩu. Secret phiên vẫn được tạo ngẫu nhiên dài. Không đưa `.dev.vars`, mật khẩu, hoặc secret vào Git.
 
 Chỉ có một danh sách thành viên. Admin là người duy nhất được thêm, đổi tên hoặc xóa thành viên; toàn bộ thành viên trong danh sách được hiển thị thành cột ở bảng chi và trong bảng tổng hợp.
 
-Sau khi đăng nhập Admin, mở mục **Cấu hình độ rộng cột** ở đầu trang để chỉnh từng vai trò cột trong bảng chi (người chi, nội dung, chi phí, cột thành viên, số người, tiền/người, xóa) và bảng tổng hợp (tên chỉ tiêu, cột thành viên). Các cột thành viên cùng dùng độ rộng theo vai trò; số lượng cột được hiển thị cạnh trường cấu hình. Admin cũng có thể chỉnh cỡ chữ toàn giao diện từ 75% đến 200%. Các cấu hình được lưu trong D1 và dùng chung cho mọi người truy cập; khách chưa đăng nhập không thể thay đổi. Thêm/đổi tên/xóa thành viên quản lý dùng hộp thoại giao diện; xóa khoản chi thực hiện ngay khi bấm nút Xóa. Admin cũng có thể sửa tổng tiền đã chuyển khoản cho từng thành viên ở bảng tổng hợp; hệ thống lưu bút toán chênh lệch và nhật ký, không sửa lịch sử giao dịch gốc.
+Sau khi đăng nhập Admin, mở mục **Cấu hình độ rộng cột** ở đầu trang để chỉnh từng vai trò cột trong bảng chi (người chi, Date, nội dung, chi phí, cột thành viên, số người, tiền/người, xóa) và bảng tổng hợp (tên chỉ tiêu, cột thành viên). Các cột thành viên cùng dùng độ rộng theo vai trò; số lượng cột được hiển thị cạnh trường cấu hình. Admin cũng có thể chỉnh cỡ chữ toàn giao diện từ 75% đến 200%. Các cấu hình được lưu trong D1 và dùng chung cho mọi người truy cập; khách chưa đăng nhập không thể thay đổi. Thêm/đổi tên/xóa thành viên quản lý dùng hộp thoại giao diện; xóa khoản chi thực hiện ngay khi bấm nút Xóa. Admin cũng có thể sửa tổng chuyển khoản theo giá trị VND có dấu (âm hoặc dương) cho từng thành viên ở bảng tổng hợp hoặc nhấn **Done** để đặt tổng này thành `Tiền phải chịu - Đã chi`; hệ thống lưu bút toán chênh lệch và nhật ký, không sửa lịch sử giao dịch gốc.
 
-Nhật ký quản trị ghi riêng từng thay đổi trường của khoản chi (người chi, nội dung, số tiền), thao tác đánh dấu/bỏ đánh dấu người tham gia và điều chỉnh tổng tiền chuyển khoản; nhật ký hiển thị giá trị trước/sau cho các thay đổi này.
+Nhật ký quản trị ghi riêng từng thay đổi trường của khoản chi (người chi, ngày, nội dung, số tiền), thao tác đánh dấu/bỏ đánh dấu người tham gia và điều chỉnh tổng tiền chuyển khoản; nhật ký hiển thị giá trị trước/sau cho các thay đổi này. Mỗi thay đổi được gửi lưu riêng, không cần hoàn thiện cả dòng. Nút thêm khoản chi tạo ngay một dòng nháp trong D1; các dòng thiếu dữ liệu không được tính vào Summary cho đến khi đủ người chi, nội dung, số tiền dương và ít nhất một người tham gia.
 
-Các thay đổi trong bảng chi được tự lưu vào D1 sau khi hoàn tất dòng; khi rời hoặc tải lại trang, các thay đổi hợp lệ còn đang chờ sẽ được gửi lưu bằng yêu cầu nền. Trạng thái lưu hiển thị dưới bảng. Dòng chưa đủ người chi, nội dung, số tiền dương hoặc người tham gia sẽ báo rõ là chưa lưu.
+Admin có thể bấm **Store** để tạo một điểm khôi phục dữ liệu Detail/Summary. Mỗi điểm gồm danh sách thành viên, khoản chi/ngày/người tham gia, thanh toán và điều chỉnh cần thiết để dựng lại Summary; không chứa cấu hình giao diện hay nhật ký. Giữ tối đa 50 điểm gần nhất. Chọn **Khôi phục** sẽ thay thế dữ liệu nghiệp vụ bằng điểm đã chọn, giữ nguyên cấu hình giao diện và nhật ký, và yêu cầu xác nhận trước khi thực hiện.
 
 ## Deploy
 

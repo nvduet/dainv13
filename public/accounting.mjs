@@ -38,6 +38,15 @@ export function calculateBalances(members, expenses, payments) {
   }]));
 
   for (const expense of expenses) {
+    if (!expense.payerId ||
+        typeof expense.description !== "string" ||
+        !expense.description.trim() ||
+        !Number.isSafeInteger(expense.amountVnd) ||
+        expense.amountVnd <= 0 ||
+        !Array.isArray(expense.participantIds) ||
+        expense.participantIds.length === 0) {
+      continue;
+    }
     const payer = balances.get(expense.payerId);
     if (payer) payer.paidExpenseVnd += expense.amountVnd;
     const participants = members.filter((member) => expense.participantIds.includes(member.id));

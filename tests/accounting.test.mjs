@@ -28,7 +28,7 @@ test("rejects invalid or duplicate participants", () => {
 
 test("calculates balances through the admin and ignores unconfirmed payments", () => {
   const members = [{ id: "a" }, { id: "b" }, { id: "c" }];
-  const expenses = [{ payerId: "a", amountVnd: 10, participantIds: ["a", "b", "c"] }];
+  const expenses = [{ payerId: "a", description: "Meal", amountVnd: 10, participantIds: ["a", "b", "c"] }];
   const payments = [
     { memberId: "b", direction: "member_to_admin", amountVnd: 2, status: "confirmed" },
     { memberId: "b", direction: "member_to_admin", amountVnd: 1, status: "pending" },
@@ -37,4 +37,52 @@ test("calculates balances through the admin and ignores unconfirmed payments", (
   const balances = calculateBalances(members, expenses, payments);
   assert.deepEqual(balances.map((member) => member.balanceVnd), [-5, 1, 3]);
   assert.equal(balances.reduce((sum, member) => sum + member.balanceVnd, 0), -1);
+});
+
+test("signed settlement target makes balance zero for positive and negative amounts", () => {
+  const members = [
+    { id: "member-1", name: "A" },
+    { id: "member-2", name: "B" },
+    { id: "member-3", name: "C" },
+  ];
+  const expenses = [{
+    id: "expense-1",
+    payerId: "member-2",
+    description: "Expense 1",
+    amountVnd: 30_000,
+    participantIds: ["member-1"],
+  }, {
+    id: "expense-2",
+    payerId: "member-1",
+    description: "Expense 2",
+    amountVnd: 50_000,
+    participantIds: ["member-3"],
+  }];
+  const before = calculateBalances(members, expenses, []);
+  const doneAmounts = before.map((member) => ({
+    memberId: member.id,
+    amountVnd: member.shareVnd - member.paidExpenseVnd,
+  }));
+  const after = calculateBalances(members, expenses, doneAmounts.map(({ memberId, amountVnd }) => ({
+    memberId,
+    direction: "member_to_admin",
+    amountVnd,
+    status: "confirmed",
+  })));
+
+  assert.deepEqual(doneAmounts.map(({ amountVnd }) => amountVnd), [-20_000, -30_000, 50_000]);
+  assert.deepEqual(after.map((member) => member.balanceVnd), [0, 0, 0]);
+});
+
+test("incomplete expense drafts do not affect balances", () => {
+  const members = [{ id: "member-1" }, { id: "member-2" }];
+  const expenses = [
+    { payerId: null, description: "", amountVnd: 0, participantIds: [] },
+    { payerId: "member-1", description: "", amountVnd: 100, participantIds: ["member-2"] },
+    { payerId: "member-1", description: "No participants", amountVnd: 100, participantIds: [] },
+  ];
+  assert.deepEqual(
+    calculateBalances(members, expenses, []).map((member) => member.balanceVnd),
+    [0, 0],
+  );
 });

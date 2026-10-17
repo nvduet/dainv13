@@ -13,14 +13,17 @@ Khởi tạo dữ liệu từ tab **Detail** trong workbook tham chiếu: danh s
 ## 2. Phạm vi MVP
 
 - Một sổ chi tiêu chung, không tách thành từng buổi đi; toàn bộ dòng chi nằm trong cùng bảng.
-- Bảng 1: người chi, nội dung, chi phí, checkbox tham gia cho từng thành viên, số người chia và số tiền trung bình/người.
-- Bảng 2: mỗi người, tổng chi phí họ chịu, tổng khoản họ trả thay, khoản họ đã nộp Admin, khoản Admin đã hoàn, số dư còn phải tất toán và lịch sử thanh toán.
+- Bảng 1: người chi, ngày, nội dung, chi phí, checkbox tham gia cho từng thành viên, số người chia và số tiền trung bình/người.
+- Bảng 2: mỗi người, tổng chi phí họ chịu, tổng khoản họ trả thay, khoản họ đã nộp Admin, khoản Admin đã hoàn và số dư còn phải tất toán.
 - Người xem không cần tài khoản. Có thể thêm/sửa/xóa khoản chi và chọn/bỏ chọn người tham gia. Chỉ Admin được thêm, đổi tên hoặc xóa thành viên; danh sách này được dùng cho các cột ở bảng chi và bảng tổng hợp.
 - Người dùng có thể báo một lần nộp tiền cho Admin (cho phép trả nhiều lần/trả một phần); khoản báo này ở trạng thái chờ cho đến khi Admin xác nhận đã nhận.
 - Admin đăng nhập để quản lý thành viên, xem và xác nhận khoản nộp, ghi nhận tiền hoàn cho thành viên, và quản lý toàn bộ dữ liệu.
-- Admin đăng nhập để tùy chỉnh và lưu độ rộng mọi vai trò cột trên cả bảng chi và bảng tổng hợp. Các cột thành viên có cùng vai trò dùng chung cấu hình; cấu hình được dùng chung cho mọi khách truy cập.
+- Admin đăng nhập để tùy chỉnh và lưu độ rộng mọi vai trò cột trên cả bảng chi (kể cả ngày) và bảng tổng hợp. Các cột thành viên có cùng vai trò dùng chung cấu hình; cấu hình được dùng chung cho mọi khách truy cập.
 - Admin đăng nhập để chỉnh cỡ chữ toàn giao diện (75%–200%); giá trị được lưu chung trong D1 và áp dụng cho tất cả người truy cập.
-- Admin có thể đặt tổng tiền chuyển khoản đã xác nhận cho từng thành viên ngay trong bảng tổng hợp. Chênh lệch được lưu thành bút toán điều chỉnh có audit, giữ nguyên các giao dịch gốc và được tính vào số dư.
+- Thêm khoản chi tạo ngay một dòng nháp được lưu trong D1. Mỗi thay đổi trường (bao gồm ngày) hoặc checkbox được tự lưu riêng, không cần hoàn thiện toàn bộ dòng; dòng chưa đầy đủ hoặc chưa có số tiền dương/người tham gia không ảnh hưởng Summary.
+- Admin có thể tạo và khôi phục tối đa 50 điểm lưu gần nhất. Điểm lưu gồm dữ liệu cần thiết để phục hồi Detail và Summary (thành viên, khoản chi/ngày/người tham gia, khoản nộp/hoàn và điều chỉnh), không gồm cấu hình giao diện hoặc nhật ký. Khôi phục cần xác nhận, giữ cấu hình và nhật ký hiện tại.
+- Admin có thể đặt tổng tiền chuyển khoản đã xác nhận cho từng thành viên ngay trong bảng tổng hợp; giá trị tổng có thể âm hoặc dương để biểu diễn khoản ròng. Chênh lệch được lưu thành bút toán điều chỉnh có audit, giữ nguyên các giao dịch gốc và được tính vào số dư.
+- Trong chế độ Admin, nút **Done** ở hàng cuối bảng tổng hợp đặt tổng đã chuyển khoản bằng `Tiền phải chịu - Đã chi` cho thành viên tương ứng, thông qua bút toán điều chỉnh có audit.
 - Giao diện responsive, báo lỗi/lưu thành công rõ ràng; xóa khoản chi thực hiện ngay, còn thao tác xóa thành viên có hộp thoại xác nhận.
 
 Ngoài phạm vi: tích hợp chuyển khoản ngân hàng, nhiều loại tiền, tài khoản riêng từng thành viên, chi phí chia theo tỷ lệ/tùy ý, nhập hóa đơn bằng ảnh, nhiều sổ/nhóm.
@@ -72,11 +75,15 @@ Ngoài phạm vi: tích hợp chuyển khoản ngân hàng, nhiều loại tiề
 - Tổng các phần chịu luôn bằng số tiền khoản chi; số dư mỗi người khớp công thức tại mục 4 và tổng nộp/hoàn được tính đúng.
 - Khách chưa đăng nhập có thể sửa khoản chi nhưng không thể quản lý thành viên hoặc xác nhận thanh toán.
 - Admin có thể đăng nhập, quản lý thành viên, xác nhận khoản nộp và ghi nhận khoản hoàn.
-- Admin có thể cấu hình độ rộng mọi cột theo vai trò, áp dụng cấu hình cho mọi người dùng và đặt lại mặc định; các cột thành viên cùng vai trò dùng chung độ rộng và số lượng cột được hiển thị; khách chưa đăng nhập không thể lưu thay đổi.
+- Admin có thể cấu hình độ rộng mọi cột theo vai trò, kể cả Date, áp dụng cấu hình cho mọi người dùng và đặt lại mặc định; các cột thành viên cùng vai trò dùng chung độ rộng và số lượng cột được hiển thị; khách chưa đăng nhập không thể lưu thay đổi.
 - Admin có thể cấu hình cỡ chữ, áp dụng ngay và dùng chung cho tất cả khách; các thao tác nhập tên/xác nhận/xóa dùng hộp thoại giao diện, không dùng prompt/confirm của trình duyệt.
 - Admin có thể sửa tổng tiền đã chuyển khoản, bao gồm đặt về 0; bút toán điều chỉnh phải cập nhật bảng số dư và nhật ký mà không thay đổi giao dịch gốc. Nhật ký nêu riêng từng trường khoản chi thay đổi, đánh dấu/bỏ đánh dấu người tham gia và giá trị trước/sau của tổng chuyển khoản.
+- Nút **Done** trong chế độ Admin đặt tiền đã chuyển khoản về `Tiền phải chịu - Đã chi` cho người tương ứng.
+- Mỗi trường và trạng thái checkbox của khoản chi tự lưu độc lập; có thể tải lại trang khi dòng còn thiếu trường mà dữ liệu đã nhập vẫn còn. Dòng không hoàn chỉnh không làm sai số dư.
+- Date nằm giữa Người chi và Nội dung, nhận ngày hợp lệ và được lưu cùng khoản chi.
+- Admin tạo được điểm khôi phục bằng Store, danh sách giữ tối đa 50 điểm; khôi phục đúng dữ liệu nghiệp vụ nhưng không ghi đè cấu hình hoặc nhật ký.
 - API hiển thị lỗi khi dữ liệu sai, thiếu quyền Admin hoặc vượt giới hạn; không báo thành công giả.
-- Có cảnh báo trước khi xóa khoản chi/thành viên; thao tác xóa thành viên nêu rõ các khoản chi và thanh toán lịch sử sẽ bị xóa theo.
+- Xóa khoản chi thực hiện ngay; xóa thành viên có cảnh báo số khoản chi và thanh toán sẽ bị xóa theo.
 - Dùng được trên điện thoại/desktop và hỗ trợ HTTPS khi deploy.
 
 ## 8. Tệp trong dự án

@@ -58,8 +58,8 @@ $devVarsPath = Join-Path $projectRoot ".dev.vars"
 if (-not (Test-Path -LiteralPath $devVarsPath -PathType Leaf)) {
     Write-Host "Creating local Admin settings in .dev.vars (this file is git-ignored)." -ForegroundColor Cyan
     $securePassword = Read-Host "Enter a new local Admin password" -AsSecureString
-    if ($securePassword.Length -lt 12) {
-        throw "The Admin password must contain at least 12 characters."
+    if ($securePassword.Length -lt 1) {
+        throw "The Admin password must contain at least 1 character."
     }
 
     $passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
