@@ -307,7 +307,7 @@ function renderExpenses() {
   }).join("");
 }
 
-function updateExpenseField(row, field, value, delay = 800) {
+function updateExpenseField(row, field, value, delay = 400) {
   const changes = pendingExpenseChanges.get(row) || {};
   changes[field] = value;
   pendingExpenseChanges.set(row, changes);
@@ -607,10 +607,43 @@ async function handleClick(event) {
     }
     if (action === "delete-expense") {
       const row = button.closest("tr");
-      await flushExpenseRows([row]);
-      await api(`/api/expenses/${encodeURIComponent(row.dataset.expenseId)}`, { method: "DELETE" });
-      await loadState();
-      showNotice("Đã xóa khoản chi.");
+      if (row.dataset.deleting === "true") return;
+      const expenseId = row.dataset.expenseId;
+      if (!state.expenses.some((expense) => expense.id === expenseId)) return;
+      row.dataset.deleting = "true";
+      clearTimeout(autoSaveTimers.get(row));
+      autoSaveTimers.delete(row);
+      if (!savingRows.has(row)) {
+        pendingExpenseChanges.delete(row);
+        row.dataset.pendingSave = "false";
+      }
+      row.remove();
+      renderHeader();
+      renderSummary();
+      while (savingRows.has(row)) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      clearTimeout(autoSaveTimers.get(row));
+      autoSaveTimers.delete(row);
+      pendingExpenseChanges.delete(row);
+      row.dataset.pendingSave = "false";
+
+      const expenseIndex = state.expenses.findIndex((expense) => expense.id === expenseId);
+      if (expenseIndex === -1) return;
+      const [expense] = state.expenses.splice(expenseIndex, 1);
+      renderExpenses();
+      renderHeader();
+      renderSummary();
+      try {
+        await api(`/api/expenses/${encodeURIComponent(expenseId)}`, { method: "DELETE" });
+        showNotice("Đã xóa khoản chi.");
+      } catch (caught) {
+        if (expense) state.expenses.splice(Math.max(0, expenseIndex), 0, expense);
+        renderExpenses();
+        renderHeader();
+        renderSummary();
+        throw caught;
+      }
       return;
     }
     if (action === "done-transfer") {
@@ -817,14 +850,39 @@ document.querySelector("#summary-body").addEventListener("input", (event) => {
   }
 });
 document.querySelector("#add-expense").addEventListener("click", async () => {
+  const button = document.querySelector("#add-expense");
+  const pendingId = `pending-${crypto.randomUUID()}`;
+  state.expenses.push({
+    id: pendingId,
+    payerId: null,
+    date: null,
+    description: "",
+    amountVnd: 0,
+    participantIds: [],
+  });
+  renderExpenses();
+  renderHeader();
+  renderSummary();
+  const pendingRow = [...document.querySelectorAll("#expense-body tr")]
+    .find((row) => row.dataset.expenseId === pendingId);
+  pendingRow?.querySelectorAll("input, select, button").forEach((control) => {
+    control.disabled = true;
+  });
+  button.focus({ preventScroll: true });
+
   try {
     const { expense } = await api("/api/expenses", { method: "POST", body: "{}" });
-    state.expenses.push(expense);
+    const pendingIndex = state.expenses.findIndex((item) => item.id === pendingId);
+    if (pendingIndex !== -1) state.expenses[pendingIndex] = expense;
     renderExpenses();
     renderHeader();
     renderSummary();
-    document.querySelector("#add-expense").focus({ preventScroll: true });
+    button.focus({ preventScroll: true });
   } catch (caught) {
+    state.expenses = state.expenses.filter((item) => item.id !== pendingId);
+    renderExpenses();
+    renderHeader();
+    renderSummary();
     showNotice(caught.message, "error");
   }
 });
