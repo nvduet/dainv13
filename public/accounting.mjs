@@ -43,23 +43,18 @@ export function calculateBalances(members, expenses, payments) {
   }]));
 
   for (const expense of expenses) {
-    if (!expense.payerId ||
-        typeof expense.description !== "string" ||
-        !expense.description.trim() ||
-        !Number.isSafeInteger(expense.amountVnd) ||
-        expense.amountVnd === 0 ||
-        !Array.isArray(expense.participantIds) ||
-        expense.participantIds.length === 0) {
-      continue;
-    }
+    if (!Number.isSafeInteger(expense.amountVnd)) continue;
     const payer = balances.get(expense.payerId);
     if (payer) payer.paidExpenseVnd += expense.amountVnd;
-    const participants = members.filter((member) => expense.participantIds.includes(member.id));
-    if (participants.length === 0) continue;
-    const shares = splitEvenly(expense.amountVnd, participants.map((member) => member.id));
-    for (const participant of participants) {
-      const member = balances.get(participant.id);
-      if (member) member.shareVnd += shares.get(participant.id) || 0;
+
+    const participantIds = Array.isArray(expense.participantIds) ? expense.participantIds : [];
+    const participants = members.filter((member) => participantIds.includes(member.id));
+    if (expense.amountVnd !== 0 && participants.length > 0) {
+      const shares = splitEvenly(expense.amountVnd, participants.map((member) => member.id));
+      for (const participant of participants) {
+        const member = balances.get(participant.id);
+        if (member) member.shareVnd += shares.get(participant.id) || 0;
+      }
     }
   }
 

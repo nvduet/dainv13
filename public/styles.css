@@ -131,6 +131,10 @@ th {
   background: #f7f8f9;
 }
 .expense-table th:first-child { z-index: 4; }
+.expense-table tbody td.cell-incomplete {
+  background-color: #fff0eb;
+}
+.expense-table tbody td.cell-incomplete:first-child { background-color: #ffe3d9; }
 .expense-table td.member-check, .expense-table th.member-check {
   text-align: center;
   padding: 4px 2px;

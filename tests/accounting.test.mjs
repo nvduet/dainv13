@@ -82,16 +82,40 @@ test("signed settlement target makes balance zero for positive and negative amou
   assert.deepEqual(after.map((member) => member.balanceVnd), [0, 0, 0]);
 });
 
-test("incomplete expense drafts do not affect balances", () => {
-  const members = [{ id: "member-1" }, { id: "member-2" }];
+test("partial expense drafts update payer and participant balances independently", () => {
+  const members = [{ id: "member-1" }, { id: "member-2" }, { id: "member-3" }];
   const expenses = [
     { payerId: null, description: "", amountVnd: 0, participantIds: [] },
-    { payerId: "member-1", description: "", amountVnd: 100, participantIds: ["member-2"] },
-    { payerId: "member-1", description: "No participants", amountVnd: 100, participantIds: [] },
+    { payerId: null, description: "", amountVnd: 100, participantIds: ["member-2", "member-3"] },
+    { payerId: "member-1", description: "", amountVnd: 50, participantIds: [] },
+  ];
+  const balances = calculateBalances(members, expenses, []);
+  assert.deepEqual(balances.map(({ shareVnd, paidExpenseVnd, balanceVnd }) => ({
+    shareVnd,
+    paidExpenseVnd,
+    balanceVnd,
+  })), [
+    { shareVnd: 0, paidExpenseVnd: 50, balanceVnd: -50 },
+    { shareVnd: 50, paidExpenseVnd: 0, balanceVnd: 50 },
+    { shareVnd: 50, paidExpenseVnd: 0, balanceVnd: 50 },
+  ]);
+});
+
+test("a missing amount is treated as zero while selected participants remain valid", () => {
+  const members = [{ id: "member-1" }, { id: "member-2" }];
+  const expenses = [
+    { payerId: "member-1", description: "", amountVnd: 0, participantIds: ["member-2"] },
   ];
   assert.deepEqual(
-    calculateBalances(members, expenses, []).map((member) => member.balanceVnd),
-    [0, 0],
+    calculateBalances(members, expenses, []).map(({ shareVnd, paidExpenseVnd, balanceVnd }) => ({
+      shareVnd,
+      paidExpenseVnd,
+      balanceVnd,
+    })),
+    [
+      { shareVnd: 0, paidExpenseVnd: 0, balanceVnd: 0 },
+      { shareVnd: 0, paidExpenseVnd: 0, balanceVnd: 0 },
+    ],
   );
 });
 

@@ -179,7 +179,7 @@ function formatThousandInput(amountVnd) {
 }
 
 function formatAverageThousand(amountVnd, count) {
-  return (amountVnd / count / 1000).toLocaleString("vi-VN", { maximumFractionDigits: 8 });
+  return (amountVnd / count / 1000).toLocaleString("vi-VN", { maximumFractionDigits: 0 });
 }
 
 function showNotice(message, kind = "success") {
@@ -232,21 +232,19 @@ function getExpensePreview() {
         try {
           amountVnd = parseThousandInput(amountInput.value);
         } catch {
-          return [];
+          amountVnd = 0;
         }
       }
-      if (!amountVnd) return [];
 
       const expense = state.expenses.find((item) => item.id === row.dataset.expenseId);
       const payerId = row.querySelector(".payer-input").value;
       const description = row.querySelector(".description-input").value.trim();
       const participantIds = [...row.querySelectorAll("input[type=checkbox]:checked")]
         .map((checkbox) => checkbox.dataset.memberId);
-      if (!payerId || !description || participantIds.length === 0) return [];
       return [{
         ...expense,
         id: row.dataset.expenseId,
-        payerId,
+        payerId: payerId || null,
         description,
         amountVnd,
         participantIds,
@@ -254,9 +252,18 @@ function getExpensePreview() {
     });
 }
 
+function getCompleteExpensePreview() {
+  return getExpensePreview().filter((expense) =>
+    expense.payerId &&
+    expense.description &&
+    expense.amountVnd !== 0 &&
+    expense.participantIds.length > 0,
+  );
+}
+
 function renderHeader() {
   document.querySelector("#member-count").textContent = String(state.members.length);
-  const completeExpenses = getExpensePreview();
+  const completeExpenses = getCompleteExpensePreview();
   document.querySelector("#expense-count").textContent = String(completeExpenses.length);
   document.querySelector("#total-spent").textContent = formatVnd(
     completeExpenses.reduce((total, expense) => total + expense.amountVnd, 0),
@@ -289,7 +296,7 @@ function renderExpenses() {
     <th class="expense-amount">Chi phí</th>
     ${state.members.map((member) => `<th class="member-check">${escapeHtml(member.name)}</th>`).join("")}
     <th class="expense-count">Số người</th>
-    <th class="expense-average">Số tiền 1 người</th>
+    <th class="expense-average">Số tiền/Ng</th>
     <th class="member-actions">Xóa</th>
   </tr>`;
 
@@ -302,7 +309,6 @@ function renderExpenses() {
   body.innerHTML = rows.map((expense) => {
     const selectedMembers = state.members.filter((member) => expense.participantIds.includes(member.id));
     const count = selectedMembers.length;
-    const avg = count ? (expense.amountVnd / count) : 0;
     return `<tr data-expense-id="${escapeHtml(expense.id)}">
       <td class="expense-payer"><select class="payer-input" aria-label="Người chi">
         <option value="">Chọn người</option>
@@ -319,6 +325,26 @@ function renderExpenses() {
       </td>
     </tr>`;
   }).join("");
+  body.querySelectorAll("tr[data-expense-id]").forEach(updateExpenseMissingFieldHighlights);
+}
+
+function updateExpenseMissingFieldHighlights(row) {
+  const payerInput = row.querySelector(".payer-input");
+  const dateInput = row.querySelector(".date-input");
+  const descriptionInput = row.querySelector(".description-input");
+  const amountInput = row.querySelector(".amount-input");
+  let amountMissing = !amountInput.value.trim();
+  if (!amountMissing) {
+    try {
+      amountMissing = parseThousandInput(amountInput.value) === 0;
+    } catch {
+      amountMissing = true;
+    }
+  }
+  row.querySelector(".expense-payer").classList.toggle("cell-incomplete", !payerInput.value);
+  row.querySelector(".expense-date").classList.toggle("cell-incomplete", !dateInput.value);
+  row.querySelector(".expense-description").classList.toggle("cell-incomplete", !descriptionInput.value.trim());
+  row.querySelector(".expense-amount").classList.toggle("cell-incomplete", amountMissing);
 }
 
 function updateExpenseField(row, field, value, delay = 400) {
@@ -504,6 +530,7 @@ function updateExpensePreview(row) {
       amountVnd = 0;
     }
   }
+  updateExpenseMissingFieldHighlights(row);
   const cells = row.querySelectorAll(".share-avg");
   if (cells.length !== 2) return;
   cells[0].textContent = count || "—";
@@ -861,6 +888,7 @@ document.querySelector("#expense-body").addEventListener("change", (event) => {
     updateExpensePreview(row);
     updateExpenseField(row, "payerId", event.target.value || null, 100);
   } else if (row && event.target.matches(".date-input")) {
+    updateExpenseMissingFieldHighlights(row);
     updateExpenseField(row, "date", event.target.value || null, 100);
   }
 });
