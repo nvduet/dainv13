@@ -243,8 +243,10 @@ async function validateExpensePatch(env, body, before) {
     return "Nội dung không được dài quá 200 ký tự.";
   }
   if (Object.hasOwn(body, "amountVnd") &&
-      (!Number.isSafeInteger(body.amountVnd) || body.amountVnd < 0 || body.amountVnd > MAX_AMOUNT_VND)) {
-    return "Số tiền phải là số đồng nguyên từ 0 đến giới hạn cho phép.";
+      (!Number.isSafeInteger(body.amountVnd) ||
+       body.amountVnd < -MAX_AMOUNT_VND ||
+       body.amountVnd > MAX_AMOUNT_VND)) {
+    return "Số tiền phải là số đồng nguyên trong giới hạn cho phép.";
   }
   if (Object.hasOwn(body, "participantIds") && !validIds(body.participantIds, { allowEmpty: true })) {
     return "Danh sách người tham gia không hợp lệ.";

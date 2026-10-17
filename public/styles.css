@@ -125,6 +125,21 @@ th {
   padding: 4px 2px;
   background: #fff3e0;
 }
+.member-check-toggle {
+  width: 100%;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.member-check-toggle input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--green);
+  cursor: pointer;
+}
 .expense-table td.expense-count, .expense-table th.expense-count { text-align: center; }
 .expense-table td.expense-average, .expense-table th.expense-average { text-align: right; }
 .expense-table td.member-actions, .expense-table th.member-actions { text-align: center; border-right: 0; }
@@ -143,7 +158,6 @@ th {
 .expense-table input:focus, .expense-table select:focus { border-color: #8ba99a; background: #fff; }
 .expense-table input.amount-input { text-align: right; }
 .expense-table .share-avg { color: var(--green); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-.expense-table input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--green); vertical-align: middle; }
 .row-actions { display: flex; justify-content: center; gap: 2px; }
 .icon-button {
   width: 26px;

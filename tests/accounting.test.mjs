@@ -8,8 +8,10 @@ test("converts thousand-VND input to whole VND with half-up rounding", () => {
   assert.equal(parseThousandInput("0.0005"), 1);
 });
 
-test("rejects invalid, zero, negative, and excessive amounts", () => {
-  for (const input of ["0", "-1", "1,2,3", "text", "1000000001"]) {
+test("parses signed amounts and rejects invalid, zero, and excessive amounts", () => {
+  assert.equal(parseThousandInput("-165"), -165_000);
+  assert.equal(parseThousandInput("-0.0005"), -1);
+  for (const input of ["0", "-0.0004", "1,2,3", "text", "1000000001", "-1000000001"]) {
     assert.throws(() => parseThousandInput(input));
   }
 });
@@ -18,6 +20,12 @@ test("distributes indivisible dong in stable participant order", () => {
   const shares = splitEvenly(10, ["first", "second", "third"]);
   assert.deepEqual([...shares.values()], [4, 3, 3]);
   assert.equal([...shares.values()].reduce((sum, amount) => sum + amount, 0), 10);
+});
+
+test("distributes negative expenses evenly with stable participant order", () => {
+  const shares = splitEvenly(-10, ["first", "second", "third"]);
+  assert.deepEqual([...shares.values()], [-4, -3, -3]);
+  assert.equal([...shares.values()].reduce((sum, amount) => sum + amount, 0), -10);
 });
 
 test("rejects invalid or duplicate participants", () => {
@@ -85,4 +93,23 @@ test("incomplete expense drafts do not affect balances", () => {
     calculateBalances(members, expenses, []).map((member) => member.balanceVnd),
     [0, 0],
   );
+});
+
+test("negative expenses reduce shares and the payer's net paid amount", () => {
+  const members = [{ id: "a" }, { id: "b" }];
+  const expenses = [{
+    payerId: "a",
+    description: "Refund",
+    amountVnd: -10,
+    participantIds: ["a", "b"],
+  }];
+  const balances = calculateBalances(members, expenses, []);
+  assert.deepEqual(balances.map(({ shareVnd, paidExpenseVnd, balanceVnd }) => ({
+    shareVnd,
+    paidExpenseVnd,
+    balanceVnd,
+  })), [
+    { shareVnd: -5, paidExpenseVnd: -10, balanceVnd: 5 },
+    { shareVnd: -5, paidExpenseVnd: 0, balanceVnd: -5 },
+  ]);
 });

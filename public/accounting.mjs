@@ -1,6 +1,6 @@
 export function splitEvenly(amountVnd, participantIds) {
-  if (!Number.isSafeInteger(amountVnd) || amountVnd <= 0) {
-    throw new Error("Khoản chi phải là số đồng nguyên dương.");
+  if (!Number.isSafeInteger(amountVnd) || amountVnd === 0) {
+    throw new Error("Khoản chi phải là số đồng nguyên khác 0.");
   }
   if (!Array.isArray(participantIds) || participantIds.length === 0) {
     throw new Error("Khoản chi cần ít nhất một người tham gia.");
@@ -9,23 +9,28 @@ export function splitEvenly(amountVnd, participantIds) {
   if (uniqueIds.length !== participantIds.length) {
     throw new Error("Danh sách người tham gia bị trùng.");
   }
-  const each = Math.floor(amountVnd / uniqueIds.length);
-  const remainder = amountVnd % uniqueIds.length;
-  return new Map(uniqueIds.map((id, index) => [id, each + (index < remainder ? 1 : 0)]));
+  const each = Math.trunc(amountVnd / uniqueIds.length);
+  const remainder = amountVnd - each * uniqueIds.length;
+  const remainderSign = Math.sign(remainder);
+  return new Map(uniqueIds.map((id, index) => [
+    id,
+    each + (index < Math.abs(remainder) ? remainderSign : 0),
+  ]));
 }
 
 export function parseThousandInput(value) {
   const normalized = String(value).trim().replace(",", ".");
-  if (!/^\d+(?:\.\d{0,9})?$/.test(normalized)) {
-    throw new Error("Nhập chi phí bằng nghìn đồng, ví dụ 360 hoặc 671,238.");
+  if (!/^-?\d+(?:\.\d{0,9})?$/.test(normalized)) {
+    throw new Error("Nhập chi phí bằng nghìn đồng, có thể là số âm, ví dụ 360 hoặc -165.");
   }
-  const [whole, fraction = ""] = normalized.split(".");
+  const negative = normalized.startsWith("-");
+  const [whole, fraction = ""] = (negative ? normalized.slice(1) : normalized).split(".");
   let amount = BigInt(whole) * 1000n + BigInt((fraction + "000").slice(0, 3));
   if (fraction.length > 3 && Number(fraction[3]) >= 5) amount += 1n;
-  if (amount <= 0n || amount > 1_000_000_000_000n) {
-    throw new Error("Số tiền sau khi đổi sang đồng phải lớn hơn 0 và không vượt giới hạn.");
+  if (amount === 0n || amount > 1_000_000_000_000n) {
+    throw new Error("Số tiền sau khi đổi sang đồng phải khác 0 và nằm trong giới hạn cho phép.");
   }
-  return Number(amount);
+  return Number(negative ? -amount : amount);
 }
 
 export function calculateBalances(members, expenses, payments) {
@@ -42,7 +47,7 @@ export function calculateBalances(members, expenses, payments) {
         typeof expense.description !== "string" ||
         !expense.description.trim() ||
         !Number.isSafeInteger(expense.amountVnd) ||
-        expense.amountVnd <= 0 ||
+        expense.amountVnd === 0 ||
         !Array.isArray(expense.participantIds) ||
         expense.participantIds.length === 0) {
       continue;

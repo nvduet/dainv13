@@ -602,6 +602,20 @@ test("expense drafts save partial fields and validate optional dates", async () 
   assert.equal(updated.date, "2026-02-28");
   assert.equal(updated.description, "Ăn sáng");
   assert.deepEqual(updated.participantIds, ["member-2"]);
+
+  const negativeExpenseResponse = await worker.fetch(request(`/api/expenses/${created.id}`, {
+    method: "PUT",
+    body: { amountVnd: -165_000 },
+  }), { DB });
+  assert.equal(negativeExpenseResponse.status, 200);
+  assert.equal((await negativeExpenseResponse.json()).expense.amountVnd, -165_000);
+  assert.equal(DB.expense.amountVnd, -165_000);
+
+  const excessiveNegativeResponse = await worker.fetch(request(`/api/expenses/${created.id}`, {
+    method: "PUT",
+    body: { amountVnd: -1_000_000_000_001 },
+  }), { DB });
+  assert.equal(excessiveNegativeResponse.status, 400);
 });
 
 test("history points are Admin-only and restore business data without changing settings", async () => {

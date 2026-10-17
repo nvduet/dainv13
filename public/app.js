@@ -297,7 +297,7 @@ function renderExpenses() {
       <td class="expense-date"><input class="date-input" type="date" value="${escapeHtml(expense.date || "")}" aria-label="Ngày khoản chi"></td>
       <td class="expense-description"><input class="description-input" type="text" maxlength="200" value="${escapeHtml(expense.description)}" placeholder="Nội dung khoản chi" aria-label="Nội dung"></td>
       <td class="expense-amount"><input class="amount-input" type="text" inputmode="decimal" value="${expense.amountVnd ? formatThousandInput(expense.amountVnd) : ""}" placeholder="0" aria-label="Chi phí, nghìn đồng"></td>
-      ${state.members.map((member) => `<td class="member-check"><input type="checkbox" data-member-id="${escapeHtml(member.id)}" aria-label="Chia cho ${escapeHtml(member.name)}" ${expense.participantIds.includes(member.id) ? "checked" : ""}></td>`).join("")}
+      ${state.members.map((member) => `<td class="member-check"><label class="member-check-toggle"><input type="checkbox" data-member-id="${escapeHtml(member.id)}" aria-label="Chia cho ${escapeHtml(member.name)}" ${expense.participantIds.includes(member.id) ? "checked" : ""}></label></td>`).join("")}
       <td class="share-avg expense-count">${count || "—"}</td>
       <td class="share-avg expense-average">${count ? formatAverageThousand(expense.amountVnd, count) : "—"}</td>
       <td class="member-actions">
@@ -589,7 +589,7 @@ async function handleClick(event) {
       const restorePassword = await showActionDialog({
         title: "Khôi phục điểm dữ liệu?",
         message: `Dữ liệu Detail và Summary sẽ được thay bằng điểm lưu ${point?.createdAt || ""}. Cấu hình giao diện và nhật ký sẽ không bị thay đổi.`,
-        inputLabel: "Mật khẩu khôi phục (khác mật khẩu Admin)",
+        inputLabel: "Mật khẩu khôi phục?",
         inputType: "password",
         preserveInput: true,
         confirmLabel: "Khôi phục",
