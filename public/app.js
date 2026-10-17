@@ -190,6 +190,20 @@ function showNotice(message, kind = "success") {
   noticeTimer = setTimeout(() => { notice.hidden = true; }, 6000);
 }
 
+function setButtonLoading(button, label) {
+  const originalText = button.textContent;
+  button.textContent = label;
+  button.classList.add("is-loading");
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  return () => {
+    button.textContent = originalText;
+    button.classList.remove("is-loading");
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+  };
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,
@@ -707,6 +721,7 @@ async function handleSubmit(event) {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
   event.preventDefault();
+  let resetLoginLoading;
   try {
     if (form.id === "member-form") {
       const name = new FormData(form).get("name");
@@ -718,6 +733,8 @@ async function handleSubmit(event) {
     }
     if (form.id === "login-form") {
       const formData = new FormData(form);
+      const submitButton = form.querySelector(".login-submit");
+      resetLoginLoading = setButtonLoading(submitButton, "Đang đăng nhập");
       await api("/api/admin/login", {
         method: "POST",
         body: JSON.stringify({
@@ -725,10 +742,15 @@ async function handleSubmit(event) {
           password: formData.get("password"),
         }),
       });
+      state.isAdmin = true;
+      renderHeader();
+      renderSummary();
+      renderMembers();
       loginDialog.close();
       form.reset();
       document.querySelector("#login-error").textContent = "";
-      await loadState();
+      document.querySelector("#history-points").textContent = "Đang tải điểm khôi phục…";
+      void loadHistoryPoints();
       showNotice("Đăng nhập Admin thành công.");
       return;
     }
@@ -738,6 +760,8 @@ async function handleSubmit(event) {
     } else {
       showNotice(caught.message, "error");
     }
+  } finally {
+    resetLoginLoading?.();
   }
 }
 
@@ -907,12 +931,20 @@ document.querySelector("#login-button").addEventListener("click", () => {
 });
 document.querySelector("#close-login").addEventListener("click", () => loginDialog.close());
 document.querySelector("#logout-button").addEventListener("click", async () => {
+  const button = document.querySelector("#logout-button");
+  const resetLoading = setButtonLoading(button, "Đang đăng xuất");
   try {
     await api("/api/admin/logout", { method: "POST", body: "{}" });
-    await loadState();
+    state.isAdmin = false;
+    state.historyPoints = [];
+    renderHeader();
+    renderSummary();
+    document.querySelector("#history-points").textContent = "";
     showNotice("Đã đăng xuất.");
   } catch (caught) {
     showNotice(caught.message, "error");
+  } finally {
+    resetLoading();
   }
 });
 document.querySelector("#audit-details").addEventListener("toggle", (event) => {

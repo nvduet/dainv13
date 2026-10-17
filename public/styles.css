@@ -48,6 +48,17 @@ button { cursor: pointer; }
 .button-light { color: var(--green); background: var(--green-pale); }
 .button-small { min-height: 28px; padding: 0 9px; font-size: calc(var(--font-scale, 1) * 13.2px); }
 .button:hover { filter: brightness(.96); }
+.button.is-loading { display: inline-flex; align-items: center; justify-content: center; gap: 7px; cursor: wait; opacity: .82; }
+.button.is-loading::before {
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  content: "";
+  animation: button-spinner .7s linear infinite;
+}
+@keyframes button-spinner { to { transform: rotate(360deg); } }
 .button:focus-visible, input:focus-visible, select:focus-visible {
   outline: 2px solid #4f8ac4;
   outline-offset: 1px;
