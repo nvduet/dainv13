@@ -1,6 +1,8 @@
 const encoder = new TextEncoder();
 const MAX_AMOUNT_VND = 1_000_000_000_000;
 const MAX_MEMBERS = 50;
+const MAX_AUDIT_SESSIONS = 999;
+const AUDIT_SESSION_IDLE_MINUTES = 30;
 const DEFAULT_FONT_SIZE = 100;
 const DEFAULT_COLUMN_WIDTHS = {
   expense: {
@@ -148,6 +150,7 @@ async function secureEqual(left, right) {
 async function sessionCookie(username, env, request) {
   const payload = encodeBase64Url(encoder.encode(JSON.stringify({
     username,
+    sessionId: crypto.randomUUID(),
     expires: Date.now() + 8 * 60 * 60 * 1000,
   })));
   const signature = await sign(payload, env.ADMIN_SESSION_SECRET);
@@ -155,7 +158,7 @@ async function sessionCookie(username, env, request) {
   return `admin_session=${payload}.${signature}; Path=/; HttpOnly; SameSite=Strict; Max-Age=28800${secure}`;
 }
 
-async function isAdmin(request, env) {
+async function getAdminSession(request, env) {
   if (!env.ADMIN_SESSION_SECRET) return false;
   const cookie = request.headers.get("cookie") || "";
   const token = cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith("admin_session="));
@@ -168,10 +171,18 @@ async function isAdmin(request, env) {
   if (!(await secureEqual(signature, await sign(payload, env.ADMIN_SESSION_SECRET)))) return false;
   try {
     const details = JSON.parse(new TextDecoder().decode(decodeBase64Url(payload)));
-    return details.username === env.ADMIN_USERNAME && Number(details.expires) > Date.now();
+    if (details.username !== env.ADMIN_USERNAME || Number(details.expires) <= Date.now()) return null;
+    return {
+      ...details,
+      sessionId: typeof details.sessionId === "string" ? details.sessionId : `legacy-${payload}`,
+    };
   } catch {
-    return false;
+    return null;
   }
+}
+
+async function isAdmin(request, env) {
+  return Boolean(await getAdminSession(request, env));
 }
 
 async function rateLimit(request, env, label, limit, windowMs) {
@@ -201,6 +212,103 @@ function audit(env, actor, action, entity, entityId, before, after) {
     before == null ? null : JSON.stringify(before),
     after == null ? null : JSON.stringify(after),
   );
+}
+
+async function getDetailSnapshot(env) {
+  const [membersResult, expensesResult, participantsResult, groupsResult, groupMembersResult] =
+    await Promise.all([
+      env.DB.prepare("SELECT id, name, position FROM members ORDER BY position, name COLLATE NOCASE").all(),
+      env.DB.prepare(`SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd,
+        expense_date AS date, position FROM expenses ORDER BY position, created_at, id`).all(),
+      env.DB.prepare("SELECT expense_id AS expenseId, member_id AS memberId FROM expense_participants ORDER BY expense_id, member_id").all(),
+      env.DB.prepare("SELECT id, name, position FROM member_groups ORDER BY position, name COLLATE NOCASE").all(),
+      env.DB.prepare("SELECT member_id AS memberId, group_id AS groupId FROM member_group_members").all(),
+    ]);
+  const participantsByExpense = new Map();
+  for (const { expenseId, memberId } of participantsResult.results) {
+    const list = participantsByExpense.get(expenseId) || [];
+    list.push(memberId);
+    participantsByExpense.set(expenseId, list);
+  }
+  const groupByMember = new Map(groupMembersResult.results.map(({ memberId, groupId }) => [memberId, groupId]));
+  const groups = groupsResult.results.map((group) => ({ ...group, memberIds: [] }));
+  const groupPositions = new Map(groups.map((group) => [group.id, group.position]));
+  const members = membersResult.results
+    .map((member) => ({ ...member, groupId: groupByMember.get(member.id) || null }))
+    .sort((left, right) => {
+      const leftPosition = left.groupId ? groupPositions.get(left.groupId) : Number.MAX_SAFE_INTEGER;
+      const rightPosition = right.groupId ? groupPositions.get(right.groupId) : Number.MAX_SAFE_INTEGER;
+      return leftPosition - rightPosition || left.position - right.position ||
+        left.name.localeCompare(right.name);
+    });
+  for (const group of groups) {
+    group.memberIds = members.filter((member) => member.groupId === group.id).map((member) => member.id);
+  }
+  return {
+    members,
+    groups,
+    expenses: expensesResult.results.map((expense) => ({
+      ...expense,
+      participantIds: participantsByExpense.get(expense.id) || [],
+    })),
+  };
+}
+
+async function recordDetailSession(env, actor, beforeSnapshot, afterSnapshot) {
+  await env.DB.batch([
+    env.DB.prepare(`
+      INSERT OR IGNORE INTO audit_session_anchor (id, snapshot_json)
+      VALUES (1, ?)
+    `).bind(JSON.stringify(beforeSnapshot)),
+    env.DB.prepare(`
+      INSERT INTO audit_sessions (
+        id, admin_seen, guest_seen, after_json
+      )
+      SELECT ?, ?, ?, ?
+      WHERE NOT EXISTS (
+        SELECT 1 FROM audit_sessions
+        WHERE last_activity >= datetime('now', '-${AUDIT_SESSION_IDLE_MINUTES} minutes')
+      )
+    `).bind(
+      crypto.randomUUID(),
+      actor === "admin" ? 1 : 0,
+      actor === "guest" ? 1 : 0,
+      JSON.stringify(afterSnapshot),
+    ),
+    env.DB.prepare(`
+      UPDATE audit_sessions
+      SET last_activity = CURRENT_TIMESTAMP,
+          after_json = ?,
+          admin_seen = MAX(admin_seen, ?),
+          guest_seen = MAX(guest_seen, ?)
+      WHERE id = (
+        SELECT id FROM audit_sessions
+        WHERE last_activity >= datetime('now', '-${AUDIT_SESSION_IDLE_MINUTES} minutes')
+        ORDER BY last_activity DESC, rowid DESC
+        LIMIT 1
+      )
+    `).bind(
+      JSON.stringify(afterSnapshot),
+      actor === "admin" ? 1 : 0,
+      actor === "guest" ? 1 : 0,
+    ),
+    env.DB.prepare(`
+      UPDATE audit_session_anchor
+      SET snapshot_json = (
+        SELECT after_json FROM audit_sessions
+        ORDER BY rowid ASC
+        LIMIT 1
+      )
+      WHERE (SELECT COUNT(*) FROM audit_sessions) > ${MAX_AUDIT_SESSIONS}
+    `),
+    env.DB.prepare(`
+      DELETE FROM audit_sessions
+      WHERE id NOT IN (
+        SELECT id FROM audit_sessions ORDER BY rowid DESC
+        LIMIT ${MAX_AUDIT_SESSIONS}
+      )
+    `),
+  ]);
 }
 
 async function getExpense(env, id) {
@@ -272,7 +380,8 @@ async function validateExpensePatch(env, body, before) {
 }
 
 async function state(request, env) {
-  const [membersResult, expensesResult, participantResult, paymentsResult, adjustmentsResult, settingsResult, fontSizeResult, admin] = await Promise.all([
+  const [membersResult, expensesResult, participantResult, paymentsResult, adjustmentsResult,
+    settingsResult, fontSizeResult, groupsResult, groupMembersResult, adminSession] = await Promise.all([
     env.DB.prepare("SELECT id, name, position FROM members ORDER BY position, name COLLATE NOCASE").all(),
     env.DB.prepare(`
       SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd,
@@ -292,7 +401,9 @@ async function state(request, env) {
     `).all(),
     env.DB.prepare("SELECT value_json AS valueJson FROM app_settings WHERE key = 'column-widths'").first(),
     env.DB.prepare("SELECT value_json AS valueJson FROM app_settings WHERE key = 'font-size'").first(),
-    isAdmin(request, env),
+    env.DB.prepare("SELECT id, name, position FROM member_groups ORDER BY position, name COLLATE NOCASE").all(),
+    env.DB.prepare("SELECT member_id AS memberId, group_id AS groupId FROM member_group_members").all(),
+    getAdminSession(request, env),
   ]);
   const participants = new Map();
   for (const row of participantResult.results) {
@@ -300,8 +411,29 @@ async function state(request, env) {
     list.push(row.memberId);
     participants.set(row.expenseId, list);
   }
+  const groupByMember = new Map(groupMembersResult.results.map(({ memberId, groupId }) => [memberId, groupId]));
+  const groups = groupsResult.results.map((group) => ({ ...group, memberIds: [] }));
+  const groupPositions = new Map(groups.map((group) => [group.id, group.position]));
+  const members = membersResult.results
+    .map((member) => ({ ...member, groupId: groupByMember.get(member.id) || null }))
+    .sort((left, right) => {
+      const leftPosition = left.groupId ? groupPositions.get(left.groupId) : Number.MAX_SAFE_INTEGER;
+      const rightPosition = right.groupId ? groupPositions.get(right.groupId) : Number.MAX_SAFE_INTEGER;
+      return leftPosition - rightPosition || left.position - right.position ||
+        left.name.localeCompare(right.name);
+    });
+  for (const group of groups) {
+    group.memberIds = members.filter((member) => member.groupId === group.id).map((member) => member.id);
+  }
+  const storeAuthorization = adminSession
+    ? await env.DB.prepare(`
+      SELECT session_id AS sessionId FROM admin_session_store_auth
+      WHERE session_id = ? AND expires_at > CURRENT_TIMESTAMP
+    `).bind(adminSession.sessionId).first()
+    : null;
   return json({
-    members: membersResult.results,
+    members,
+    groups,
     expenses: expensesResult.results.map((expense) => ({
       ...expense,
       participantIds: participants.get(expense.id) || [],
@@ -317,7 +449,8 @@ async function state(request, env) {
         adjustment: true,
       })),
     ].sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt))),
-    isAdmin: admin,
+    isAdmin: Boolean(adminSession),
+    storePasswordVerified: Boolean(storeAuthorization),
     columnWidths: settingsResult
       ? JSON.parse(settingsResult.valueJson)
       : DEFAULT_COLUMN_WIDTHS,
@@ -325,7 +458,7 @@ async function state(request, env) {
   });
 }
 
-async function handleApi(request, env) {
+async function routeApi(request, env) {
   if (!env.DB) return error("Database chưa được cấu hình. Hãy chạy migrations D1 trước.", 503);
   const url = new URL(request.url);
   const path = url.pathname;
@@ -367,6 +500,7 @@ async function handleApi(request, env) {
     "PUT /api/admin/payments/total",
     "PUT /api/admin/font-size",
     "POST /api/admin/history-points",
+    "POST /api/admin/member-groups",
   ]);
   const routeKey = `${method} ${path}`;
   if ((adminOnly.has(routeKey) || /^PATCH \/api\/members\/[^/]+$/.test(routeKey) ||
@@ -374,23 +508,161 @@ async function handleApi(request, env) {
        (method === "POST" && /^\/api\/admin\/history-points\/[^/]+\/restore$/.test(path)) ||
        (method === "PUT" && path === "/api/admin/column-widths") ||
        path === "/api/admin/audit" ||
-       path === "/api/admin/history-points") && !admin) {
+       path === "/api/admin/history-points" ||
+       path === "/api/admin/member-groups" ||
+       /^\/api\/admin\/member-groups\/[^/]+$/.test(path)) && !admin) {
     return error("Chỉ Admin đã đăng nhập mới được thực hiện thao tác này.", 401);
   }
 
   if (path === "/api/admin/audit" && method === "GET") {
     const result = await env.DB.prepare(`
-      SELECT id, actor, action, entity, entity_id AS entityId,
-             before_json AS beforeJson, after_json AS afterJson, created_at AS createdAt
-      FROM audit_log ORDER BY id DESC LIMIT 200
+      SELECT id, started_at AS startedAt, last_activity AS lastActivity,
+             admin_seen AS adminSeen, guest_seen AS guestSeen
+      FROM audit_sessions ORDER BY last_activity DESC, rowid DESC
+      LIMIT ${MAX_AUDIT_SESSIONS}
     `).all();
-    return json({ entries: result.results });
+    return json({ sessions: result.results });
+  }
+
+  const auditSessionMatch = path.match(/^\/api\/admin\/audit\/([^/]+)$/);
+  if (auditSessionMatch && method === "GET") {
+    const result = await env.DB.prepare(`
+      SELECT current.id, current.started_at AS startedAt,
+             current.last_activity AS lastActivity,
+             current.admin_seen AS adminSeen, current.guest_seen AS guestSeen,
+             COALESCE(
+               (SELECT previous.after_json FROM audit_sessions previous
+                WHERE previous.rowid < current.rowid
+                ORDER BY previous.rowid DESC LIMIT 1),
+               (SELECT snapshot_json FROM audit_session_anchor WHERE id = 1)
+             ) AS beforeJson,
+             current.after_json AS afterJson
+      FROM audit_sessions current WHERE current.id = ?
+    `).bind(decodeURIComponent(auditSessionMatch[1])).first();
+    if (!result) return error("Không tìm thấy phiên nhật ký.", 404);
+    try {
+      return json({
+        session: {
+          id: result.id,
+          startedAt: result.startedAt,
+          lastActivity: result.lastActivity,
+          actors: [
+            ...(result.adminSeen ? ["admin"] : []),
+            ...(result.guestSeen ? ["guest"] : []),
+          ],
+          before: JSON.parse(result.beforeJson),
+          after: JSON.parse(result.afterJson),
+        },
+      });
+    } catch {
+      return error("Dữ liệu phiên nhật ký bị lỗi.", 500);
+    }
+  }
+
+  const memberGroupMatch = path.match(/^\/api\/admin\/member-groups\/([^/]+)$/);
+  if ((path === "/api/admin/member-groups" || memberGroupMatch) &&
+      method !== "GET" &&
+      !await rateLimit(request, env, "member-group", 100, 15 * 60 * 1000)) {
+    return error("Đã vượt giới hạn quản lý nhóm. Hãy thử lại sau.", 429);
+  }
+
+  if (method === "POST" && path === "/api/admin/member-groups") {
+    const body = await readJson(request);
+    if (!validName(body.name) || !validIds(body.memberIds) || body.memberIds.length < 2) {
+      return error("Nhóm cần tên hợp lệ và ít nhất hai thành viên.");
+    }
+    const name = body.name.trim();
+    const duplicate = await env.DB.prepare("SELECT id FROM member_groups WHERE name = ?")
+      .bind(name).first();
+    if (duplicate) return error("Tên nhóm đã tồn tại.", 409);
+    const placeholders = body.memberIds.map(() => "?").join(",");
+    const [memberCount, conflicts, position] = await Promise.all([
+      env.DB.prepare(`SELECT COUNT(*) AS count FROM members WHERE id IN (${placeholders})`)
+        .bind(...body.memberIds).first(),
+      env.DB.prepare(`SELECT member_id AS memberId FROM member_group_members WHERE member_id IN (${placeholders})`)
+        .bind(...body.memberIds).all(),
+      env.DB.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS next FROM member_groups").first(),
+    ]);
+    if (Number(memberCount.count) !== body.memberIds.length) {
+      return error("Một hoặc nhiều thành viên không tồn tại.", 404);
+    }
+    if (conflicts.results.length) {
+      return error("Một thành viên không thể thuộc hai nhóm.");
+    }
+    const group = {
+      id: crypto.randomUUID(),
+      name,
+      position: Number(position.next),
+      memberIds: body.memberIds,
+    };
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO member_groups (id, name, position) VALUES (?, ?, ?)")
+        .bind(group.id, group.name, group.position),
+      ...group.memberIds.map((memberId) => env.DB.prepare(
+        "INSERT INTO member_group_members (member_id, group_id) VALUES (?, ?)",
+      ).bind(memberId, group.id)),
+      audit(env, "admin", "create", "member_group", group.id, null, group),
+    ]);
+    return json({ group }, 201);
+  }
+
+  if (memberGroupMatch && ["PUT", "DELETE"].includes(method)) {
+    const id = decodeURIComponent(memberGroupMatch[1]);
+    const beforeGroup = await env.DB.prepare(
+      "SELECT id, name, position FROM member_groups WHERE id = ?",
+    ).bind(id).first();
+    if (!beforeGroup) return error("Không tìm thấy nhóm.", 404);
+    const beforeMembers = await env.DB.prepare(
+      "SELECT member_id AS memberId FROM member_group_members WHERE group_id = ? ORDER BY member_id",
+    ).bind(id).all();
+    const before = { ...beforeGroup, memberIds: beforeMembers.results.map(({ memberId }) => memberId) };
+    if (method === "DELETE") {
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM member_groups WHERE id = ?").bind(id),
+        audit(env, "admin", "delete", "member_group", id, before, null),
+      ]);
+      return json({ deleted: true });
+    }
+    const body = await readJson(request);
+    if (!validName(body.name) || !validIds(body.memberIds) || body.memberIds.length < 2) {
+      return error("Nhóm cần tên hợp lệ và ít nhất hai thành viên.");
+    }
+    const name = body.name.trim();
+    const duplicate = await env.DB.prepare(
+      "SELECT id FROM member_groups WHERE name = ? AND id <> ?",
+    ).bind(name, id).first();
+    if (duplicate) return error("Tên nhóm đã tồn tại.", 409);
+    const placeholders = body.memberIds.map(() => "?").join(",");
+    const [memberCount, conflicts] = await Promise.all([
+      env.DB.prepare(`SELECT COUNT(*) AS count FROM members WHERE id IN (${placeholders})`)
+        .bind(...body.memberIds).first(),
+      env.DB.prepare(`
+        SELECT member_id AS memberId FROM member_group_members
+        WHERE group_id <> ? AND member_id IN (${placeholders})
+      `).bind(id, ...body.memberIds).all(),
+    ]);
+    if (Number(memberCount.count) !== body.memberIds.length) {
+      return error("Một hoặc nhiều thành viên không tồn tại.", 404);
+    }
+    if (conflicts.results.length) {
+      return error("Một thành viên không thể thuộc hai nhóm.");
+    }
+    const after = { ...beforeGroup, name, memberIds: body.memberIds };
+    await env.DB.batch([
+      env.DB.prepare("UPDATE member_groups SET name = ? WHERE id = ?").bind(name, id),
+      env.DB.prepare("DELETE FROM member_group_members WHERE group_id = ?").bind(id),
+      ...body.memberIds.map((memberId) => env.DB.prepare(
+        "INSERT INTO member_group_members (member_id, group_id) VALUES (?, ?)",
+      ).bind(memberId, id)),
+      audit(env, "admin", "update", "member_group", id, before, after),
+    ]);
+    return json({ group: after });
   }
 
   if (path === "/api/admin/history-points" && method === "GET") {
     const result = await env.DB.prepare(`
       SELECT id, created_at AS createdAt, member_count AS memberCount,
-             expense_count AS expenseCount
+             expense_count AS expenseCount, message
       FROM history_points ORDER BY created_at DESC, rowid DESC LIMIT 50
     `).all();
     return json({ points: result.results });
@@ -399,6 +671,34 @@ async function handleApi(request, env) {
   if (method === "POST" && path === "/api/admin/history-points") {
     if (!await rateLimit(request, env, "write", 500, 15 * 60 * 1000)) {
       return error("Đã vượt giới hạn thao tác. Hãy thử lại sau.", 429);
+    }
+    const body = await readJson(request);
+    if (typeof body.message !== "string" || !body.message.trim() || body.message.trim().length > 200) {
+      return error("Nhập message từ 1 đến 200 ký tự cho điểm lưu.");
+    }
+    const adminSession = await getAdminSession(request, env);
+    if (!adminSession) return error("Phiên Admin không hợp lệ. Hãy đăng nhập lại.", 401);
+    const authorization = await env.DB.prepare(`
+      SELECT session_id AS sessionId FROM admin_session_store_auth
+      WHERE session_id = ? AND expires_at > CURRENT_TIMESTAMP
+    `).bind(adminSession.sessionId).first();
+    let authorizeStore = !authorization;
+    if (authorizeStore) {
+      if (!env.HISTORY_RESTORE_PASSWORD) {
+        return error("Chưa cấu hình mật khẩu khôi phục riêng phía máy chủ.", 503);
+      }
+      if (await secureEqual(env.HISTORY_RESTORE_PASSWORD, env.ADMIN_PASSWORD || "")) {
+        return error("Mật khẩu khôi phục phải khác mật khẩu Admin. Hãy cấu hình lại secret.", 503);
+      }
+      if (typeof body.password !== "string" || body.password.length === 0) {
+        return error("Nhập mật khẩu khôi phục để xác thực Store trong phiên Admin này.");
+      }
+      if (!await rateLimit(request, env, "store-password", 10, 15 * 60 * 1000)) {
+        return error("Đã vượt số lần nhập mật khẩu Store. Hãy thử lại sau.", 429);
+      }
+      if (!await secureEqual(body.password, env.HISTORY_RESTORE_PASSWORD)) {
+        return error("Mật khẩu khôi phục không đúng.", 401);
+      }
     }
     const [membersResult, expensesResult, participantsResult, paymentsResult, adjustmentsResult] =
       await env.DB.batch([
@@ -424,9 +724,9 @@ async function handleApi(request, env) {
     const id = crypto.randomUUID();
     await env.DB.batch([
       env.DB.prepare(`
-        INSERT INTO history_points (id, snapshot_json, member_count, expense_count)
-        VALUES (?, ?, ?, ?)
-      `).bind(id, JSON.stringify(snapshot), snapshot.members.length, snapshot.expenses.length),
+        INSERT INTO history_points (id, snapshot_json, member_count, expense_count, message)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(id, JSON.stringify(snapshot), snapshot.members.length, snapshot.expenses.length, body.message.trim()),
       env.DB.prepare(`
         DELETE FROM history_points
         WHERE id NOT IN (
@@ -436,9 +736,18 @@ async function handleApi(request, env) {
       audit(env, "admin", "store", "history_point", id, null, {
         memberCount: snapshot.members.length,
         expenseCount: snapshot.expenses.length,
+        message: body.message.trim(),
       }),
+      ...(authorizeStore ? [env.DB.prepare(`
+        INSERT INTO admin_session_store_auth (session_id, expires_at)
+        VALUES (?, datetime('now', '+8 hours'))
+        ON CONFLICT (session_id) DO UPDATE SET expires_at = excluded.expires_at
+      `).bind(adminSession.sessionId)] : []),
     ]);
-    return json({ point: { id, memberCount: snapshot.members.length, expenseCount: snapshot.expenses.length } }, 201);
+    return json({
+      point: { id, memberCount: snapshot.members.length, expenseCount: snapshot.expenses.length, message: body.message.trim() },
+      storePasswordVerified: true,
+    }, 201);
   }
 
   const historyRestoreMatch = path.match(/^\/api\/admin\/history-points\/([^/]+)\/restore$/);
@@ -475,7 +784,14 @@ async function handleApi(request, env) {
         !Array.isArray(snapshot.adjustments)) {
       return error("Cấu trúc điểm khôi phục không hợp lệ.", 500);
     }
+    const savedGroupMembers = await env.DB.prepare(
+      "SELECT member_id AS memberId, group_id AS groupId FROM member_group_members",
+    ).all();
+    const restoredMemberIds = new Set(snapshot.members.map((member) => member.id));
+    const retainedGroupMembers = savedGroupMembers.results
+      .filter(({ memberId }) => restoredMemberIds.has(memberId));
     const snapshotJson = JSON.stringify(snapshot);
+    const retainedGroupMembersJson = JSON.stringify(retainedGroupMembers);
     const statements = [
       env.DB.prepare("DELETE FROM expenses"),
       env.DB.prepare("DELETE FROM payments"),
@@ -487,6 +803,18 @@ async function handleApi(request, env) {
           json_extract(value, '$.position'), json_extract(value, '$.createdAt')
         FROM json_each(?, '$.members')
       `).bind(snapshotJson),
+      env.DB.prepare(`
+        INSERT INTO member_group_members (member_id, group_id)
+        SELECT json_extract(value, '$.memberId'), json_extract(value, '$.groupId')
+        FROM json_each(?)
+      `).bind(retainedGroupMembersJson),
+      env.DB.prepare(`
+        DELETE FROM member_groups
+        WHERE id NOT IN (
+          SELECT group_id FROM member_group_members
+          GROUP BY group_id HAVING COUNT(*) >= 2
+        )
+      `),
       env.DB.prepare(`
         INSERT INTO expenses (id, payer_id, description, amount_vnd, expense_date,
           position, created_at, updated_at)
@@ -791,6 +1119,13 @@ async function handleApi(request, env) {
         )
       `).bind(id, id),
       env.DB.prepare("DELETE FROM members WHERE id = ?").bind(id),
+      env.DB.prepare(`
+        DELETE FROM member_groups
+        WHERE id NOT IN (
+          SELECT group_id FROM member_group_members
+          GROUP BY group_id HAVING COUNT(*) >= 2
+        )
+      `),
       audit(
         env,
         "admin",
@@ -805,6 +1140,34 @@ async function handleApi(request, env) {
   }
 
   return error("Không tìm thấy API.", 404);
+}
+
+function shouldTrackDetailChange(method, path) {
+  return (path === "/api/expenses" && method === "POST") ||
+    (/^\/api\/expenses\/[^/]+$/.test(path) && ["PUT", "DELETE"].includes(method)) ||
+    (path === "/api/members" && method === "POST") ||
+    (/^\/api\/members\/[^/]+$/.test(path) && ["PATCH", "DELETE"].includes(method)) ||
+    (path === "/api/admin/member-groups" && method === "POST") ||
+    (/^\/api\/admin\/member-groups\/[^/]+$/.test(path) && ["PUT", "DELETE"].includes(method)) ||
+    (method === "POST" && /^\/api\/admin\/history-points\/[^/]+\/restore$/.test(path));
+}
+
+async function handleApi(request, env) {
+  if (!env.DB) return routeApi(request, env);
+  const url = new URL(request.url);
+  const method = request.method.toUpperCase();
+  if (!shouldTrackDetailChange(method, url.pathname)) return routeApi(request, env);
+
+  const before = await getDetailSnapshot(env);
+  const actor = await isAdmin(request, env) ? "admin" : "guest";
+  const response = await routeApi(request, env);
+  if (response.ok) {
+    const after = await getDetailSnapshot(env);
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      await recordDetailSession(env, actor, before, after);
+    }
+  }
+  return response;
 }
 
 export default {

@@ -109,7 +109,7 @@
         <div class="section-heading">
           <div>
             <h2 id="admin-title">Quản trị</h2>
-            <p class="section-description">Quản lý danh sách tên và điểm khôi phục dữ liệu.</p>
+            <p class="section-description">Quản lý thành viên, nhóm, nhật ký phiên và điểm khôi phục dữ liệu.</p>
           </div>
         </div>
 
@@ -122,6 +122,21 @@
               <button class="button button-dark" type="submit">Thêm tên</button>
             </form>
             <ul id="member-list" class="member-list"></ul>
+          </div>
+          <div class="admin-subcard">
+            <h3>Nhóm thành viên</h3>
+            <p class="section-description">Thành viên trong nhóm sẽ đứng cạnh nhau; mỗi thành viên chỉ thuộc một nhóm.</p>
+            <form id="member-group-form" class="member-group-form">
+              <label for="member-group-name">Tên nhóm</label>
+              <input id="member-group-name" maxlength="80" placeholder="Ví dụ: Nhà Vải" required>
+              <label for="member-group-members">Chọn ít nhất hai thành viên</label>
+              <select id="member-group-members" multiple size="6" required></select>
+              <div class="dialog-actions">
+                <button id="member-group-submit" class="button button-dark button-small" type="submit">Tạo nhóm</button>
+                <button id="cancel-member-group-edit" class="button button-light button-small" type="button" hidden>Hủy sửa</button>
+              </div>
+            </form>
+            <ul id="member-group-list" class="member-list"></ul>
           </div>
         </div>
 
@@ -137,7 +152,7 @@
         </div>
 
         <details id="audit-details" class="audit-details">
-          <summary>Nhật ký thay đổi gần đây</summary>
+          <summary>Nhật ký phiên thay đổi (tối đa 999 phiên, gom theo 30 phút không hoạt động)</summary>
           <div id="audit-list" class="audit-list"></div>
         </details>
       </section>
@@ -174,6 +189,14 @@
           <button id="action-dialog-cancel" class="button button-light" type="button">Hủy</button>
           <button id="action-dialog-confirm" class="button button-dark" type="submit">Xác nhận</button>
         </div>
+      </form>
+    </dialog>
+
+    <dialog id="audit-diff-dialog" class="audit-diff-dialog">
+      <form method="dialog">
+        <button id="audit-diff-close" class="dialog-close" type="button" aria-label="Đóng">×</button>
+        <h2 id="audit-diff-title">So sánh Detail</h2>
+        <div id="audit-diff-content"></div>
       </form>
     </dialog>
   </body>

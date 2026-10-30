@@ -246,6 +246,23 @@ th {
   border-top: 1px solid var(--line);
   font-size: calc(var(--font-scale, 1) * 13.2px);
 }
+.member-group-form { display: grid; gap: 7px; margin-top: 9px; }
+.member-group-form label { color: var(--muted); font-size: calc(var(--font-scale, 1) * 13.2px); font-weight: 600; }
+.member-group-form > input, .member-group-form > select {
+  width: 100%;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #fff;
+}
+.member-group-form > select { min-height: 120px; }
+.group-balance-row { font-weight: 650; background: #eef1f4; }
+.group-balance {
+  border-right: 1px solid #aeb8c2;
+  border-left: 1px solid #aeb8c2;
+  text-align: center !important;
+}
 .member-name-actions { display: flex; align-items: center; gap: 4px; }
 .member-edit { width: 24px; height: 24px; border: 0; background: transparent; color: var(--green); }
 .audit-details { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; color: var(--green); font-size: calc(var(--font-scale, 1) * 13.2px); }
@@ -254,6 +271,43 @@ th {
 .column-width-card > summary { color: var(--green); cursor: pointer; font-weight: 600; }
 .audit-list { max-height: 220px; overflow: auto; padding-top: 7px; color: var(--muted); font-size: calc(var(--font-scale, 1) * 12px); }
 .audit-entry { padding: 6px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.audit-session-entry { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.audit-session-entry button { flex-shrink: 0; }
+.audit-actors { display: inline-flex; gap: 4px; margin-left: 6px; }
+.audit-actor { padding: 2px 5px; border-radius: 3px; background: #eef1f4; color: var(--ink); }
+.audit-diff-dialog {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  overflow: auto;
+  padding: 22px;
+  border: 0;
+  background: var(--surface);
+  color: var(--ink);
+}
+.audit-diff-dialog::backdrop { background: rgb(25 37 30 / 45%); }
+.audit-diff-dialog form { display: grid; gap: 12px; }
+.audit-diff-dialog h2 { padding-right: 28px; }
+.audit-diff-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.audit-diff-panel { min-width: 0; }
+.audit-diff-panel h3 { margin: 0 0 6px; }
+.audit-diff-table-scroll { max-width: 100%; max-height: 65vh; overflow: auto; border: 1px solid var(--line); }
+.audit-diff-table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: calc(var(--font-scale, 1) * 12px); }
+.audit-diff-table th, .audit-diff-table td { padding: 5px; border: 1px solid var(--line); white-space: nowrap; }
+.audit-diff-table th { position: sticky; top: 0; z-index: 1; background: #eef1f4; }
+.audit-diff-table .diff-deleted td { background: #ffe3e3; }
+.audit-diff-table .diff-added td { background: #ddf5e4; }
+.audit-diff-table .diff-modified td { background: #fff2bf; }
+.audit-diff-table th.diff-deleted { background: #ffe3e3; }
+.audit-diff-table th.diff-added { background: #ddf5e4; }
+.audit-diff-table th.diff-modified { background: #fff2bf; }
+.audit-diff-legend { display: flex; gap: 7px; }
+.audit-diff-legend span { padding: 3px 7px; border-radius: 3px; color: var(--ink); }
+.audit-diff-legend .diff-deleted { background: #ffe3e3; }
+.audit-diff-legend .diff-added { background: #ddf5e4; }
+.audit-diff-legend .diff-modified { background: #fff2bf; }
 .column-width-config { display: grid; gap: 12px; padding-top: 10px; color: var(--ink); }
 .config-group { display: grid; gap: 8px; }
 .config-group h4 { margin: 0; font-size: calc(var(--font-scale, 1) * 13.2px); }
@@ -319,6 +373,7 @@ th {
   .section-heading > .button { min-height: 30px; padding: 0 8px; white-space: nowrap; font-size: calc(var(--font-scale, 1) * 12px); }
   h2 { font-size: calc(var(--font-scale, 1) * 18px); }
   .section-description { font-size: calc(var(--font-scale, 1) * 12px); }
+  .audit-diff-panels { grid-template-columns: 1fr; }
   .table-hint { display: block; }
   .ledger-footer { gap: 8px; font-size: calc(var(--font-scale, 1) * 10.8px); }
   .summary-table { min-width: 820px; }

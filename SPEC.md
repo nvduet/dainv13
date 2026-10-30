@@ -21,6 +21,9 @@ Khởi tạo dữ liệu từ tab **Detail** trong workbook tham chiếu: danh s
 - Admin đăng nhập để chỉnh cỡ chữ toàn giao diện (75%–200%); giá trị được lưu chung trong D1 và áp dụng cho tất cả người truy cập.
 - Thêm khoản chi tạo ngay một dòng nháp được lưu trong D1. Mỗi thay đổi trường (bao gồm ngày) hoặc checkbox được tự lưu riêng, không cần hoàn thiện toàn bộ dòng; Summary tính độc lập theo các trường đã nhập, xem số tiền trống là 0. Số tiền khoản chi có thể dương hoặc âm.
 - Admin có thể tạo và khôi phục tối đa 50 điểm lưu gần nhất. Điểm lưu gồm dữ liệu cần thiết để phục hồi Detail và Summary (thành viên, khoản chi/ngày/người tham gia, khoản nộp/hoàn và điều chỉnh), không gồm cấu hình giao diện hoặc nhật ký. Khôi phục cần xác nhận, giữ cấu hình và nhật ký hiện tại.
+- Mỗi Store bắt buộc có lời nhắn tối đa 200 ký tự; Admin nhập mật khẩu khôi phục riêng ở lần Store đầu tiên của phiên đăng nhập, các lần Store sau trong cùng phiên không hỏi lại. Khôi phục luôn yêu cầu mật khẩu này.
+- Admin có thể tạo nhiều nhóm thành viên; mỗi thành viên thuộc tối đa một nhóm. Thành viên cùng nhóm đứng cạnh nhau trong Detail và Summary; Summary thêm hàng số dư gộp của mỗi nhóm.
+- Nhật ký Detail được gom theo phiên hoạt động chung của ứng dụng: thay đổi từ Admin và khách trong vòng 30 phút kể từ hoạt động Detail gần nhất thuộc cùng phiên. Mỗi phiên lưu ảnh chụp trước/sau, hiển thị được hai bảng Detail và đánh dấu thêm/xóa/sửa bằng màu; giữ tối đa 999 phiên, xóa phiên cũ nhất khi vượt giới hạn.
 - Admin có thể đặt tổng tiền chuyển khoản đã xác nhận cho từng thành viên ngay trong bảng tổng hợp; giá trị tổng có thể âm hoặc dương để biểu diễn khoản ròng. Chênh lệch được lưu thành bút toán điều chỉnh có audit, giữ nguyên các giao dịch gốc và được tính vào số dư.
 - Trong chế độ Admin, nút **Done** ở hàng cuối bảng tổng hợp đặt tổng đã chuyển khoản bằng `Tiền phải chịu - Đã chi` cho thành viên tương ứng, thông qua bút toán điều chỉnh có audit.
 - Giao diện responsive, báo lỗi/lưu thành công rõ ràng; xóa khoản chi thực hiện ngay, còn thao tác xóa thành viên có hộp thoại xác nhận.
@@ -80,6 +83,9 @@ Ngoài phạm vi: tích hợp chuyển khoản ngân hàng, nhiều loại tiề
 - Mỗi trường và trạng thái checkbox của khoản chi tự lưu độc lập; có thể tải lại trang khi dòng còn thiếu trường mà dữ liệu đã nhập vẫn còn. Dòng không hoàn chỉnh không làm sai số dư.
 - Date nằm giữa Người chi và Nội dung, nhận ngày hợp lệ và được lưu cùng khoản chi.
 - Admin tạo được điểm khôi phục bằng Store, danh sách giữ tối đa 50 điểm; khôi phục chỉ thành công với mật khẩu khôi phục riêng khác mật khẩu Admin, và không ghi đè cấu hình hoặc nhật ký.
+- Admin có thể tạo/sửa/xóa nhóm; API từ chối nhóm có ít hơn hai thành viên, thành viên không tồn tại hoặc đã thuộc nhóm khác. Thành viên của nhóm đứng liền nhau và Summary tính đúng tổng số dư nhóm.
+- Store yêu cầu lời nhắn không rỗng (tối đa 200 ký tự) và mật khẩu khôi phục ở lần đầu trong phiên Admin; mỗi điểm hiển thị lời nhắn khi xem lại lịch sử.
+- Các thay đổi Detail từ Admin và khách trong cùng khoảng hoạt động 30 phút xuất hiện trong cùng phiên nhật ký. Hai bảng trước/sau tô màu các dòng khoản chi được thêm, xóa hoặc sửa; số phiên lưu không bao giờ vượt quá 999.
 - API hiển thị lỗi khi dữ liệu sai, thiếu quyền Admin hoặc vượt giới hạn; không báo thành công giả.
 - Xóa khoản chi thực hiện ngay; xóa thành viên có cảnh báo số khoản chi và thanh toán sẽ bị xóa theo.
 - Dùng được trên điện thoại/desktop và hỗ trợ HTTPS khi deploy.

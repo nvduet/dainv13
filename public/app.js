@@ -2,12 +2,16 @@ import { calculateBalances, parseThousandInput } from "/accounting.mjs";
 
 const state = {
   members: [],
+  groups: [],
   expenses: [],
   payments: [],
   isAdmin: false,
+  storePasswordVerified: false,
   historyPoints: [],
+  auditSessions: [],
 };
 
+let editingGroupId = null;
 const DEFAULT_COLUMN_WIDTHS = {
   expense: {
     payer: 110,
@@ -124,6 +128,9 @@ document.querySelector("#expense-body").addEventListener("focusout", (event) => 
 });
 document.querySelector("#action-dialog-cancel").addEventListener("click", () => actionDialog.close("cancel"));
 document.querySelector("#action-dialog-close").addEventListener("click", () => actionDialog.close("cancel"));
+document.querySelector("#audit-diff-close").addEventListener("click", () => {
+  document.querySelector("#audit-diff-dialog").close();
+});
 document.querySelector("#action-dialog-input").addEventListener("input", () => {
   document.querySelector("#action-dialog-error").textContent = "";
 });
@@ -484,6 +491,32 @@ function renderSummary() {
         }).join("")
         : `<td class="summary-member empty-cell">Thêm thành viên để bắt đầu sổ chi nhé.</td>`}
     </tr>`).join("");
+  if (state.groups.length && summary.length) {
+    const balanceByMember = new Map(summary.map((member) => [member.id, member.balanceVnd]));
+    const groupCells = [];
+    for (let index = 0; index < summary.length;) {
+      const member = summary[index];
+      const group = state.groups.find((item) => item.memberIds.includes(member.id));
+      if (!group) {
+        groupCells.push("<td class=\"summary-member\"></td>");
+        index += 1;
+        continue;
+      }
+      if (group.memberIds[0] !== member.id) {
+        index += 1;
+        continue;
+      }
+      const amount = group.memberIds.reduce((total, memberId) => total + (balanceByMember.get(memberId) || 0), 0);
+      const balanceClass = amount > 0 ? "balance-positive" : amount < 0 ? "balance-negative" : "balance-zero";
+      groupCells.push(`<td class="summary-member group-balance ${balanceClass}" colspan="${group.memberIds.length}" aria-label="Số dư nhóm ${escapeHtml(group.name)}">${formatVnd(amount)}</td>`);
+      index += group.memberIds.length;
+    }
+    tbody.innerHTML += `
+      <tr class="group-balance-row">
+        <th class="summary-label" scope="row">Số dư nhóm</th>
+        ${groupCells.join("")}
+      </tr>`;
+  }
   if (state.isAdmin && summary.length) {
     tbody.innerHTML += `
       <tr>
@@ -508,6 +541,28 @@ function renderMembers() {
         <button class="icon-button delete" type="button" data-action="delete-member" data-member-id="${escapeHtml(member.id)}" aria-label="Xóa ${escapeHtml(member.name)}" title="Xóa">×</button>
       </span>
     </li>`).join("") || `<li>Chưa có thành viên.</li>`;
+  renderMemberGroups();
+}
+
+function renderMemberGroups() {
+  const memberSelect = document.querySelector("#member-group-members");
+  const currentGroup = state.groups.find((group) => group.id === editingGroupId);
+  memberSelect.innerHTML = state.members.map((member) => {
+    const assignedToOther = member.groupId && member.groupId !== editingGroupId;
+    return `<option value="${escapeHtml(member.id)}" ${currentGroup?.memberIds.includes(member.id) ? "selected" : ""} ${assignedToOther ? "disabled" : ""}>${escapeHtml(member.name)}${assignedToOther ? " (đã thuộc nhóm khác)" : ""}</option>`;
+  }).join("");
+  document.querySelector("#member-group-name").value = currentGroup?.name || "";
+  document.querySelector("#member-group-submit").textContent = currentGroup ? "Lưu nhóm" : "Tạo nhóm";
+  document.querySelector("#cancel-member-group-edit").hidden = !currentGroup;
+  document.querySelector("#member-group-list").innerHTML = state.groups.map((group) => `
+    <li>
+      <span><strong>${escapeHtml(group.name)}</strong>: ${escapeHtml(group.memberIds.map((id) =>
+        state.members.find((member) => member.id === id)?.name || id).join(", "))}</span>
+      <span class="member-name-actions">
+        <button class="member-edit" type="button" data-action="edit-member-group" data-group-id="${escapeHtml(group.id)}">Sửa</button>
+        <button class="icon-button delete" type="button" data-action="delete-member-group" data-group-id="${escapeHtml(group.id)}" aria-label="Xóa nhóm ${escapeHtml(group.name)}" title="Xóa">×</button>
+      </span>
+    </li>`).join("") || "<li>Chưa có nhóm.</li>";
 }
 
 function render() {
@@ -590,9 +645,11 @@ async function savePaidTransferTotal(input, { keepalive = false } = {}) {
 async function loadState() {
   const data = await api("/api/state");
   state.members = data.members;
+  state.groups = data.groups;
   state.expenses = data.expenses;
   state.payments = data.payments;
   state.isAdmin = data.isAdmin;
+  state.storePasswordVerified = data.storePasswordVerified;
   columnWidths = data.columnWidths;
   document.querySelector("#font-size-percent").value = data.fontSize;
   document.documentElement.style.setProperty("--font-scale", String(data.fontSize / 100));
@@ -610,7 +667,8 @@ async function loadHistoryPoints() {
     container.innerHTML = state.historyPoints.length
       ? state.historyPoints.map((point) => `
         <div class="history-point-item">
-          <span>${escapeHtml(point.createdAt)} · ${point.memberCount} thành viên · ${point.expenseCount} khoản chi</span>
+          <span><strong>${escapeHtml(point.message || "Không có message")}</strong><br>
+            ${escapeHtml(point.createdAt)} · ${point.memberCount} thành viên · ${point.expenseCount} khoản chi</span>
           <button class="button button-light button-small" type="button"
             data-action="restore-history-point" data-point-id="${escapeHtml(point.id)}">Khôi phục</button>
         </div>`).join("")
@@ -625,6 +683,33 @@ async function handleClick(event) {
   if (!button) return;
   const action = button.dataset.action;
   try {
+    if (action === "edit-member-group") {
+      editingGroupId = button.dataset.groupId;
+      renderMemberGroups();
+      document.querySelector("#member-group-name").focus();
+      return;
+    }
+    if (action === "delete-member-group") {
+      const group = state.groups.find((item) => item.id === button.dataset.groupId);
+      const confirmed = await showActionDialog({
+        title: "Xóa nhóm thành viên?",
+        message: `Xóa nhóm ${group?.name || ""}? Các thành viên sẽ trở lại trạng thái chưa nhóm; dữ liệu khoản chi không bị xóa.`,
+        confirmLabel: "Xóa nhóm",
+        danger: true,
+      });
+      if (!confirmed) return;
+      await api(`/api/admin/member-groups/${encodeURIComponent(button.dataset.groupId)}`, { method: "DELETE" });
+      editingGroupId = null;
+      await loadState();
+      showNotice("Đã xóa nhóm.");
+      return;
+    }
+    if (action === "audit-session-diff") {
+      const { session } = await api(`/api/admin/audit/${encodeURIComponent(button.dataset.sessionId)}`);
+      renderAuditSessionDiff(session);
+      document.querySelector("#audit-diff-dialog").showModal();
+      return;
+    }
     if (action === "restore-history-point") {
       const point = state.historyPoints.find((item) => item.id === button.dataset.pointId);
       const restorePassword = await showActionDialog({
@@ -758,6 +843,30 @@ async function handleSubmit(event) {
       showNotice("Đã thêm thành viên.");
       return;
     }
+    if (form.id === "member-group-form") {
+      const body = {
+        name: document.querySelector("#member-group-name").value,
+        memberIds: [...document.querySelector("#member-group-members").selectedOptions]
+          .map((option) => option.value),
+      };
+      if (editingGroupId) {
+        await api(`/api/admin/member-groups/${encodeURIComponent(editingGroupId)}`, {
+          method: "PUT",
+          body: JSON.stringify(body),
+        });
+        showNotice("Đã cập nhật nhóm.");
+      } else {
+        await api("/api/admin/member-groups", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        showNotice("Đã tạo nhóm.");
+      }
+      editingGroupId = null;
+      form.reset();
+      await loadState();
+      return;
+    }
     if (form.id === "login-form") {
       const formData = new FormData(form);
       const submitButton = form.querySelector(".login-submit");
@@ -770,6 +879,7 @@ async function handleSubmit(event) {
         }),
       });
       state.isAdmin = true;
+      state.storePasswordVerified = false;
       renderHeader();
       renderSummary();
       renderMembers();
@@ -792,60 +902,112 @@ async function handleSubmit(event) {
   }
 }
 
+function renderAuditSnapshotTable(snapshot, changeTypes, memberChangeTypes) {
+  const members = snapshot.members || [];
+  const memberNames = new Map(members.map((member) => [member.id, member.name]));
+  const rows = snapshot.expenses || [];
+  return `<div class="audit-diff-table-scroll">
+    <table class="audit-diff-table">
+      <thead><tr>
+        <th>Người chi</th><th>Date</th><th>Nội dung</th><th>Chi phí</th>
+        ${members.map((member) => {
+          const changeType = memberChangeTypes.get(member.id);
+          return `<th class="${changeType ? `diff-${changeType}` : ""}">${escapeHtml(member.name)}</th>`;
+        }).join("")}
+      </tr></thead>
+      <tbody>${rows.map((expense) => {
+        const changeType = changeTypes.get(expense.id);
+        const participants = new Set(expense.participantIds || []);
+        return `<tr class="${changeType ? `diff-${changeType}` : ""}">
+          <td>${escapeHtml(memberNames.get(expense.payerId) || "—")}</td>
+          <td>${escapeHtml(expense.date || "—")}</td>
+          <td>${escapeHtml(expense.description || "—")}</td>
+          <td>${escapeHtml(formatVnd(expense.amountVnd))}</td>
+          ${members.map((member) => `<td>${participants.has(member.id) ? "✓" : ""}</td>`).join("")}
+        </tr>`;
+      }).join("") || `<tr><td colspan="${members.length + 4}">Không có khoản chi.</td></tr>`}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderAuditSessionDiff(session) {
+  const beforeExpenses = new Map((session.before.expenses || []).map((expense) => [expense.id, expense]));
+  const afterExpenses = new Map((session.after.expenses || []).map((expense) => [expense.id, expense]));
+  const beforeMembers = new Map((session.before.members || []).map((member) => [member.id, member]));
+  const afterMembers = new Map((session.after.members || []).map((member) => [member.id, member]));
+  const beforeChanges = new Map();
+  const afterChanges = new Map();
+  const beforeMemberChanges = new Map();
+  const afterMemberChanges = new Map();
+  const comparable = (expense) => JSON.stringify({
+    payerId: expense.payerId,
+    date: expense.date,
+    description: expense.description,
+    amountVnd: expense.amountVnd,
+    participantIds: [...(expense.participantIds || [])].sort(),
+  });
+  const memberContext = (snapshot, member) => {
+    const group = (snapshot.groups || []).find((item) => item.id === member.groupId);
+    return JSON.stringify([
+      member.name,
+      member.position,
+      member.groupId,
+      group?.name,
+      group?.position,
+    ]);
+  };
+  for (const [id, before] of beforeExpenses) {
+    const after = afterExpenses.get(id);
+    if (!after) beforeChanges.set(id, "deleted");
+    else if (comparable(before) !== comparable(after)) {
+      beforeChanges.set(id, "modified");
+      afterChanges.set(id, "modified");
+    }
+  }
+  for (const id of afterExpenses.keys()) {
+    if (!beforeExpenses.has(id)) afterChanges.set(id, "added");
+  }
+  for (const [id, before] of beforeMembers) {
+    const after = afterMembers.get(id);
+    if (!after) beforeMemberChanges.set(id, "deleted");
+    else if (memberContext(session.before, before) !== memberContext(session.after, after)) {
+      beforeMemberChanges.set(id, "modified");
+      afterMemberChanges.set(id, "modified");
+    }
+  }
+  for (const id of afterMembers.keys()) {
+    if (!beforeMembers.has(id)) afterMemberChanges.set(id, "added");
+  }
+  const actorNames = session.actors.map((actor) => actor === "admin" ? "Admin" : "Khách");
+  document.querySelector("#audit-diff-title").textContent = `Detail · ${actorNames.join(" + ")}`;
+  document.querySelector("#audit-diff-content").innerHTML = `
+    <p class="section-description">Phiên ${escapeHtml(session.startedAt)} · hoạt động gần nhất ${escapeHtml(session.lastActivity)} · Có thay đổi từ: ${actorNames.map((name) => `<span class="audit-actor">${escapeHtml(name)}</span>`).join(" ")}</p>
+    <div class="audit-diff-legend">
+      <span class="diff-deleted">Xóa</span>
+      <span class="diff-added">Thêm</span>
+      <span class="diff-modified">Sửa</span>
+    </div>
+    <div class="audit-diff-panels">
+      <section class="audit-diff-panel"><h3>Trước phiên</h3>${renderAuditSnapshotTable(session.before, beforeChanges, beforeMemberChanges)}</section>
+      <section class="audit-diff-panel"><h3>Sau phiên</h3>${renderAuditSnapshotTable(session.after, afterChanges, afterMemberChanges)}</section>
+    </div>`;
+}
+
 async function loadAudit() {
   try {
     const data = await api("/api/admin/audit");
-    const actionLabels = {
-      create: "tạo",
-      update: "sửa",
-      store: "lưu điểm khôi phục",
-      restore: "khôi phục điểm dữ liệu",
-      participant_add: "đánh dấu tham gia",
-      participant_remove: "bỏ đánh dấu tham gia",
-      delete: "xóa",
-      hard_delete: "xóa cứng",
-      rename: "đổi tên",
-      report: "báo nộp",
-      confirm: "xác nhận",
-      refund: "ghi hoàn",
-      configure: "cấu hình",
-      reconcile: "điều chỉnh tổng chuyển khoản",
-    };
-    const memberById = new Map(state.members.map((member) => [member.id, member.name]));
-    const fieldLabels = {
-      payerId: "Người chi",
-      date: "Ngày",
-      description: "Nội dung",
-      amountVnd: "Số tiền",
-    };
-    const showValue = (field, value) => {
-      if (field === "amountVnd") return formatVnd(value);
-      if (field === "payerId") return memberById.get(value) || value;
-      return String(value ?? "—");
-    };
-    const describeEntry = (entry) => {
-      const before = entry.beforeJson ? JSON.parse(entry.beforeJson) : null;
-      const after = entry.afterJson ? JSON.parse(entry.afterJson) : null;
-      const actor = entry.actor === "admin" ? "Admin" : "Khách";
-      if (entry.action === "update" && before?.field && before.field === after?.field) {
-        return `${actor} đổi ${fieldLabels[after.field] || after.field} của khoản chi ${entry.entityId}: ${showValue(after.field, before.value)} → ${showValue(after.field, after.value)}`;
-      }
-      if (entry.action === "participant_add" || entry.action === "participant_remove") {
-        const change = after || before;
-        return `${actor} ${actionLabels[entry.action]}: ${memberById.get(change.memberId) || "thành viên"} (khoản chi ${change.expenseId})`;
-      }
-      if (entry.action === "reconcile" && entry.entity === "payment_total") {
-        return `${actor} đổi Đã chuyển khoản của ${memberById.get(entry.entityId) || entry.entityId}: ${formatVnd(before.paidToAdminVnd)} → ${formatVnd(after.paidToAdminVnd)}`;
-      }
-      if (entry.action === "update") {
-        return `${actor} ${actionLabels[entry.action]} khoản chi ${entry.entityId}`;
-      }
-      return `${actor} ${actionLabels[entry.action] || entry.action} ${entry.entity} ${entry.entityId}`;
-    };
-    document.querySelector("#audit-list").innerHTML = data.entries.map((entry) => `
-      <div class="audit-entry">
-        ${escapeHtml(entry.createdAt)} · ${escapeHtml(describeEntry(entry))}
-      </div>`).join("") || "Chưa có thay đổi.";
+    state.auditSessions = data.sessions;
+    document.querySelector("#audit-list").innerHTML = state.auditSessions.map((session) => {
+      const actors = [
+        ...(session.adminSeen ? ["Admin"] : []),
+        ...(session.guestSeen ? ["Khách"] : []),
+      ];
+      return `<div class="audit-entry audit-session-entry">
+        <span>${escapeHtml(session.startedAt)} · ${escapeHtml(actors.join(" + "))}</span>
+        <button class="button button-light button-small" type="button"
+          data-action="audit-session-diff" data-session-id="${escapeHtml(session.id)}">Xem diff</button>
+      </div>`;
+    }).join("") || "Chưa có phiên thay đổi.";
   } catch (caught) {
     document.querySelector("#audit-list").textContent = caught.message;
   }
@@ -943,10 +1105,33 @@ document.querySelector("#store-history-point").addEventListener("click", async (
   const button = document.querySelector("#store-history-point");
   button.disabled = true;
   try {
+    const message = await showActionDialog({
+      title: "Store điểm dữ liệu",
+      message: "Viết một message để nhận biết ý nghĩa của điểm lưu này.",
+      inputLabel: "Message",
+      confirmLabel: "Tiếp tục",
+    });
+    if (message === null) return;
+    let password;
+    if (!state.storePasswordVerified) {
+      password = await showActionDialog({
+        title: "Xác thực Store",
+        message: "Nhập mật khẩu khôi phục. Mật khẩu sẽ được ghi nhớ cho các lần Store tiếp theo trong phiên Admin này.",
+        inputLabel: "Mật khẩu khôi phục",
+        inputType: "password",
+        preserveInput: true,
+        confirmLabel: "Xác thực",
+      });
+      if (password === null) return;
+    }
     await flushPendingChanges();
-    await api("/api/admin/history-points", { method: "POST", body: "{}" });
+    await api("/api/admin/history-points", {
+      method: "POST",
+      body: JSON.stringify({ message, ...(password !== undefined ? { password } : {}) }),
+    });
+    state.storePasswordVerified = true;
     await loadHistoryPoints();
-    showNotice("Đã lưu điểm khôi phục.");
+    showNotice(`Đã Store: ${message}`);
   } catch (caught) {
     showNotice(caught.message, "error");
   } finally {
@@ -957,6 +1142,11 @@ document.querySelector("#store-history-point").addEventListener("click", async (
 document.querySelector("#login-button").addEventListener("click", () => {
   if (!state.isAdmin) loginDialog.showModal();
 });
+document.querySelector("#cancel-member-group-edit").addEventListener("click", () => {
+  editingGroupId = null;
+  document.querySelector("#member-group-form").reset();
+  renderMemberGroups();
+});
 document.querySelector("#close-login").addEventListener("click", () => loginDialog.close());
 document.querySelector("#logout-button").addEventListener("click", async () => {
   const button = document.querySelector("#logout-button");
@@ -964,7 +1154,9 @@ document.querySelector("#logout-button").addEventListener("click", async () => {
   try {
     await api("/api/admin/logout", { method: "POST", body: "{}" });
     state.isAdmin = false;
+    state.storePasswordVerified = false;
     state.historyPoints = [];
+    state.auditSessions = [];
     renderHeader();
     renderSummary();
     document.querySelector("#history-points").textContent = "";

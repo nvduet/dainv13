@@ -47,11 +47,35 @@ class MockStatement {
     if (this.sql.includes("SELECT id, name FROM members WHERE id = ?")) {
       return this.database.members.find((member) => member.id === this.values[0]) || null;
     }
+    if (this.sql.includes("FROM member_groups WHERE id = ?")) {
+      return this.database.memberGroups.find((group) => group.id === this.values[0]) || null;
+    }
+    if (this.sql.includes("FROM member_groups WHERE name = ?")) {
+      return this.database.memberGroups.find((group) =>
+        group.name === this.values[0] && (!this.sql.includes("id <> ?") || group.id !== this.values[1]),
+      ) || null;
+    }
+    if (this.sql.includes("FROM admin_session_store_auth")) {
+      return this.database.storeAuthorizations.find((item) => item.sessionId === this.values[0]) || null;
+    }
+    if (this.sql.includes("FROM audit_sessions current WHERE current.id = ?")) {
+      const index = this.database.auditSessions.findIndex((session) => session.id === this.values[0]);
+      if (index < 0) return null;
+      return {
+        ...this.database.auditSessions[index],
+        beforeJson: index > 0
+          ? this.database.auditSessions[index - 1].afterJson
+          : this.database.auditAnchor,
+      };
+    }
     if (this.sql.includes("FROM expenses WHERE id = ?")) {
       return this.database.expense?.id === this.values[0] ? this.database.expense : null;
     }
     if (this.sql.includes("SELECT COALESCE(MAX(position), -1) + 1 AS next FROM expenses")) {
       return { next: this.database.expense ? 1 : 0 };
+    }
+    if (this.sql.includes("SELECT COALESCE(MAX(position), -1) + 1 AS next FROM member_groups")) {
+      return { next: this.database.memberGroups.length };
     }
     if (this.sql.includes("FROM history_points WHERE id = ?")) {
       const point = this.database.historyPoints.find((item) => item.id === this.values[0]);
@@ -72,6 +96,36 @@ class MockStatement {
   }
 
   async all() {
+    if (this.sql.includes("FROM audit_sessions ORDER BY")) {
+      return { results: [...this.database.auditSessions].reverse().map((session) => ({
+        id: session.id,
+        startedAt: session.startedAt,
+        lastActivity: session.lastActivity,
+        adminSeen: session.adminSeen,
+        guestSeen: session.guestSeen,
+      })) };
+    }
+    if (this.sql.includes("FROM member_groups ORDER BY")) {
+      return { results: this.database.memberGroups.map(({ id, name, position }) => ({ id, name, position })) };
+    }
+    if (this.sql.includes("FROM member_group_members")) {
+      if (this.sql.includes("WHERE group_id = ?")) {
+        return { results: this.database.memberGroupMembers
+          .filter((member) => member.groupId === this.values[0])
+          .map(({ memberId }) => ({ memberId })) };
+      }
+      if (this.sql.includes("WHERE group_id <> ? AND member_id IN")) {
+        return { results: this.database.memberGroupMembers
+          .filter((member) => member.groupId !== this.values[0] && this.values.slice(1).includes(member.memberId))
+          .map(({ memberId }) => ({ memberId })) };
+      }
+      if (this.sql.includes("WHERE member_id IN")) {
+        return { results: this.database.memberGroupMembers
+          .filter((member) => this.values.includes(member.memberId))
+          .map(({ memberId }) => ({ memberId })) };
+      }
+      return { results: this.database.memberGroupMembers.map((member) => ({ ...member })) };
+    }
     if (this.sql.includes("FROM payment_adjustments ORDER BY")) {
       return { results: this.database.adjustments.map((adjustment) => ({
         id: adjustment.id,
@@ -82,7 +136,7 @@ class MockStatement {
     }
     if (this.sql.includes("FROM history_points ORDER BY")) {
       return { results: this.database.historyPoints.map(({ id, createdAt, memberCount, expenseCount }) => ({
-        id, createdAt, memberCount, expenseCount,
+        id, createdAt, memberCount, expenseCount, message: this.database.historyPoints.find((point) => point.id === id)?.message || "",
       })) };
     }
     if (this.sql.includes("FROM expenses ORDER BY position")) {
@@ -141,6 +195,11 @@ class MockDatabase {
   expenseParticipants = ["member-1"];
   historyPoints = [];
   auditEntries = [];
+  auditSessions = [];
+  auditAnchor = null;
+  memberGroups = [];
+  memberGroupMembers = [];
+  storeAuthorizations = [];
   adjustments = [];
 
   prepare(sql) {
@@ -150,8 +209,19 @@ class MockDatabase {
   async batch(statements) {
     const results = [];
     for (const statement of statements) {
+      if (statement.sql.includes("INSERT OR IGNORE INTO audit_session_anchor")) {
+        this.auditAnchor ??= statement.values[0];
+      }
       if (statement.sql.includes("SELECT id, name, position, created_at AS createdAt FROM members")) {
         results.push({ results: this.members.map((member) => ({ ...member, createdAt: "2026-10-17 10:00:00" })) });
+        continue;
+      }
+      if (statement.sql.includes("FROM member_groups ORDER BY")) {
+        results.push({ results: this.memberGroups.map(({ id, name, position }) => ({ id, name, position })) });
+        continue;
+      }
+      if (statement.sql.includes("FROM member_group_members")) {
+        results.push({ results: this.memberGroupMembers.map(({ memberId, groupId }) => ({ memberId, groupId })) });
         continue;
       }
       if (statement.sql.includes("SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd")) {
@@ -218,6 +288,7 @@ class MockDatabase {
           snapshot: JSON.parse(statement.values[1]),
           memberCount: statement.values[2],
           expenseCount: statement.values[3],
+          message: statement.values[4] || "",
           createdAt: "2026-10-17 11:00:00",
         });
       }
@@ -230,7 +301,72 @@ class MockDatabase {
       }
       if (statement.sql.includes("DELETE FROM payments")) this.payments = [];
       if (statement.sql.includes("DELETE FROM payment_adjustments")) this.adjustments = [];
-      if (statement.sql.includes("DELETE FROM members")) this.members = [];
+      if (statement.sql.trim() === "DELETE FROM members") this.members = [];
+      if (statement.sql.includes("DELETE FROM members WHERE id = ?")) {
+        const memberId = statement.values[0];
+        this.members = this.members.filter((member) => member.id !== memberId);
+        this.memberGroupMembers = this.memberGroupMembers.filter((entry) => entry.memberId !== memberId);
+      }
+      if (statement.sql.includes("INSERT INTO member_groups (id, name, position)")) {
+        this.memberGroups.push({
+          id: statement.values[0],
+          name: statement.values[1],
+          position: statement.values[2],
+        });
+      }
+      if (statement.sql.includes("UPDATE member_groups SET name = ?")) {
+        const group = this.memberGroups.find((item) => item.id === statement.values[1]);
+        if (group) group.name = statement.values[0];
+      }
+      if (statement.sql.includes("DELETE FROM member_groups WHERE id = ?")) {
+        const groupId = statement.values[0];
+        this.memberGroups = this.memberGroups.filter((group) => group.id !== groupId);
+        this.memberGroupMembers = this.memberGroupMembers.filter((member) => member.groupId !== groupId);
+      }
+      if (statement.sql.includes("DELETE FROM member_groups") && statement.sql.includes("HAVING COUNT(*) >= 2")) {
+        const groupCounts = new Map();
+        for (const assignment of this.memberGroupMembers) {
+          groupCounts.set(assignment.groupId, (groupCounts.get(assignment.groupId) || 0) + 1);
+        }
+        this.memberGroups = this.memberGroups.filter((group) => groupCounts.get(group.id) >= 2);
+        this.memberGroupMembers = this.memberGroupMembers.filter((assignment) => groupCounts.has(assignment.groupId));
+      }
+      if (statement.sql.includes("DELETE FROM member_group_members WHERE group_id = ?")) {
+        this.memberGroupMembers = this.memberGroupMembers.filter((member) => member.groupId !== statement.values[0]);
+      }
+      if (statement.sql.includes("INSERT INTO member_group_members (member_id, group_id)")) {
+        this.memberGroupMembers.push({ memberId: statement.values[0], groupId: statement.values[1] });
+      }
+      if (statement.sql.includes("INSERT INTO admin_session_store_auth")) {
+        this.storeAuthorizations = this.storeAuthorizations.filter((auth) => auth.sessionId !== statement.values[0]);
+        this.storeAuthorizations.push({ sessionId: statement.values[0], expiresAt: "2099-01-01 00:00:00" });
+      }
+      if (statement.sql.includes("INSERT INTO audit_sessions")) {
+        const active = this.auditSessions.at(-1);
+        if (!active) {
+          this.auditSessions.push({
+            id: statement.values[0],
+            adminSeen: statement.values[1],
+            guestSeen: statement.values[2],
+            afterJson: statement.values[3],
+            startedAt: "2026-10-17 11:00:00",
+            lastActivity: "2026-10-17 11:00:00",
+          });
+        }
+      }
+      if (statement.sql.includes("UPDATE audit_sessions")) {
+        const session = this.auditSessions.at(-1);
+        if (session) {
+          session.afterJson = statement.values[0];
+          session.adminSeen = Math.max(session.adminSeen, statement.values[1]);
+          session.guestSeen = Math.max(session.guestSeen, statement.values[2]);
+          session.lastActivity = "2026-10-17 11:00:01";
+        }
+      }
+      if (statement.sql.includes("UPDATE audit_session_anchor")) {
+        if (this.auditSessions.length > 999) this.auditAnchor = this.auditSessions[0].afterJson;
+      }
+      if (statement.sql.includes("DELETE FROM audit_sessions")) this.auditSessions = this.auditSessions.slice(-999);
       if (statement.sql.includes("INSERT INTO members (id, name, position, created_at)")) {
         const data = JSON.parse(statement.values[0]);
         this.members = data.members;
@@ -270,6 +406,7 @@ class MockDatabase {
           beforeJson: statement.values[4],
           afterJson: statement.values[5],
         });
+        this.auditEntries = this.auditEntries.slice(-999);
       }
     }
     return results;
@@ -492,6 +629,138 @@ test("the admin-managed member list is the only member list and only Admin can e
   assert.equal("tableMembers" in state, false);
 });
 
+test("member groups are exclusive and group members are ordered together in state", async () => {
+  const DB = new MockDatabase();
+  const env = {
+    DB,
+    ADMIN_USERNAME: "admin",
+    ADMIN_PASSWORD: "secret",
+    ADMIN_SESSION_SECRET: "a-long-session-secret-for-tests",
+  };
+  const request = (path, { method = "GET", body, cookie } = {}) => new Request(
+    `https://example.test${path}`,
+    {
+      method,
+      headers: {
+        ...(body ? { "content-type": "application/json" } : {}),
+        ...(cookie ? { cookie } : {}),
+        ...(method === "GET" ? {} : { origin: "https://example.test" }),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    },
+  );
+  const login = await worker.fetch(request("/api/admin/login", {
+    method: "POST",
+    body: { username: "admin", password: "secret" },
+  }), env);
+  const cookie = login.headers.get("set-cookie").split(";")[0];
+
+  const created = await worker.fetch(request("/api/admin/member-groups", {
+    method: "POST",
+    body: { name: "Nhà A", memberIds: ["member-1", "member-2"] },
+    cookie,
+  }), env);
+  assert.equal(created.status, 201);
+  const group = (await created.json()).group;
+  assert.deepEqual(group.memberIds, ["member-1", "member-2"]);
+
+  const duplicateAssignment = await worker.fetch(request("/api/admin/member-groups", {
+    method: "POST",
+    body: { name: "Nhà B", memberIds: ["member-1", "member-2"] },
+    cookie,
+  }), env);
+  assert.equal(duplicateAssignment.status, 400);
+
+  const stateResponse = await worker.fetch(request("/api/state", { cookie }), env);
+  const state = await stateResponse.json();
+  assert.deepEqual(state.members.map((member) => member.id), ["member-1", "member-2"]);
+  assert.deepEqual(state.groups[0].memberIds, ["member-1", "member-2"]);
+
+  const deleteResponse = await worker.fetch(request(`/api/admin/member-groups/${group.id}`, {
+    method: "DELETE",
+    cookie,
+  }), env);
+  assert.equal(deleteResponse.status, 200);
+  assert.equal(DB.memberGroupMembers.length, 0);
+});
+
+test("detail changes from Admin and guest share one bounded audit session with snapshots", async () => {
+  const DB = new MockDatabase();
+  const env = {
+    DB,
+    ADMIN_USERNAME: "admin",
+    ADMIN_PASSWORD: "secret",
+    ADMIN_SESSION_SECRET: "a-long-session-secret-for-tests",
+  };
+  const request = (path, { method = "GET", body, cookie } = {}) => new Request(
+    `https://example.test${path}`,
+    {
+      method,
+      headers: {
+        ...(body ? { "content-type": "application/json" } : {}),
+        ...(cookie ? { cookie } : {}),
+        ...(method === "GET" ? {} : { origin: "https://example.test" }),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    },
+  );
+  const login = await worker.fetch(request("/api/admin/login", {
+    method: "POST",
+    body: { username: "admin", password: "secret" },
+  }), env);
+  const cookie = login.headers.get("set-cookie").split(";")[0];
+
+  const guestEdit = await worker.fetch(request("/api/expenses/expense-1", {
+    method: "PUT",
+    body: { description: "Guest edit" },
+  }), env);
+  assert.equal(guestEdit.status, 200);
+  const adminEdit = await worker.fetch(request("/api/expenses/expense-1", {
+    method: "PUT",
+    body: { amountVnd: 125_000 },
+    cookie,
+  }), env);
+  assert.equal(adminEdit.status, 200);
+
+  assert.equal(DB.auditSessions.length, 1);
+  assert.equal(DB.auditSessions[0].adminSeen, 1);
+  assert.equal(DB.auditSessions[0].guestSeen, 1);
+  const before = JSON.parse(DB.auditAnchor);
+  const after = JSON.parse(DB.auditSessions[0].afterJson);
+  assert.equal(before.expenses[0].description, "Ăn trưa");
+  assert.equal(after.expenses[0].description, "Guest edit");
+  assert.equal(after.expenses[0].amountVnd, 125_000);
+
+  const list = await worker.fetch(request("/api/admin/audit", { cookie }), env);
+  assert.equal(list.status, 200);
+  const sessions = (await list.json()).sessions;
+  assert.equal(sessions.length, 1);
+  assert.equal(sessions[0].guestSeen, 1);
+  assert.equal(sessions[0].adminSeen, 1);
+
+  const detail = await worker.fetch(request(`/api/admin/audit/${sessions[0].id}`, { cookie }), env);
+  assert.equal(detail.status, 200);
+  const detailSession = (await detail.json()).session;
+  assert.deepEqual(detailSession.actors, ["admin", "guest"]);
+  assert.equal(detailSession.before.expenses[0].description, "Ăn trưa");
+  assert.equal(detailSession.after.expenses[0].amountVnd, 125_000);
+
+  DB.auditSessions = Array.from({ length: 1_000 }, (_, index) => ({
+    id: `session-${index}`,
+    afterJson: JSON.stringify({ index }),
+    adminSeen: 0,
+    guestSeen: 1,
+  }));
+  const lastGuestChange = await worker.fetch(request("/api/expenses/expense-1", {
+    method: "PUT",
+    body: { date: "2026-10-31" },
+  }), env);
+  assert.equal(lastGuestChange.status, 200);
+  assert.equal(DB.auditSessions.length, 999);
+  assert.equal(JSON.parse(DB.auditAnchor).index, 0);
+  assert.equal(DB.auditSessions[0].id, "session-1");
+});
+
 test("retired payment request and refund APIs are no longer available", async () => {
   const DB = new MockDatabase();
   const request = (path, body) => new Request(`https://example.test${path}`, {
@@ -660,11 +929,22 @@ test("history points are Admin-only and restore business data without changing s
 
   const store = await worker.fetch(request("/api/admin/history-points", {
     method: "POST",
-    body: {},
+    body: { message: "Initial backup", password: "restore-secret" },
     cookie,
   }), env);
   assert.equal(store.status, 201);
-  const pointId = (await store.json()).point.id;
+  const firstStored = await store.json();
+  const pointId = firstStored.point.id;
+  assert.equal(firstStored.point.message, "Initial backup");
+  assert.equal(firstStored.storePasswordVerified, true);
+
+  const secondStore = await worker.fetch(request("/api/admin/history-points", {
+    method: "POST",
+    body: { message: "Store without asking again" },
+    cookie,
+  }), env);
+  assert.equal(secondStore.status, 201);
+  assert.equal(DB.historyPoints.at(-1).message, "Store without asking again");
   assert.equal(DB.historyPoints.length, 50);
   const listResponse = await worker.fetch(request("/api/admin/history-points", { cookie }), env);
   assert.equal(listResponse.status, 200);
