@@ -3,21 +3,39 @@ const MAX_AMOUNT_VND = 1_000_000_000_000;
 const MAX_MEMBERS = 50;
 const MAX_AUDIT_SESSIONS = 999;
 const AUDIT_SESSION_IDLE_MINUTES = 30;
-const DEFAULT_FONT_SIZE = 100;
+const LEDGER_DELETE_PASSWORD_ITERATIONS = 120_000;
+const DEFAULT_QR_SIZE = 250;
+const LEDGER_SCHEMA_TABLES = [
+  "members",
+  "expenses",
+  "expense_participants",
+  "payments",
+  "audit_log",
+  "rate_limits",
+  "app_settings",
+  "payment_adjustments",
+  "history_points",
+  "member_groups",
+  "member_group_members",
+  "audit_sessions",
+  "audit_session_anchor",
+  "admin_session_store_auth",
+];
+const DEFAULT_FONT_SIZE = 90;
 const DEFAULT_COLUMN_WIDTHS = {
   expense: {
-    payer: 110,
+    payer: 100,
     date: 110,
-    description: 145,
-    amount: 100,
-    member: 80,
-    count: 52,
-    avg: 94,
+    description: 180,
+    amount: 60,
+    member: 60,
+    count: 70,
+    avg: 80,
     actions: 68,
   },
   summary: {
     label: 120,
-    member: 130,
+    member: 100,
   },
 };
 const COLUMN_WIDTH_LIMITS = {
@@ -55,6 +73,74 @@ function error(message, status = 400) {
   return json({ error: message }, status);
 }
 
+function ledgerTablePrefix(ledgerId) {
+  if (ledgerId === "default") return "";
+  if (!/^[\da-f]{32}$/i.test(ledgerId)) throw new Error("Invalid ledger identifier.");
+  return `ledger_${ledgerId}_`;
+}
+
+function rewriteLedgerSql(sql, prefix) {
+  if (!prefix) return sql;
+  const tableNames = LEDGER_SCHEMA_TABLES
+    .map((name) => [name, `${prefix}${name}`])
+    .sort(([left], [right]) => right.length - left.length);
+  const rewritten = sql.replace(
+    /'(?:''|[^'])*'|"(?:""|[^"])*"|`[^`]*`|\[[^\]]*\]|\b[A-Za-z_][A-Za-z0-9_]*\b/g,
+    (token) => {
+      if (token.startsWith("'")) return token;
+      const quoted = token.match(/^("|`|\[)(.*)(?:"|`|\])$/);
+      const identifier = quoted ? quoted[2] : token;
+      const table = tableNames.find(([name]) => name === identifier);
+      if (!table) return token;
+      return quoted ? `${quoted[1]}${table[1]}${quoted[1] === "[" ? "]" : quoted[1]}` : table[1];
+    },
+  );
+  return rewritten
+    .replace(
+      /\b(CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?)([A-Za-z_][A-Za-z0-9_]*)/i,
+      (_match, prefixText, name) => `${prefixText}${prefix}${name}`,
+    )
+    .replace(
+      /\b(CREATE\s+TRIGGER\s+(?:IF\s+NOT\s+EXISTS\s+)?)([A-Za-z_][A-Za-z0-9_]*)/i,
+      (_match, prefixText, name) => `${prefixText}${prefix}${name}`,
+    );
+}
+
+function ledgerDatabase(database, ledgerId) {
+  const prefix = ledgerTablePrefix(ledgerId);
+  if (!prefix) return database;
+  return new Proxy(database, {
+    get(target, property) {
+      if (property === "prepare") {
+        return (sql) => target.prepare(rewriteLedgerSql(sql, prefix));
+      }
+      const value = Reflect.get(target, property, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
+async function copyLedgerSchema(database, ledgerId) {
+  const prefix = ledgerTablePrefix(ledgerId);
+  const placeholders = LEDGER_SCHEMA_TABLES.map(() => "?").join(", ");
+  const objects = await database.prepare(`
+    SELECT type, name, tbl_name AS tableName, sql
+    FROM sqlite_master
+    WHERE sql IS NOT NULL AND (
+      (type = 'table' AND name IN (${placeholders}))
+      OR (type IN ('index', 'trigger') AND tbl_name IN (${placeholders}))
+    )
+    ORDER BY CASE type WHEN 'table' THEN 0 WHEN 'index' THEN 1 ELSE 2 END
+  `).bind(...LEDGER_SCHEMA_TABLES, ...LEDGER_SCHEMA_TABLES).all();
+  const tableCount = objects.results.filter((object) => object.type === "table").length;
+  if (tableCount !== LEDGER_SCHEMA_TABLES.length) {
+    throw new Error("Không thể tạo sổ mới vì schema cơ sở dữ liệu chưa đầy đủ.");
+  }
+  await database.batch(objects.results.map((object) => database.prepare(
+    rewriteLedgerSql(object.sql, prefix),
+  )));
+}
+
 async function readJson(request) {
   const length = Number(request.headers.get("content-length") || 0);
   if (length > 100_000) throw new ApiError("Dữ liệu gửi lên quá lớn.", 413);
@@ -72,6 +158,18 @@ async function readJson(request) {
 
 function validName(value) {
   return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 80;
+}
+
+function makeLedgerSlug(name) {
+  return name.trim()
+    .replace(/đ/gi, "d")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60)
+    .replace(/-$/g, "");
 }
 
 function validSignedAmount(value) {
@@ -145,6 +243,23 @@ async function secureEqual(left, right) {
   let difference = 0;
   for (let index = 0; index < bytesA.length; index += 1) difference |= bytesA[index] ^ bytesB[index];
   return difference === 0;
+}
+
+async function hashLedgerDeletePassword(password, saltBytes) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const bits = await crypto.subtle.deriveBits({
+    name: "PBKDF2",
+    hash: "SHA-256",
+    salt: saltBytes,
+    iterations: LEDGER_DELETE_PASSWORD_ITERATIONS,
+  }, key, 256);
+  return encodeBase64Url(bits);
 }
 
 async function sessionCookie(username, env, request) {
@@ -380,8 +495,9 @@ async function validateExpensePatch(env, body, before) {
 }
 
 async function state(request, env) {
+  const globalDB = env.GLOBAL_DB || env.DB;
   const [membersResult, expensesResult, participantResult, paymentsResult, adjustmentsResult,
-    settingsResult, fontSizeResult, groupsResult, groupMembersResult, adminSession] = await Promise.all([
+    settingsResult, fontSizeResult, qrSizeResult, groupsResult, groupMembersResult, adminSession] = await Promise.all([
     env.DB.prepare("SELECT id, name, position FROM members ORDER BY position, name COLLATE NOCASE").all(),
     env.DB.prepare(`
       SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd,
@@ -399,8 +515,9 @@ async function state(request, env) {
              created_at AS createdAt
       FROM payment_adjustments ORDER BY created_at DESC, id DESC
     `).all(),
-    env.DB.prepare("SELECT value_json AS valueJson FROM app_settings WHERE key = 'column-widths'").first(),
-    env.DB.prepare("SELECT value_json AS valueJson FROM app_settings WHERE key = 'font-size'").first(),
+    globalDB.prepare("SELECT value_json AS valueJson FROM global_app_settings WHERE key = 'column-widths'").first(),
+    globalDB.prepare("SELECT value_json AS valueJson FROM global_app_settings WHERE key = 'font-size'").first(),
+    globalDB.prepare("SELECT value_json AS valueJson FROM global_app_settings WHERE key = 'qr-size'").first(),
     env.DB.prepare("SELECT id, name, position FROM member_groups ORDER BY position, name COLLATE NOCASE").all(),
     env.DB.prepare("SELECT member_id AS memberId, group_id AS groupId FROM member_group_members").all(),
     getAdminSession(request, env),
@@ -432,6 +549,7 @@ async function state(request, env) {
     `).bind(adminSession.sessionId).first()
     : null;
   return json({
+    ledger: env.LEDGER || { slug: "chill-guys", name: "Chill guys" },
     members,
     groups,
     expenses: expensesResult.results.map((expense) => ({
@@ -455,6 +573,7 @@ async function state(request, env) {
       ? JSON.parse(settingsResult.valueJson)
       : DEFAULT_COLUMN_WIDTHS,
     fontSize: fontSizeResult ? Number(fontSizeResult.valueJson) : DEFAULT_FONT_SIZE,
+    qrSize: qrSizeResult ? Number(qrSizeResult.valueJson) : DEFAULT_QR_SIZE,
   });
 }
 
@@ -495,10 +614,154 @@ async function routeApi(request, env) {
   }
 
   const admin = await isAdmin(request, env);
+  const ledgerManagementMatch = path.match(/^\/api\/admin\/ledgers\/([a-z0-9-]+)$/);
+  if ((path === "/api/admin/ledgers" && ["GET", "POST"].includes(method)) ||
+      (ledgerManagementMatch && method === "DELETE")) {
+    if (!admin) return error("Chỉ Admin đã đăng nhập mới được quản lý sổ.", 401);
+    if (path === "/api/admin/ledgers" && method === "GET") {
+      const result = await env.DB.prepare(`
+        SELECT id, slug, name, created_at AS createdAt,
+               (delete_password_salt IS NOT NULL AND delete_password_hash IS NOT NULL)
+                 AS hasDeletePassword
+        FROM ledgers ORDER BY created_at, rowid
+      `).all();
+      return json({ ledgers: result.results });
+    }
+
+    if (method === "POST") {
+      if (!await rateLimit(request, env, "create-ledger", 20, 60 * 60 * 1000)) {
+        return error("Đã vượt giới hạn tạo sổ. Hãy thử lại sau.", 429);
+      }
+
+      const body = await readJson(request);
+      if (!validName(body.name)) return error("Tên sổ cần có từ 1 đến 80 ký tự.");
+      if (typeof body.deletePassword !== "string" ||
+          body.deletePassword.length < 8 || body.deletePassword.length > 128) {
+        return error("Mật khẩu xóa sổ cần có từ 8 đến 128 ký tự.");
+      }
+      const name = body.name.trim();
+      const slug = makeLedgerSlug(name);
+      if (!slug) return error("Tên sổ cần chứa ít nhất một ký tự chữ hoặc số.");
+      const existing = await env.DB.prepare(
+        "SELECT id FROM ledgers WHERE slug = ?",
+      ).bind(slug).first();
+      if (existing) return error("Tên này đã được dùng để tạo link sổ khác.", 409);
+
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const ledger = {
+        id: crypto.randomUUID().replace(/-/g, ""),
+        slug,
+        name,
+        deletePasswordSalt: encodeBase64Url(salt),
+        deletePasswordHash: await hashLedgerDeletePassword(body.deletePassword, salt),
+      };
+      await env.DB.prepare(`
+        INSERT INTO ledgers (id, slug, name, delete_password_salt, delete_password_hash)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(
+        ledger.id,
+        ledger.slug,
+        ledger.name,
+        ledger.deletePasswordSalt,
+        ledger.deletePasswordHash,
+      ).run();
+      try {
+        await copyLedgerSchema(env.DB, ledger.id);
+      } catch (caught) {
+        await env.DB.prepare("DELETE FROM ledgers WHERE id = ?").bind(ledger.id).run();
+        throw caught;
+      }
+      return json({ ledger: { id: ledger.id, slug: ledger.slug, name: ledger.name } }, 201);
+    }
+
+    if (!await rateLimit(request, env, "delete-ledger", 10, 15 * 60 * 1000)) {
+      return error("Đã vượt giới hạn xóa sổ. Hãy thử lại sau.", 429);
+    }
+    const slug = decodeURIComponent(ledgerManagementMatch[1]);
+    const ledger = await env.DB.prepare(`
+      SELECT id, slug, delete_password_salt AS deletePasswordSalt,
+             delete_password_hash AS deletePasswordHash
+      FROM ledgers WHERE slug = ?
+    `).bind(slug).first();
+    if (!ledger) return error("Không tìm thấy sổ chi tiêu.", 404);
+    if (ledger.id === "default") {
+      return error("Sổ Chill guys hiện tại được bảo vệ và không thể xóa.", 403);
+    }
+    const hasDeletePasswordSalt = Boolean(ledger.deletePasswordSalt);
+    const hasDeletePasswordHash = Boolean(ledger.deletePasswordHash);
+    if (hasDeletePasswordSalt !== hasDeletePasswordHash) {
+      return error("Cấu hình mật khẩu xóa sổ không hợp lệ.", 500);
+    }
+    if (hasDeletePasswordSalt) {
+      const body = await readJson(request);
+      if (typeof body.password !== "string" || body.password.length === 0) {
+        return error("Nhập mật khẩu đã đặt khi tạo sổ.");
+      }
+      let suppliedHash;
+      try {
+        suppliedHash = await hashLedgerDeletePassword(
+          body.password,
+          decodeBase64Url(ledger.deletePasswordSalt),
+        );
+      } catch {
+        return error("Không thể xác thực mật khẩu xóa sổ.", 500);
+      }
+      if (!await secureEqual(suppliedHash, ledger.deletePasswordHash)) {
+        return error("Mật khẩu xóa sổ không đúng.", 401);
+      }
+    }
+
+    const prefix = ledgerTablePrefix(ledger.id);
+    const objects = await env.DB.prepare(`
+      SELECT type, name FROM sqlite_master
+      WHERE type IN ('table', 'index', 'trigger')
+        AND substr(name, 1, length(?)) = ?
+    `).bind(prefix, prefix).all();
+    const tableDropOrder = [
+      "admin_session_store_auth",
+      "audit_session_anchor",
+      "audit_sessions",
+      "history_points",
+      "expense_participants",
+      "payment_adjustments",
+      "payments",
+      "member_group_members",
+      "expenses",
+      "member_groups",
+      "members",
+      "app_settings",
+      "audit_log",
+      "rate_limits",
+    ];
+    const tables = objects.results
+      .filter((object) => object.type === "table")
+      .sort((left, right) =>
+        tableDropOrder.indexOf(left.name.slice(prefix.length)) -
+        tableDropOrder.indexOf(right.name.slice(prefix.length)),
+      );
+    if (tables.length !== LEDGER_SCHEMA_TABLES.length ||
+        tables.some((table) => !LEDGER_SCHEMA_TABLES.includes(table.name.slice(prefix.length)))) {
+      return error("Schema sổ không hợp lệ; không xóa được an toàn.", 500);
+    }
+    await env.DB.batch([
+      ...objects.results
+        .filter((object) => object.type === "trigger" || object.type === "index")
+        .map((object) => env.DB.prepare(
+          `DROP ${object.type.toUpperCase()} IF EXISTS "${object.name.replace(/"/g, '""')}"`,
+        )),
+      ...tables.map((table) => env.DB.prepare(
+        `DROP TABLE IF EXISTS "${table.name.replace(/"/g, '""')}"`,
+      )),
+      env.DB.prepare("DELETE FROM ledgers WHERE id = ? AND slug = ?").bind(ledger.id, ledger.slug),
+    ]);
+    return json({ deleted: true, slug: ledger.slug });
+  }
+
   const adminOnly = new Set([
     "POST /api/members",
     "PUT /api/admin/payments/total",
     "PUT /api/admin/font-size",
+    "PUT /api/admin/qr-size",
     "POST /api/admin/history-points",
     "POST /api/admin/member-groups",
   ]);
@@ -869,12 +1132,13 @@ async function routeApi(request, env) {
     if (!validColumnWidths(body)) {
       return error("Độ rộng cột không hợp lệ hoặc nằm ngoài giới hạn cho phép.");
     }
-    await env.DB.batch([
-      env.DB.prepare(`
-        INSERT INTO app_settings (key, value_json) VALUES ('column-widths', ?)
+    const settingsDB = env.GLOBAL_DB || env.DB;
+    await settingsDB.batch([
+      settingsDB.prepare(`
+        INSERT INTO global_app_settings (key, value_json) VALUES ('column-widths', ?)
         ON CONFLICT (key) DO UPDATE SET value_json = excluded.value_json
       `).bind(JSON.stringify(body)),
-      audit(env, "admin", "configure", "settings", "column-widths", null, body),
+      audit({ ...env, DB: settingsDB }, "admin", "configure", "settings", "column-widths", null, body),
     ]);
     return json({ columnWidths: body });
   }
@@ -884,14 +1148,31 @@ async function routeApi(request, env) {
     if (!Number.isSafeInteger(body.fontSize) || body.fontSize < 75 || body.fontSize > 200) {
       return error("Cỡ chữ phải nằm trong khoảng 75% đến 200%.");
     }
-    await env.DB.batch([
-      env.DB.prepare(`
-        INSERT INTO app_settings (key, value_json) VALUES ('font-size', ?)
+    const settingsDB = env.GLOBAL_DB || env.DB;
+    await settingsDB.batch([
+      settingsDB.prepare(`
+        INSERT INTO global_app_settings (key, value_json) VALUES ('font-size', ?)
         ON CONFLICT (key) DO UPDATE SET value_json = excluded.value_json
       `).bind(String(body.fontSize)),
-      audit(env, "admin", "configure", "settings", "font-size", null, { fontSize: body.fontSize }),
+      audit({ ...env, DB: settingsDB }, "admin", "configure", "settings", "font-size", null, { fontSize: body.fontSize }),
     ]);
     return json({ fontSize: body.fontSize });
+  }
+
+  if (method === "PUT" && path === "/api/admin/qr-size") {
+    const body = await readJson(request);
+    if (!Number.isSafeInteger(body.qrSize) || body.qrSize < 80 || body.qrSize > 1600) {
+      return error("Kích thước ảnh QR phải nằm trong khoảng 80px đến 1600px.");
+    }
+    const settingsDB = env.GLOBAL_DB || env.DB;
+    await settingsDB.batch([
+      settingsDB.prepare(`
+        INSERT INTO global_app_settings (key, value_json) VALUES ('qr-size', ?)
+        ON CONFLICT (key) DO UPDATE SET value_json = excluded.value_json
+      `).bind(String(body.qrSize)),
+      audit({ ...env, DB: settingsDB }, "admin", "configure", "settings", "qr-size", null, { qrSize: body.qrSize }),
+    ]);
+    return json({ qrSize: body.qrSize });
   }
 
   if (method === "PUT" && path === "/api/admin/payments/total") {
@@ -1174,7 +1455,45 @@ export default {
   async fetch(request, env) {
     try {
       const url = new URL(request.url);
-      if (url.pathname.startsWith("/api/")) return await handleApi(request, env);
+      if (url.pathname.startsWith("/api/")) {
+        if (/^\/api\/admin\/ledgers(?:\/[a-z0-9-]+)?$/.test(url.pathname)) {
+          return await handleApi(request, env);
+        }
+
+        const scopedMatch = url.pathname.match(/^\/api\/g\/([a-z0-9-]+)(\/.*)$/);
+        if (scopedMatch) {
+          const ledger = await env.DB.prepare(
+            "SELECT id, slug, name FROM ledgers WHERE slug = ?",
+          ).bind(scopedMatch[1]).first();
+          if (!ledger) return error("Không tìm thấy sổ chi tiêu.", 404);
+          const scopedUrl = new URL(request.url);
+          scopedUrl.pathname = `/api${scopedMatch[2]}`;
+          const scopedRequest = new Request(scopedUrl, request);
+          const scopedEnv = {
+            ...env,
+            DB: scopedMatch[2] === "/admin/login"
+              ? env.DB
+              : ledgerDatabase(env.DB, ledger.id),
+            GLOBAL_DB: env.DB,
+            LEDGER: { slug: ledger.slug, name: ledger.name },
+          };
+          return await handleApi(scopedRequest, scopedEnv);
+        }
+
+        const defaultEnv = {
+          ...env,
+          DB: ledgerDatabase(env.DB, "default"),
+          GLOBAL_DB: env.DB,
+          LEDGER: { slug: "chill-guys", name: "Chill guys" },
+        };
+        return await handleApi(request, defaultEnv);
+      }
+
+      if (/^\/g\/[a-z0-9-]+\/?$/.test(url.pathname)) {
+        const assetUrl = new URL(request.url);
+        assetUrl.pathname = "/";
+        return await env.ASSETS.fetch(new Request(assetUrl, request));
+      }
       return await env.ASSETS.fetch(request);
     } catch (caught) {
       if (!(caught instanceof ApiError)) console.error("Request failed", caught);

@@ -4,20 +4,36 @@ import worker from "../worker/index.js";
 
 const DEFAULT_COLUMN_WIDTHS = {
   expense: {
-    payer: 110,
+    payer: 100,
     date: 110,
-    description: 145,
-    amount: 100,
-    member: 80,
-    count: 52,
-    avg: 94,
+    description: 180,
+    amount: 60,
+    member: 60,
+    count: 70,
+    avg: 80,
     actions: 68,
   },
   summary: {
     label: 120,
-    member: 130,
+    member: 100,
   },
 };
+const LEDGER_SCHEMA_TABLES = [
+  "members",
+  "expenses",
+  "expense_participants",
+  "payments",
+  "audit_log",
+  "rate_limits",
+  "app_settings",
+  "payment_adjustments",
+  "history_points",
+  "member_groups",
+  "member_group_members",
+  "audit_sessions",
+  "audit_session_anchor",
+  "admin_session_store_auth",
+];
 
 class MockStatement {
   constructor(database, sql) {
@@ -36,11 +52,19 @@ class MockStatement {
       this.database.rateLimitHits += 1;
       return { hit_count: this.database.rateLimitHits };
     }
-    if (this.sql.includes("SELECT value_json AS valueJson FROM app_settings")) {
+    if (this.sql.includes("FROM ledgers WHERE slug = ?")) {
+      return this.database.ledgers.find((ledger) => ledger.slug === this.values[0]) || null;
+    }
+    if (this.sql.includes("SELECT value_json AS valueJson FROM global_app_settings")) {
       if (this.sql.includes("'font-size'")) {
         return this.database.fontSize === null
           ? null
           : { valueJson: String(this.database.fontSize) };
+      }
+      if (this.sql.includes("'qr-size'")) {
+        return this.database.qrSize === null
+          ? null
+          : { valueJson: String(this.database.qrSize) };
       }
       return { valueJson: JSON.stringify(this.database.columnWidths) };
     }
@@ -96,6 +120,21 @@ class MockStatement {
   }
 
   async all() {
+    if (this.sql.includes("FROM ledgers ORDER BY")) {
+      return { results: this.database.ledgers.map((ledger) => ({
+        id: ledger.id,
+        slug: ledger.slug,
+        name: ledger.name,
+        hasDeletePassword: Boolean(ledger.deletePasswordSalt && ledger.deletePasswordHash),
+      })) };
+    }
+    if (this.sql.includes("FROM sqlite_master")) {
+      const prefix = this.values[0];
+      return { results: LEDGER_SCHEMA_TABLES.map((table) => ({
+        type: "table",
+        name: `${prefix}${table}`,
+      })) };
+    }
     if (this.sql.includes("FROM audit_sessions ORDER BY")) {
       return { results: [...this.database.auditSessions].reverse().map((session) => ({
         id: session.id,
@@ -163,12 +202,31 @@ class MockStatement {
     }
     return { results: [] };
   }
+
+  async run() {
+    if (this.sql.includes("UPDATE ledgers")) {
+      const ledger = this.database.ledgers.find((item) =>
+        item.id === this.values[2] && item.slug === this.values[3],
+      );
+      if (ledger) {
+        ledger.deletePasswordSalt = this.values[0];
+        ledger.deletePasswordHash = this.values[1];
+      }
+      return { meta: { changes: ledger ? 1 : 0 } };
+    }
+    return { meta: { changes: 0 } };
+  }
 }
 
 class MockDatabase {
   columnWidths = DEFAULT_COLUMN_WIDTHS;
-  fontSize = 100;
+  fontSize = 90;
+  qrSize = 250;
   rateLimitHits = 0;
+  ledgers = [
+    { id: "default", slug: "chill-guys", name: "Chill guys" },
+    { id: "a".repeat(32), slug: "legacy-ledger", name: "Sổ cũ" },
+  ];
   members = [
     { id: "member-1", name: "Thành viên 1", position: 0 },
     { id: "member-2", name: "Thành viên 2", position: 1 },
@@ -248,12 +306,19 @@ class MockDatabase {
         continue;
       }
       results.push({});
-      if (statement.sql.includes("INSERT INTO app_settings")) {
+      if (statement.sql.includes("INSERT INTO global_app_settings")) {
         if (statement.sql.includes("'font-size'")) {
           this.fontSize = Number(statement.values[0]);
+        } else if (statement.sql.includes("'qr-size'")) {
+          this.qrSize = Number(statement.values[0]);
         } else {
           this.columnWidths = JSON.parse(statement.values[0]);
         }
+      }
+      if (statement.sql.includes("DELETE FROM ledgers WHERE id = ? AND slug = ?")) {
+        this.ledgers = this.ledgers.filter((ledger) =>
+          ledger.id !== statement.values[0] || ledger.slug !== statement.values[1],
+        );
       }
       if (statement.sql.includes("INSERT INTO payment_adjustments")) {
         this.adjustments.push({
@@ -447,6 +512,12 @@ test("column widths require Admin and persist for everyone", async () => {
   assert.equal(loginResponse.status, 200);
   const cookie = loginResponse.headers.get("set-cookie").split(";")[0];
 
+  const defaultStateResponse = await worker.fetch(request("/api/state"), env);
+  const defaultState = await defaultStateResponse.json();
+  assert.deepEqual(defaultState.columnWidths, DEFAULT_COLUMN_WIDTHS);
+  assert.equal(defaultState.fontSize, 90);
+  assert.equal(defaultState.qrSize, 250);
+
   const invalidWidths = {
     ...DEFAULT_COLUMN_WIDTHS,
     expense: { ...DEFAULT_COLUMN_WIDTHS.expense, payer: 2001 },
@@ -606,6 +677,142 @@ test("font size is admin-only, range-checked, and shared through state", async (
 
   const stateResponse = await worker.fetch(request("/api/state"), env);
   assert.equal((await stateResponse.json()).fontSize, 150);
+});
+
+test("QR image size is admin-only, range-checked, and shared through state", async () => {
+  const DB = new MockDatabase();
+  const env = {
+    DB,
+    ADMIN_USERNAME: "admin",
+    ADMIN_PASSWORD: "secret",
+    ADMIN_SESSION_SECRET: "a-long-session-secret-for-tests",
+  };
+  const request = (path, { method = "GET", body, cookie } = {}) => new Request(
+    `https://example.test${path}`,
+    {
+      method,
+      headers: {
+        ...(body ? { "content-type": "application/json" } : {}),
+        ...(cookie ? { cookie } : {}),
+        ...(method === "GET" ? {} : { origin: "https://example.test" }),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    },
+  );
+
+  const guestResponse = await worker.fetch(request("/api/admin/qr-size", {
+    method: "PUT",
+    body: { qrSize: 600 },
+  }), env);
+  assert.equal(guestResponse.status, 401);
+
+  const loginResponse = await worker.fetch(request("/api/admin/login", {
+    method: "POST",
+    body: { username: "admin", password: "secret" },
+  }), env);
+  const cookie = loginResponse.headers.get("set-cookie").split(";")[0];
+
+  const invalidResponse = await worker.fetch(request("/api/admin/qr-size", {
+    method: "PUT",
+    body: { qrSize: 1601 },
+    cookie,
+  }), env);
+  assert.equal(invalidResponse.status, 400);
+
+  const saveResponse = await worker.fetch(request("/api/g/legacy-ledger/admin/qr-size", {
+    method: "PUT",
+    body: { qrSize: 600 },
+    cookie,
+  }), env);
+  assert.equal(saveResponse.status, 200);
+  assert.equal(DB.qrSize, 600);
+
+  const stateResponse = await worker.fetch(request("/api/g/chill-guys/state"), env);
+  assert.equal((await stateResponse.json()).qrSize, 600);
+});
+
+test("legacy ledgers without a delete password can be deleted without one; default remains protected", async () => {
+  const DB = new MockDatabase();
+  const salt = new Uint8Array(16).fill(7);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode("configured-password"),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const passwordBits = await crypto.subtle.deriveBits({
+    name: "PBKDF2",
+    hash: "SHA-256",
+    salt,
+    iterations: 120_000,
+  }, key, 256);
+  DB.ledgers.push({
+    id: "b".repeat(32),
+    slug: "protected-ledger",
+    name: "Sổ có mật khẩu",
+    deletePasswordSalt: Buffer.from(salt).toString("base64url"),
+    deletePasswordHash: Buffer.from(passwordBits).toString("base64url"),
+  });
+  const env = {
+    DB,
+    ADMIN_USERNAME: "admin",
+    ADMIN_PASSWORD: "secret",
+    ADMIN_SESSION_SECRET: "a-long-session-secret-for-tests",
+  };
+  const request = (path, { method = "GET", body, cookie } = {}) => new Request(
+    `https://example.test${path}`,
+    {
+      method,
+      headers: {
+        ...(body ? { "content-type": "application/json" } : {}),
+        ...(cookie ? { cookie } : {}),
+        ...(method === "GET" ? {} : { origin: "https://example.test" }),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    },
+  );
+  const path = "/api/admin/ledgers/legacy-ledger";
+  const guestResponse = await worker.fetch(request(path, { method: "DELETE" }), env);
+  assert.equal(guestResponse.status, 401);
+
+  const loginResponse = await worker.fetch(request("/api/admin/login", {
+    method: "POST",
+    body: { username: "admin", password: "secret" },
+  }), env);
+  const cookie = loginResponse.headers.get("set-cookie").split(";")[0];
+
+  const defaultResponse = await worker.fetch(request("/api/admin/ledgers/chill-guys", {
+    method: "DELETE",
+    cookie,
+  }), env);
+  assert.equal(defaultResponse.status, 403);
+
+  const deleteResponse = await worker.fetch(request(path, {
+    method: "DELETE",
+    cookie,
+  }), env);
+  assert.equal(deleteResponse.status, 200);
+  assert.deepEqual(await deleteResponse.json(), { deleted: true, slug: "legacy-ledger" });
+  assert.equal(DB.ledgers.some((ledger) => ledger.slug === "legacy-ledger"), false);
+
+  const missingPasswordResponse = await worker.fetch(request("/api/admin/ledgers/protected-ledger", {
+    method: "DELETE",
+    cookie,
+  }), env);
+  assert.equal(missingPasswordResponse.status, 400);
+  const wrongPasswordResponse = await worker.fetch(request("/api/admin/ledgers/protected-ledger", {
+    method: "DELETE",
+    body: { password: "incorrect-password" },
+    cookie,
+  }), env);
+  assert.equal(wrongPasswordResponse.status, 401);
+  const correctPasswordResponse = await worker.fetch(request("/api/admin/ledgers/protected-ledger", {
+    method: "DELETE",
+    body: { password: "configured-password" },
+    cookie,
+  }), env);
+  assert.equal(correctPasswordResponse.status, 200);
 });
 
 test("the admin-managed member list is the only member list and only Admin can edit it", async () => {

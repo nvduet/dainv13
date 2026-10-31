@@ -9,23 +9,26 @@ const state = {
   storePasswordVerified: false,
   historyPoints: [],
   auditSessions: [],
+  ledger: { slug: "chill-guys", name: "Chill guys" },
+  ledgers: [],
+  qrSize: 250,
 };
 
 let editingGroupId = null;
 const DEFAULT_COLUMN_WIDTHS = {
   expense: {
-    payer: 110,
+    payer: 100,
     date: 110,
-    description: 145,
-    amount: 100,
-    member: 80,
-    count: 52,
-    avg: 94,
+    description: 180,
+    amount: 60,
+    member: 60,
+    count: 70,
+    avg: 80,
     actions: 68,
   },
   summary: {
     label: 120,
-    member: 130,
+    member: 100,
   },
 };
 
@@ -83,6 +86,8 @@ const actionDialog = document.querySelector("#action-dialog");
 const viNumber = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 });
 let noticeTimer;
 let resolveActionDialog;
+
+document.querySelector("#notice-close").addEventListener("click", hideNotice);
 
 function showActionDialog({ title, message = "", inputLabel = "", initialValue = "", inputType = "text", preserveInput = false, confirmLabel = "Xác nhận", danger = false }) {
   document.querySelector("#action-dialog-title").textContent = title;
@@ -191,10 +196,17 @@ function formatAverageThousand(amountVnd, count) {
 
 function showNotice(message, kind = "success") {
   clearTimeout(noticeTimer);
-  notice.textContent = message;
+  document.querySelector("#notice-message").textContent = message;
   notice.className = `notice ${kind}`;
+  notice.setAttribute("role", kind === "error" ? "alert" : "status");
+  notice.setAttribute("aria-live", kind === "error" ? "assertive" : "polite");
   notice.hidden = false;
-  noticeTimer = setTimeout(() => { notice.hidden = true; }, 6000);
+  noticeTimer = setTimeout(hideNotice, 6000);
+}
+
+function hideNotice() {
+  clearTimeout(noticeTimer);
+  notice.hidden = true;
 }
 
 function setButtonLoading(button, label) {
@@ -212,7 +224,12 @@ function setButtonLoading(button, label) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {
+  const activeLedger = window.location.pathname.match(/^\/g\/([a-z0-9-]+)\/?$/);
+  const isGlobalLedgerManagement = /^\/api\/admin\/ledgers(?:\/[a-z0-9-]+)?$/.test(path);
+  const requestPath = activeLedger && !isGlobalLedgerManagement
+    ? `/api/g/${activeLedger[1]}${path.slice("/api".length)}`
+    : path;
+  const response = await fetch(requestPath, {
     ...options,
     headers: {
       ...(options.body ? { "content-type": "application/json" } : {}),
@@ -280,6 +297,11 @@ function renderHeader() {
   document.querySelector("#logout-button").hidden = !state.isAdmin;
   document.querySelector("#column-width-details").hidden = !state.isAdmin;
   document.querySelector("#admin-panel").hidden = !state.isAdmin;
+  document.querySelector("#ledger-name").textContent = state.ledger.name;
+  const brand = document.querySelector(".brand");
+  brand.href = `/g/${encodeURIComponent(state.ledger.slug)}`;
+  brand.setAttribute("aria-label", `${state.ledger.name} - Trang chủ`);
+  document.title = `${state.ledger.name} · Expense`;
 }
 
 const autoSaveTimers = new WeakMap();
@@ -644,6 +666,7 @@ async function savePaidTransferTotal(input, { keepalive = false } = {}) {
 
 async function loadState() {
   const data = await api("/api/state");
+  state.ledger = data.ledger;
   state.members = data.members;
   state.groups = data.groups;
   state.expenses = data.expenses;
@@ -651,12 +674,40 @@ async function loadState() {
   state.isAdmin = data.isAdmin;
   state.storePasswordVerified = data.storePasswordVerified;
   columnWidths = data.columnWidths;
+  state.qrSize = data.qrSize;
   document.querySelector("#font-size-percent").value = data.fontSize;
+  document.querySelector("#qr-size-pixels").value = state.qrSize;
   document.documentElement.style.setProperty("--font-scale", String(data.fontSize / 100));
+  document.documentElement.style.setProperty("--qr-image-size", `${state.qrSize}px`);
   renderColumnWidths();
   render();
-  if (state.isAdmin) await loadHistoryPoints();
-  else document.querySelector("#history-points").textContent = "";
+  if (state.isAdmin) {
+    await Promise.all([loadHistoryPoints(), loadLedgers(), loadAudit()]);
+  } else {
+    document.querySelector("#history-points").textContent = "";
+    document.querySelector("#ledger-list").textContent = "";
+    document.querySelector("#audit-list").textContent = "";
+  }
+}
+
+async function loadLedgers() {
+  try {
+    const data = await api("/api/admin/ledgers");
+    state.ledgers = data.ledgers;
+    document.querySelector("#ledger-list").innerHTML = state.ledgers.map((ledger) => `
+      <li>
+        <a href="/g/${encodeURIComponent(ledger.slug)}">${escapeHtml(ledger.name)}</a>
+        <span class="ledger-actions">
+          ${ledger.slug === state.ledger.slug ? "<strong>Đang mở</strong>" : ""}
+          ${ledger.slug === "chill-guys" ? "<span class=\"protected-ledger\">Mặc định · không thể xóa</span>" : `
+            <button class="icon-button delete" type="button" data-action="delete-ledger"
+              data-ledger-slug="${escapeHtml(ledger.slug)}" data-ledger-name="${escapeHtml(ledger.name)}"
+              aria-label="Xóa sổ ${escapeHtml(ledger.name)}" title="Xóa sổ">×</button>`}
+        </span>
+      </li>`).join("");
+  } catch (caught) {
+    document.querySelector("#ledger-list").textContent = `Không tải được danh sách sổ: ${caught.message}`;
+  }
 }
 
 async function loadHistoryPoints() {
@@ -702,6 +753,38 @@ async function handleClick(event) {
       editingGroupId = null;
       await loadState();
       showNotice("Đã xóa nhóm.");
+      return;
+    }
+    if (action === "delete-ledger") {
+      const { ledgerSlug, ledgerName } = button.dataset;
+      const ledger = state.ledgers.find((item) => item.slug === ledgerSlug);
+      const password = ledger?.hasDeletePassword
+        ? await showActionDialog({
+          title: `Xóa sổ "${ledgerName}"?`,
+          message: "Thao tác này xóa vĩnh viễn thành viên, khoản chi, nhóm, nhật ký, cấu hình và các điểm Store. Nhập mật khẩu đã đặt để xác nhận.",
+          inputLabel: "Mật khẩu xóa sổ",
+          inputType: "password",
+          preserveInput: true,
+          confirmLabel: "Xóa vĩnh viễn",
+          danger: true,
+        })
+        : await showActionDialog({
+          title: `Xóa sổ "${ledgerName}"?`,
+          message: "Sổ này chưa có mật khẩu xóa. Xác nhận sẽ xóa vĩnh viễn thành viên, khoản chi, nhóm, nhật ký, cấu hình và các điểm Store.",
+          confirmLabel: "Xóa vĩnh viễn",
+          danger: true,
+        });
+      if (password === null) return;
+      await api(`/api/admin/ledgers/${encodeURIComponent(ledgerSlug)}`, {
+        method: "DELETE",
+        ...(ledger?.hasDeletePassword ? { body: JSON.stringify({ password }) } : {}),
+      });
+      if (ledgerSlug === state.ledger.slug) {
+        window.location.assign("/g/chill-guys");
+        return;
+      }
+      await loadLedgers();
+      showNotice(`Đã xóa sổ "${ledgerName}".`);
       return;
     }
     if (action === "audit-session-diff") {
@@ -835,6 +918,18 @@ async function handleSubmit(event) {
   event.preventDefault();
   let resetLoginLoading;
   try {
+    if (form.id === "ledger-form") {
+      const name = document.querySelector("#new-ledger-name").value;
+      const deletePassword = document.querySelector("#new-ledger-password").value;
+      const data = await api("/api/admin/ledgers", {
+        method: "POST",
+        body: JSON.stringify({ name, deletePassword }),
+      });
+      form.reset();
+      await loadLedgers();
+      showNotice(`Đã tạo sổ "${data.ledger.name}". Link: ${window.location.origin}/g/${data.ledger.slug}`);
+      return;
+    }
     if (form.id === "member-form") {
       const name = new FormData(form).get("name");
       await api("/api/members", { method: "POST", body: JSON.stringify({ name }) });
@@ -888,6 +983,7 @@ async function handleSubmit(event) {
       document.querySelector("#login-error").textContent = "";
       document.querySelector("#history-points").textContent = "Đang tải điểm khôi phục…";
       void loadHistoryPoints();
+      void loadLedgers();
       showNotice("Đăng nhập Admin thành công.");
       return;
     }
@@ -1157,18 +1253,18 @@ document.querySelector("#logout-button").addEventListener("click", async () => {
     state.storePasswordVerified = false;
     state.historyPoints = [];
     state.auditSessions = [];
+    state.ledgers = [];
     renderHeader();
     renderSummary();
     document.querySelector("#history-points").textContent = "";
+    document.querySelector("#ledger-list").textContent = "";
+    document.querySelector("#audit-list").textContent = "";
     showNotice("Đã đăng xuất.");
   } catch (caught) {
     showNotice(caught.message, "error");
   } finally {
     resetLoading();
   }
-});
-document.querySelector("#audit-details").addEventListener("toggle", (event) => {
-  if (event.target.open) loadAudit();
 });
 window.addEventListener("pagehide", () => {
   for (const row of document.querySelectorAll("#expense-body tr[data-expense-id]")) {
@@ -1248,6 +1344,26 @@ document.querySelector("#apply-font-size").addEventListener("click", async () =>
     document.documentElement.style.setProperty("--font-scale", String(fontSize / 100));
     input.value = fontSize;
     showNotice("Đã lưu cỡ chữ giao diện.");
+  } catch (caught) {
+    showNotice(caught.message, "error");
+  }
+});
+
+document.querySelector("#apply-qr-size").addEventListener("click", async () => {
+  const input = document.querySelector("#qr-size-pixels");
+  if (!input.checkValidity()) {
+    showNotice("Kích thước ảnh QR phải nằm trong khoảng 80px đến 1600px.", "error");
+    return;
+  }
+  try {
+    const { qrSize } = await api("/api/admin/qr-size", {
+      method: "PUT",
+      body: JSON.stringify({ qrSize: input.valueAsNumber }),
+    });
+    state.qrSize = qrSize;
+    input.value = qrSize;
+    document.documentElement.style.setProperty("--qr-image-size", `${qrSize}px`);
+    showNotice("Đã lưu kích thước ảnh QR.");
   } catch (caught) {
     showNotice(caught.message, "error");
   }

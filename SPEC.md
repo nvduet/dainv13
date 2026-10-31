@@ -12,13 +12,15 @@ Khởi tạo dữ liệu từ tab **Detail** trong workbook tham chiếu: danh s
 
 ## 2. Phạm vi MVP
 
-- Một sổ chi tiêu chung, không tách thành từng buổi đi; toàn bộ dòng chi nằm trong cùng bảng.
+- Một website quản lý nhiều sổ chi tiêu độc lập; mỗi sổ có link riêng, thành viên/khoản chi/nhóm thành viên/Store/nhật ký riêng. Cỡ chữ, kích thước QR và cấu hình độ rộng cột dùng chung cho mọi sổ. Sổ hiện hữu được giữ tại link `/g/chill-guys` và trang chủ vẫn mở sổ này.
 - Bảng 1: người chi, ngày, nội dung, chi phí, checkbox tham gia cho từng thành viên, số người chia và số tiền trung bình/người.
 - Bảng 2: mỗi người, tổng chi phí họ chịu, tổng khoản họ trả thay, khoản họ đã nộp Admin, khoản Admin đã hoàn và số dư còn phải tất toán.
-- Người xem không cần tài khoản. Có thể thêm/sửa/xóa khoản chi và chọn/bỏ chọn người tham gia. Chỉ Admin được thêm, đổi tên hoặc xóa thành viên; danh sách này được dùng cho các cột ở bảng chi và bảng tổng hợp.
+- Người xem không cần tài khoản. Trên từng sổ, khách có thể thêm/sửa/xóa khoản chi và chọn/bỏ chọn người tham gia. Chỉ Admin chung được thêm, đổi tên hoặc xóa thành viên của sổ đang mở.
+- Admin dùng một tài khoản chung để tạo và truy cập mọi sổ; mỗi link trỏ tới dữ liệu riêng. Sổ mới có mật khẩu xóa riêng; xóa sổ cần Admin và mật khẩu đó. Sổ cũ chưa có mật khẩu chỉ cần Admin xác nhận xóa. Sổ Chill guys mặc định không thể xóa.
 - Các giao dịch nộp/hoàn đã xác nhận từ dữ liệu lịch sử vẫn được tính vào số dư; giao diện hiện tại không tạo yêu cầu nộp hoặc ghi nhận khoản hoàn mới.
-- Admin đăng nhập để tùy chỉnh và lưu độ rộng mọi vai trò cột trên cả bảng chi (kể cả ngày) và bảng tổng hợp. Các cột thành viên có cùng vai trò dùng chung cấu hình; cấu hình được dùng chung cho mọi khách truy cập.
+- Admin đăng nhập để tùy chỉnh và lưu độ rộng mọi vai trò cột trên cả bảng chi (kể cả ngày) và bảng tổng hợp. Các cột thành viên có cùng vai trò dùng chung cấu hình; một cấu hình áp dụng cho tất cả sổ và khách truy cập.
 - Admin đăng nhập để chỉnh cỡ chữ toàn giao diện (75%–200%); giá trị được lưu chung trong D1 và áp dụng cho tất cả người truy cập.
+- Admin đăng nhập để cấu hình chiều rộng tối đa ảnh QR (80px–1600px); một giá trị được chia sẻ cho tất cả sổ.
 - Thêm khoản chi tạo ngay một dòng nháp được lưu trong D1. Mỗi thay đổi trường (bao gồm ngày) hoặc checkbox được tự lưu riêng, không cần hoàn thiện toàn bộ dòng; Summary tính độc lập theo các trường đã nhập, xem số tiền trống là 0. Số tiền khoản chi có thể dương hoặc âm.
 - Admin có thể tạo và khôi phục tối đa 50 điểm lưu gần nhất. Điểm lưu gồm dữ liệu cần thiết để phục hồi Detail và Summary (thành viên, khoản chi/ngày/người tham gia, khoản nộp/hoàn và điều chỉnh), không gồm cấu hình giao diện hoặc nhật ký. Khôi phục cần xác nhận, giữ cấu hình và nhật ký hiện tại.
 - Mỗi Store bắt buộc có lời nhắn tối đa 200 ký tự; Admin nhập mật khẩu khôi phục riêng ở lần Store đầu tiên của phiên đăng nhập, các lần Store sau trong cùng phiên không hỏi lại. Khôi phục luôn yêu cầu mật khẩu này.
@@ -28,13 +30,13 @@ Khởi tạo dữ liệu từ tab **Detail** trong workbook tham chiếu: danh s
 - Trong chế độ Admin, nút **Done** ở hàng cuối bảng tổng hợp đặt tổng đã chuyển khoản bằng `Tiền phải chịu - Đã chi` cho thành viên tương ứng, thông qua bút toán điều chỉnh có audit.
 - Giao diện responsive, báo lỗi/lưu thành công rõ ràng; xóa khoản chi thực hiện ngay, còn thao tác xóa thành viên có hộp thoại xác nhận.
 
-Ngoài phạm vi: tích hợp chuyển khoản ngân hàng, nhiều loại tiền, tài khoản riêng từng thành viên, chi phí chia theo tỷ lệ/tùy ý, nhập hóa đơn bằng ảnh, nhiều sổ/nhóm.
+Ngoài phạm vi: tích hợp chuyển khoản ngân hàng, nhiều loại tiền, tài khoản riêng từng thành viên, chi phí chia theo tỷ lệ/tùy ý, nhập hóa đơn bằng ảnh.
 
 ## 3. Quyền truy cập và cảnh báo công khai
 
 - **Khách:** đọc toàn bộ dữ liệu công khai; được tạo/sửa/xóa khoản chi và chọn/bỏ chọn người tham gia.
 - **Admin:** đăng nhập; có toàn quyền với khoản chi và danh sách thành viên gốc, đồng thời chỉnh tổng tiền chuyển khoản qua bút toán điều chỉnh.
-- Website và API đọc công khai. Khách có thể sửa dữ liệu từ Internet; bất kỳ ai biết địa chỉ website đều có thể phá hoại hoặc xóa dữ liệu. Kiểm tra dữ liệu, giới hạn tần suất và nhật ký thay đổi chỉ giảm thiệt hại, không xác thực người sửa. Cần cân nhắc rủi ro và sao lưu trước khi mở website công khai.
+- Website và API đọc công khai. Khách có thể sửa dữ liệu trong sổ tương ứng từ Internet; bất kỳ ai biết link đều có thể phá hoại hoặc xóa dữ liệu của sổ đó. Link riêng chỉ phân tách dữ liệu, không phải mật khẩu. Kiểm tra dữ liệu, giới hạn tần suất và nhật ký thay đổi chỉ giảm thiệt hại, không xác thực người sửa. Cần cân nhắc rủi ro và sao lưu trước khi mở website công khai.
 
 ## 4. Quy tắc dữ liệu và tiền
 
@@ -74,7 +76,8 @@ Ngoài phạm vi: tích hợp chuyển khoản ngân hàng, nhiều loại tiề
 - Tab Detail được khởi tạo với các thành viên và khoản chi có dữ liệu; giá trị nghìn đồng đã được chuyển sang đồng nguyên.
 - Có thể nhập, sửa, xóa khoản chi và chọn nhiều người tham gia; số người/phần chia tự tính đúng.
 - Tổng các phần chịu luôn bằng số tiền khoản chi; số dư mỗi người khớp công thức tại mục 4 và tổng nộp/hoàn được tính đúng.
-- Khách chưa đăng nhập có thể sửa khoản chi nhưng không thể quản lý thành viên hoặc cấu hình.
+- Khách chưa đăng nhập có thể sửa khoản chi của sổ đang mở nhưng không thể quản lý thành viên, sổ hoặc cấu hình.
+- Admin có thể tạo nhiều sổ với link riêng; dữ liệu, cấu hình, Store và nhật ký của từng sổ độc lập, và người có link không thể đọc hoặc sửa sổ khác bằng cách thay URL.
 - Admin có thể đăng nhập và quản lý danh sách thành viên.
 - Admin có thể cấu hình độ rộng mọi cột theo vai trò, kể cả Date, áp dụng cấu hình cho mọi người dùng và đặt lại mặc định; các cột thành viên cùng vai trò dùng chung độ rộng và số lượng cột được hiển thị; khách chưa đăng nhập không thể lưu thay đổi.
 - Admin có thể cấu hình cỡ chữ, áp dụng ngay và dùng chung cho tất cả khách; thao tác nhập tên/xóa dùng hộp thoại giao diện, không dùng prompt/confirm của trình duyệt.
