@@ -194,14 +194,14 @@ function formatAverageThousand(amountVnd, count) {
   return (amountVnd / count / 1000).toLocaleString("vi-VN", { maximumFractionDigits: 0 });
 }
 
-function showNotice(message, kind = "success") {
+function showNotice(message, kind = "success", duration = kind === "error" ? 30000 : 6000) {
   clearTimeout(noticeTimer);
   document.querySelector("#notice-message").textContent = message;
   notice.className = `notice ${kind}`;
   notice.setAttribute("role", kind === "error" ? "alert" : "status");
   notice.setAttribute("aria-live", kind === "error" ? "assertive" : "polite");
   notice.hidden = false;
-  noticeTimer = setTimeout(hideNotice, 6000);
+  noticeTimer = setTimeout(hideNotice, duration);
 }
 
 function hideNotice() {
@@ -921,13 +921,19 @@ async function handleSubmit(event) {
     if (form.id === "ledger-form") {
       const name = document.querySelector("#new-ledger-name").value;
       const deletePassword = document.querySelector("#new-ledger-password").value;
-      const data = await api("/api/admin/ledgers", {
-        method: "POST",
-        body: JSON.stringify({ name, deletePassword }),
-      });
-      form.reset();
-      await loadLedgers();
-      showNotice(`Đã tạo sổ "${data.ledger.name}". Link: ${window.location.origin}/g/${data.ledger.slug}`);
+      const submitButton = form.querySelector('button[type="submit"]');
+      const resetLoading = setButtonLoading(submitButton, "Đang tạo sổ");
+      try {
+        const data = await api("/api/admin/ledgers", {
+          method: "POST",
+          body: JSON.stringify({ name, deletePassword }),
+        });
+        form.reset();
+        await loadLedgers();
+        showNotice(`Đã tạo sổ "${data.ledger.name}". Link: ${window.location.origin}/g/${data.ledger.slug}`);
+      } finally {
+        resetLoading();
+      }
       return;
     }
     if (form.id === "member-form") {

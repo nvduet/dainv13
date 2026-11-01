@@ -731,6 +731,109 @@ test("QR image size is admin-only, range-checked, and shared through state", asy
   assert.equal((await stateResponse.json()).qrSize, 600);
 });
 
+test("creating a ledger with an existing slug returns a conflict instead of a server error", async () => {
+  const DB = new MockDatabase();
+  DB.ledgers.push({
+    id: "c".repeat(32),
+    slug: "f4",
+    name: "F4",
+  });
+  const env = {
+    DB,
+    ADMIN_USERNAME: "admin",
+    ADMIN_PASSWORD: "secret",
+    ADMIN_SESSION_SECRET: "a-long-session-secret-for-tests",
+  };
+  const request = (path, { method = "GET", body, cookie } = {}) => new Request(
+    `https://example.test${path}`,
+    {
+      method,
+      headers: {
+        ...(body ? { "content-type": "application/json" } : {}),
+        ...(cookie ? { cookie } : {}),
+        ...(method === "GET" ? {} : { origin: "https://example.test" }),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    },
+  );
+  const loginResponse = await worker.fetch(request("/api/admin/login", {
+    method: "POST",
+    body: { username: "admin", password: "secret" },
+  }), env);
+  const cookie = loginResponse.headers.get("set-cookie").split(";")[0];
+
+  const response = await worker.fetch(request("/api/admin/ledgers", {
+    method: "POST",
+    body: { name: "F4", deletePassword: "temporary-f4-password" },
+    cookie,
+  }), env);
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), {
+    error: "Tên này đã được dùng để tạo link sổ khác.",
+  });
+});
+
+test("authenticated ledger creation errors include the technical cause", async () => {
+  const DB = new MockDatabase();
+  const originalPrepare = DB.prepare.bind(DB);
+  DB.prepare = (sql) => {
+    if (sql.includes("FROM sqlite_master")) {
+      return {
+        bind: () => ({
+          all: async () => ({
+            results: LEDGER_SCHEMA_TABLES.map((table) => ({
+              type: "table",
+              name: table,
+              sql: `CREATE TABLE ${table} (id TEXT)`,
+            })),
+          }),
+        }),
+      };
+    }
+    return originalPrepare(sql);
+  };
+  const originalBatch = DB.batch.bind(DB);
+  DB.batch = async (statements) => {
+    if (statements.some((statement) =>
+      statement.sql.includes("CREATE TABLE ledger_") && statement.sql.includes("_members"),
+    )) {
+      throw new Error("no such table: template_members");
+    }
+    return originalBatch(statements);
+  };
+  const env = {
+    DB,
+    ADMIN_USERNAME: "admin",
+    ADMIN_PASSWORD: "secret",
+    ADMIN_SESSION_SECRET: "a-long-session-secret-for-tests",
+  };
+  const request = (path, { method = "GET", body, cookie } = {}) => new Request(
+    `https://example.test${path}`,
+    {
+      method,
+      headers: {
+        ...(body ? { "content-type": "application/json" } : {}),
+        ...(cookie ? { cookie } : {}),
+        ...(method === "GET" ? {} : { origin: "https://example.test" }),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    },
+  );
+  const loginResponse = await worker.fetch(request("/api/admin/login", {
+    method: "POST",
+    body: { username: "admin", password: "secret" },
+  }), env);
+  const cookie = loginResponse.headers.get("set-cookie").split(";")[0];
+
+  const response = await worker.fetch(request("/api/admin/ledgers", {
+    method: "POST",
+    body: { name: "Schema error", deletePassword: "temporary-error-password" },
+    cookie,
+  }), env);
+  assert.equal(response.status, 500);
+  assert.match((await response.json()).error, /Error: no such table: template_members/);
+});
+
 test("legacy ledgers without a delete password can be deleted without one; default remains protected", async () => {
   const DB = new MockDatabase();
   const salt = new Uint8Array(16).fill(7);
@@ -745,7 +848,7 @@ test("legacy ledgers without a delete password can be deleted without one; defau
     name: "PBKDF2",
     hash: "SHA-256",
     salt,
-    iterations: 120_000,
+    iterations: 100_000,
   }, key, 256);
   DB.ledgers.push({
     id: "b".repeat(32),

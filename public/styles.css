@@ -96,8 +96,8 @@ h1 { margin-bottom: 0; font-size: calc(var(--font-scale, 1) * 22.8px); font-weig
 }
 .notice[hidden] { display: none; }
 .notice.success { color: var(--green); background: #f2fbf5; border-color: #b6d9c2; }
-.notice.error { color: #8f3022; background: #fff3ef; border-color: #e8b3a8; }
-#notice-message { flex: 1; overflow-wrap: anywhere; }
+.notice.error { width: min(760px, calc(100vw - 32px)); color: #8f3022; background: #fff3ef; border-color: #e8b3a8; }
+#notice-message { flex: 1; overflow-wrap: anywhere; white-space: pre-wrap; }
 .notice-close { width: 28px; height: 28px; flex: 0 0 auto; border: 0; border-radius: 4px; background: transparent; color: currentColor; font-size: 22px; line-height: 1; }
 .notice-close:hover { background: rgb(0 0 0 / 6%); }
 .section-card {

@@ -3,7 +3,7 @@ const MAX_AMOUNT_VND = 1_000_000_000_000;
 const MAX_MEMBERS = 50;
 const MAX_AUDIT_SESSIONS = 999;
 const AUDIT_SESSION_IDLE_MINUTES = 30;
-const LEDGER_DELETE_PASSWORD_ITERATIONS = 120_000;
+const LEDGER_DELETE_PASSWORD_ITERATIONS = 100_000;
 const DEFAULT_QR_SIZE = 250;
 const LEDGER_SCHEMA_TABLES = [
   "members",
@@ -655,20 +655,32 @@ async function routeApi(request, env) {
         deletePasswordSalt: encodeBase64Url(salt),
         deletePasswordHash: await hashLedgerDeletePassword(body.deletePassword, salt),
       };
-      await env.DB.prepare(`
-        INSERT INTO ledgers (id, slug, name, delete_password_salt, delete_password_hash)
-        VALUES (?, ?, ?, ?, ?)
-      `).bind(
-        ledger.id,
-        ledger.slug,
-        ledger.name,
-        ledger.deletePasswordSalt,
-        ledger.deletePasswordHash,
-      ).run();
+      try {
+        await env.DB.prepare(`
+          INSERT INTO ledgers (id, slug, name, delete_password_salt, delete_password_hash)
+          VALUES (?, ?, ?, ?, ?)
+        `).bind(
+          ledger.id,
+          ledger.slug,
+          ledger.name,
+          ledger.deletePasswordSalt,
+          ledger.deletePasswordHash,
+        ).run();
+      } catch (caught) {
+        const duplicate = await env.DB.prepare(
+          "SELECT id FROM ledgers WHERE slug = ?",
+        ).bind(slug).first();
+        if (duplicate) return error("Tên này đã được dùng để tạo link sổ khác.", 409);
+        throw caught;
+      }
       try {
         await copyLedgerSchema(env.DB, ledger.id);
       } catch (caught) {
-        await env.DB.prepare("DELETE FROM ledgers WHERE id = ?").bind(ledger.id).run();
+        try {
+          await env.DB.prepare("DELETE FROM ledgers WHERE id = ?").bind(ledger.id).run();
+        } catch (cleanupError) {
+          console.error("Ledger creation cleanup failed", cleanupError);
+        }
         throw caught;
       }
       return json({ ledger: { id: ledger.id, slug: ledger.slug, name: ledger.name } }, 201);
@@ -1498,6 +1510,12 @@ export default {
     } catch (caught) {
       if (!(caught instanceof ApiError)) console.error("Request failed", caught);
       if (caught instanceof ApiError) return error(caught.message, caught.status);
+      const url = new URL(request.url);
+      if (request.method === "POST" && url.pathname === "/api/admin/ledgers" &&
+          await isAdmin(request, env)) {
+        const detail = caught instanceof Error ? `${caught.name}: ${caught.message}` : String(caught);
+        return error(`Không tạo được sổ. Chi tiết kỹ thuật: ${detail.slice(0, 1000)}`, 500);
+      }
       return error("Đã xảy ra lỗi máy chủ. Hãy thử lại; nếu vẫn tiếp diễn, liên hệ Admin.", 500);
     }
   },
