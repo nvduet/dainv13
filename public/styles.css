@@ -206,7 +206,14 @@ th {
 .ledger-footer { padding: 8px 1px 0; display: flex; justify-content: space-between; color: var(--muted); font-size: calc(var(--font-scale, 1) * 12px); }
 #save-status { text-align: right; }
 #save-status[data-state="error"] { color: var(--coral); }
-.summary-table { width: 100%; min-width: max-content; font-size: calc(var(--font-scale, 1) * 14.4px); }
+.summary-table {
+  width: 100%;
+  min-width: max-content;
+  border: 1px solid var(--line);
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: calc(var(--font-scale, 1) * 14.4px);
+}
 .summary-table th, .summary-table td {
   padding: 8px 9px;
   border-bottom: 1px solid var(--line);
@@ -287,7 +294,13 @@ th {
   background: #fff;
 }
 .member-group-form > select { min-height: 120px; }
-.group-balance-row { font-weight: 650; background: #eef1f4; }
+.group-balance-row { font-weight: 650; }
+.summary-table td.group-color-0 { background: #edf5ff; }
+.summary-table td.group-color-1 { background: #eef8ef; }
+.summary-table td.group-color-2 { background: #fff5e8; }
+.summary-table td.group-color-3 { background: #f5effa; }
+.summary-table td.group-color-4 { background: #fff0f1; }
+.summary-table td.group-color-5 { background: #eef8f7; }
 .group-balance {
   border-right: 1px solid #aeb8c2;
   border-left: 1px solid #aeb8c2;

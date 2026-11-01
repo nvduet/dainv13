@@ -482,6 +482,23 @@ async function flushPendingChanges() {
 
 function renderSummary() {
   const summary = calculateBalances(state.members, getExpensePreview(), state.payments);
+  const groupsById = new Map(state.groups.map((group) => [group.id, group]));
+  const balanceSegments = [];
+  for (const member of summary) {
+    const group = member.groupId ? groupsById.get(member.groupId) : null;
+    const previousSegment = balanceSegments.at(-1);
+    if (group && previousSegment?.group?.id === group.id) {
+      previousSegment.members.push(member);
+    } else {
+      balanceSegments.push({ group, members: [member] });
+    }
+  }
+  const groupColorByMemberId = new Map();
+  balanceSegments.forEach((segment, index) => {
+    for (const member of segment.members) {
+      groupColorByMemberId.set(member.id, `group-color-${index % 6}`);
+    }
+  });
   document.querySelector("#summary-head").innerHTML = "";
   const summaryRows = [
     {
@@ -509,34 +526,24 @@ function renderSummary() {
           const value = row.label === "Đã chuyển khoản" && state.isAdmin
             ? `<input class="paid-transfer-input" type="text" inputmode="text" value="${formatVndInput(member.paidToAdminVnd)}" aria-label="Tổng đã chuyển khoản của ${escapeHtml(member.name)}" data-member-id="${escapeHtml(member.id)}">`
             : row.value(member);
-          return `<td class="summary-member ${className}">${value}</td>`;
+          const groupColor = row.label === "Số dư" ? groupColorByMemberId.get(member.id) || "" : "";
+          return `<td class="summary-member ${className} ${groupColor}">${value}</td>`;
         }).join("")
         : `<td class="summary-member empty-cell">Thêm thành viên để bắt đầu sổ chi nhé.</td>`}
     </tr>`).join("");
-  if (state.groups.length && summary.length) {
-    const balanceByMember = new Map(summary.map((member) => [member.id, member.balanceVnd]));
-    const groupCells = [];
-    for (let index = 0; index < summary.length;) {
-      const member = summary[index];
-      const group = state.groups.find((item) => item.memberIds.includes(member.id));
-      if (!group) {
-        groupCells.push("<td class=\"summary-member\"></td>");
-        index += 1;
-        continue;
-      }
-      if (group.memberIds[0] !== member.id) {
-        index += 1;
-        continue;
-      }
-      const amount = group.memberIds.reduce((total, memberId) => total + (balanceByMember.get(memberId) || 0), 0);
+  if (summary.length) {
+    const groupCells = balanceSegments.map((segment, index) => {
+      const amount = segment.members.reduce((total, member) => total + member.balanceVnd, 0);
       const balanceClass = amount > 0 ? "balance-positive" : amount < 0 ? "balance-negative" : "balance-zero";
-      groupCells.push(`<td class="summary-member group-balance ${balanceClass}" colspan="${group.memberIds.length}" aria-label="Số dư nhóm ${escapeHtml(group.name)}">${formatVnd(amount)}</td>`);
-      index += group.memberIds.length;
-    }
+      const label = segment.group
+        ? `Số dư nhóm ${escapeHtml(segment.group.name)}`
+        : `Số dư ${escapeHtml(segment.members[0].name)} chưa thuộc nhóm`;
+      return `<td class="summary-member group-balance ${balanceClass} group-color-${index % 6}" colspan="${segment.members.length}" aria-label="${label}">${formatVnd(amount)}</td>`;
+    }).join("");
     tbody.innerHTML += `
       <tr class="group-balance-row">
         <th class="summary-label" scope="row">Số dư nhóm</th>
-        ${groupCells.join("")}
+        ${groupCells}
       </tr>`;
   }
   if (state.isAdmin && summary.length) {
