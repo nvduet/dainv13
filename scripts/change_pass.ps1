@@ -1,10 +1,10 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$projectRoot = $PSScriptRoot
-$wranglerPath = Join-Path $projectRoot ".local\wrangler\node_modules\.bin\wrangler.cmd"
-if (-not (Test-Path -LiteralPath $wranglerPath -PathType Leaf)) {
-    throw "Wrangler was not found. Run Start-Local.ps1 or install Wrangler into .local first."
+$projectRoot = Split-Path -Parent $PSScriptRoot
+$npxCommand = Get-Command npx.cmd -ErrorAction SilentlyContinue
+if (-not $npxCommand) {
+    throw "Node.js and npm are required. Install Node.js 22 or later to use Wrangler."
 }
 
 function Set-WorkerSecret {
@@ -13,8 +13,15 @@ function Set-WorkerSecret {
         [Parameter(Mandatory = $true)][string]$Value
     )
 
-    $Value | & $wranglerPath secret put $Name
-    if ($LASTEXITCODE -ne 0) {
+    Push-Location $projectRoot
+    try {
+        $Value | & $npxCommand.Source --yes wrangler@4 secret put $Name
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        Pop-Location
+    }
+    if ($exitCode -ne 0) {
         throw "Could not set Cloudflare Worker secret $Name."
     }
 }

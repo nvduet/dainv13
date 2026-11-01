@@ -1,12 +1,12 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$projectRoot = $PSScriptRoot
+$projectRoot = Split-Path -Parent $PSScriptRoot
 $configPath = Join-Path $projectRoot "wrangler.toml"
-$wranglerPath = Join-Path $projectRoot ".local\wrangler\node_modules\.bin\wrangler.cmd"
+$npxCommand = Get-Command npx.cmd -ErrorAction SilentlyContinue
 
-if (-not (Test-Path -LiteralPath $wranglerPath -PathType Leaf)) {
-    throw "Wrangler was not found. Run Start-Local.ps1 or install Wrangler into .local first."
+if (-not $npxCommand) {
+    throw "Node.js and npm are required. Install Node.js 22 or later to use Wrangler."
 }
 if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
     throw "wrangler.toml was not found."
@@ -28,8 +28,15 @@ $databaseName = $Matches[1]
 function Invoke-Wrangler {
     param([Parameter(Mandatory = $true)][string[]]$Arguments)
 
-    & $wranglerPath @Arguments
-    if ($LASTEXITCODE -ne 0) {
+    Push-Location $projectRoot
+    try {
+        & $npxCommand.Source --yes wrangler@4 @Arguments
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        Pop-Location
+    }
+    if ($exitCode -ne 0) {
         throw "Wrangler command failed: wrangler $($Arguments -join ' ')"
     }
 }
@@ -38,8 +45,15 @@ Write-Host "Checking Cloudflare authentication..." -ForegroundColor Cyan
 Invoke-Wrangler -Arguments @("whoami")
 
 Write-Host "Checking production Admin secrets for Worker '$workerName'..." -ForegroundColor Cyan
-$secretOutput = & $wranglerPath secret list 2>&1
-if ($LASTEXITCODE -ne 0) {
+Push-Location $projectRoot
+try {
+    $secretOutput = & $npxCommand.Source --yes wrangler@4 secret list 2>&1
+    $secretExitCode = $LASTEXITCODE
+}
+finally {
+    Pop-Location
+}
+if ($secretExitCode -ne 0) {
     $secretOutput | ForEach-Object { Write-Host $_ }
     throw "Could not list Worker secrets. Check Wrangler authentication."
 }
@@ -54,9 +68,9 @@ $requiredSecrets = @("ADMIN_USERNAME", "ADMIN_PASSWORD", "ADMIN_SESSION_SECRET",
 $missingSecrets = @($requiredSecrets | Where-Object { $_ -notin $secretNames })
 if ($missingSecrets.Count -gt 0) {
     if ("HISTORY_RESTORE_PASSWORD" -in $missingSecrets) {
-        throw "Missing Worker secret HISTORY_RESTORE_PASSWORD. Run .\Set-CloudflareSecrets.ps1 to set Admin and history-restore passwords before deploying."
+        throw "Missing Worker secret HISTORY_RESTORE_PASSWORD. Run .\scripts\change_pass.ps1 to set Admin and history-restore passwords before deploying."
     }
-    throw "Missing Worker secrets: $($missingSecrets -join ', '). Run .\Set-CloudflareSecrets.ps1 before deploying."
+    throw "Missing Worker secrets: $($missingSecrets -join ', '). Run .\scripts\change_pass.ps1 before deploying."
 }
 
 Write-Host "Applying pending migrations to remote D1 '$databaseName'..." -ForegroundColor Cyan

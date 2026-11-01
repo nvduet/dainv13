@@ -8,7 +8,7 @@
 
 Website giữ cách nhập dạng bảng trong Google Sheets: một khoản chi trên mỗi dòng, người trả, nội dung, số tiền và các thành viên cùng chịu khoản đó. Ứng dụng tính phần mỗi người chịu và bảng số dư cần tất toán qua Admin.
 
-Khởi tạo dữ liệu từ tab **Detail** trong workbook tham chiếu: danh sách người và các khoản chi có dữ liệu. Không nhập các tab Back up/Template, công thức bảng tính hay trạng thái thanh toán cũ chưa xác minh. Script nhập dữ liệu chạy cục bộ; không lưu dữ liệu chi tiêu thật vào Git. Các khoản nhập từ sheet được quy đổi từ nghìn đồng sang đồng nguyên và làm tròn gần nhất.
+Dữ liệu ban đầu lấy từ tab **Detail** trong workbook tham chiếu: danh sách người và các khoản chi có dữ liệu. Không nhập các tab Back up/Template, công thức bảng tính hay trạng thái thanh toán cũ chưa xác minh. Các khoản nhập từ sheet được quy đổi từ nghìn đồng sang đồng nguyên và làm tròn gần nhất.
 
 ## 2. Phạm vi MVP
 
@@ -96,8 +96,8 @@ Ngoài phạm vi: tích hợp chuyển khoản ngân hàng, nhiều loại tiề
 ## 8. Tệp trong dự án
 
 - `SPEC.md`: yêu cầu, quy tắc và quyền truy cập.
-- `README.md`: chạy local, cấu hình secrets, migration và deploy.
+- `README.md`: cấu hình Cloudflare, secrets và deploy production.
 - `worker/index.js`: Worker/API.
 - `public/`: giao diện.
 - `migrations/`: schema database.
-- `tools/import_detail.py`: nhập cục bộ workbook Detail sang SQL.
+- `scripts/`: scripts cấu hình secrets và deploy Cloudflare.
