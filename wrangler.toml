@@ -1,6 +1,8 @@
 name = "leoasland"
 main = "worker/index.js"
 compatibility_date = "2026-10-17"
+# Chỉ địa chỉ workers.dev chính phục vụ trang; không mở URL preview riêng cho từng phiên bản đã deploy.
+preview_urls = false
 
 [assets]
 directory = "./public"
@@ -11,3 +13,7 @@ binding = "DB"
 database_name = "dainv13-group-expenses"
 database_id = "c50c97ce-be1d-49f5-8f4a-2d8c08d93a62"
 migrations_dir = "migrations"
+
+# Workers Logs: log của Worker xem trong Cloudflare dashboard (có trong gói miễn phí, giới hạn số dòng log mỗi ngày).
+[observability]
+enabled = true

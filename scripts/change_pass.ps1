@@ -1,7 +1,11 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+# Windows PowerShell 5.1 pipes strings to native commands as US-ASCII, which turns Vietnamese letters
+# into "?"; send the secrets to wrangler as UTF-8 (no BOM) instead.
+$OutputEncoding = New-Object System.Text.UTF8Encoding $false
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+$minimumPasswordLength = 8
 $npxCommand = Get-Command npx.cmd -ErrorAction SilentlyContinue
 if (-not $npxCommand) {
     throw "Node.js and npm are required. Install Node.js 22 or later to use Wrangler."
@@ -33,23 +37,27 @@ if ([string]::IsNullOrWhiteSpace($username)) {
 if ($username.Contains("`r") -or $username.Contains("`n")) {
     throw "The username cannot contain a newline."
 }
+if ($username -cne $username.Trim()) {
+    throw "The username cannot start or end with whitespace."
+}
 
 $securePassword = $null
-$secureRestorePassword = $null
+$secureOperationsPassword = $null
 $passwordPointer = [IntPtr]::Zero
-$restorePasswordPointer = [IntPtr]::Zero
+$operationsPasswordPointer = [IntPtr]::Zero
 $password = $null
-$restorePassword = $null
+$operationsPassword = $null
 $sessionSecret = $null
 try {
-    $securePassword = Read-Host "New production Admin password (at least 1 character)" -AsSecureString
-    if ($securePassword.Length -lt 1) {
-        throw "The Admin password must contain at least 1 character."
+    $securePassword = Read-Host "New production Admin password (at least $minimumPasswordLength characters)" -AsSecureString
+    if ($securePassword.Length -lt $minimumPasswordLength) {
+        throw "The Admin password must contain at least $minimumPasswordLength characters."
     }
 
-    $secureRestorePassword = Read-Host "New separate history-restore password (at least 1 character)" -AsSecureString
-    if ($secureRestorePassword.Length -lt 1) {
-        throw "The history-restore password must contain at least 1 character."
+    # Stored as HISTORY_RESTORE_PASSWORD (name kept so nothing else needs reconfiguring).
+    $secureOperationsPassword = Read-Host "New operations password for creating/deleting ledgers, Store and restore (at least $minimumPasswordLength characters, different from the Admin password)" -AsSecureString
+    if ($secureOperationsPassword.Length -lt $minimumPasswordLength) {
+        throw "The operations password must contain at least $minimumPasswordLength characters."
     }
 
     $passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
@@ -57,14 +65,20 @@ try {
     if ($password.Contains("`r") -or $password.Contains("`n")) {
         throw "The Admin password cannot contain a newline."
     }
-
-    $restorePasswordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureRestorePassword)
-    $restorePassword = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($restorePasswordPointer)
-    if ($restorePassword.Contains("`r") -or $restorePassword.Contains("`n")) {
-        throw "The history-restore password cannot contain a newline."
+    if ($password -cne $password.Trim()) {
+        throw "The Admin password cannot start or end with whitespace."
     }
-    if ([string]::Equals($password, $restorePassword, [StringComparison]::Ordinal)) {
-        throw "The history-restore password must differ from the Admin password."
+
+    $operationsPasswordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureOperationsPassword)
+    $operationsPassword = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($operationsPasswordPointer)
+    if ($operationsPassword.Contains("`r") -or $operationsPassword.Contains("`n")) {
+        throw "The operations password cannot contain a newline."
+    }
+    if ($operationsPassword -cne $operationsPassword.Trim()) {
+        throw "The operations password cannot start or end with whitespace."
+    }
+    if ([string]::Equals($password, $operationsPassword, [StringComparison]::Ordinal)) {
+        throw "The operations password must differ from the Admin password."
     }
 
     $sessionBytes = New-Object byte[] 48
@@ -81,20 +95,20 @@ try {
     Set-WorkerSecret -Name "ADMIN_USERNAME" -Value $username
     Set-WorkerSecret -Name "ADMIN_PASSWORD" -Value $password
     Set-WorkerSecret -Name "ADMIN_SESSION_SECRET" -Value $sessionSecret
-    Set-WorkerSecret -Name "HISTORY_RESTORE_PASSWORD" -Value $restorePassword
+    Set-WorkerSecret -Name "HISTORY_RESTORE_PASSWORD" -Value $operationsPassword
 }
 finally {
     if ($passwordPointer -ne [IntPtr]::Zero) {
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($passwordPointer)
     }
-    if ($restorePasswordPointer -ne [IntPtr]::Zero) {
-        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($restorePasswordPointer)
+    if ($operationsPasswordPointer -ne [IntPtr]::Zero) {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($operationsPasswordPointer)
     }
     $password = $null
-    $restorePassword = $null
+    $operationsPassword = $null
     $sessionSecret = $null
     if ($null -ne $securePassword) { $securePassword.Dispose() }
-    if ($null -ne $secureRestorePassword) { $secureRestorePassword.Dispose() }
+    if ($null -ne $secureOperationsPassword) { $secureOperationsPassword.Dispose() }
 }
 
-Write-Host "Production Admin and history-restore secrets were set in Cloudflare Workers." -ForegroundColor Green
+Write-Host "Production Admin and operations password secrets were set in Cloudflare Workers." -ForegroundColor Green

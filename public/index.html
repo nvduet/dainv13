@@ -1,14 +1,42 @@
 <!doctype html>
-<html lang="vi">
+<html lang="vi" data-skin="graphite">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f3f4f6">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f4f4f3" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0c0c0d" media="(prefers-color-scheme: dark)">
     <meta name="description" content="Expense tracker for a group.">
+    <meta name="robots" content="noindex, nofollow">
     <title>Expense</title>
+    <link rel="icon" href="data:,">
+    <script src="/js/theme-boot.js"></script>
     <link rel="stylesheet" href="/styles.css">
     <style id="dynamic-column-widths"></style>
     <style id="dynamic-summary-widths"></style>
+    <link rel="modulepreload" href="/shared/constants.mjs">
+    <link rel="modulepreload" href="/accounting.mjs">
+    <link rel="modulepreload" href="/js/api.js">
+    <link rel="modulepreload" href="/js/format.js">
+    <link rel="modulepreload" href="/js/ui.js">
+    <link rel="modulepreload" href="/js/state.js">
+    <link rel="modulepreload" href="/js/save-queue.js">
+    <link rel="modulepreload" href="/js/delete-queue.js">
+    <link rel="modulepreload" href="/js/undo-history.js">
+    <link rel="modulepreload" href="/js/expense-history.js">
+    <link rel="modulepreload" href="/js/expense-merge.js">
+    <link rel="modulepreload" href="/js/return-watch.js">
+    <link rel="modulepreload" href="/js/settings.js">
+    <link rel="modulepreload" href="/js/summary.js">
+    <link rel="modulepreload" href="/js/expense-view.js">
+    <link rel="modulepreload" href="/js/detail-view.js">
+    <link rel="modulepreload" href="/js/member-detail.js">
+    <link rel="modulepreload" href="/js/expenses.js">
+    <link rel="modulepreload" href="/js/csv.js">
+    <link rel="modulepreload" href="/js/csv-download.js">
+    <link rel="modulepreload" href="/js/admin.js">
+    <link rel="modulepreload" href="/js/theme.js">
+    <link rel="modulepreload" href="/js/theme-picker.js">
     <script type="module" src="/app.js"></script>
   </head>
   <body>
@@ -18,13 +46,31 @@
       </a>
       <div class="header-actions">
         <span id="admin-state" class="admin-state">Guest</span>
+        <div class="theme-picker">
+          <button id="theme-button" class="button theme-button" type="button" aria-label="Đổi giao diện" title="Đổi giao diện" aria-haspopup="dialog" aria-expanded="false" aria-controls="theme-panel"><svg aria-hidden="true" focusable="false"><use href="#icon-palette"></use></svg></button>
+          <dialog id="theme-panel" class="theme-panel" aria-label="Đổi giao diện">
+            <p id="theme-skin-label">Giao diện</p>
+            <div class="theme-skins" role="radiogroup" aria-labelledby="theme-skin-label">
+              <button type="button" role="radio" aria-checked="true" data-skin="graphite"><span class="theme-dots"></span>Than chì</button>
+              <button type="button" role="radio" aria-checked="false" tabindex="-1" data-skin="rung"><span class="theme-dots"></span>Rừng xanh</button>
+              <button type="button" role="radio" aria-checked="false" tabindex="-1" data-skin="nga"><span class="theme-dots"></span>Ngà &amp; Vàng</button>
+              <button type="button" role="radio" aria-checked="false" tabindex="-1" data-skin="navy"><span class="theme-dots"></span>Navy &amp; Đồng</button>
+            </div>
+            <p id="theme-mode-label">Chế độ</p>
+            <div class="theme-modes" role="radiogroup" aria-labelledby="theme-mode-label">
+              <button type="button" role="radio" aria-checked="true" data-mode="auto">Tự động</button>
+              <button type="button" role="radio" aria-checked="false" tabindex="-1" data-mode="light">Sáng</button>
+              <button type="button" role="radio" aria-checked="false" tabindex="-1" data-mode="dark">Tối</button>
+            </div>
+          </dialog>
+        </div>
         <button id="login-button" class="button button-dark" type="button">Đăng nhập Admin</button>
         <button id="logout-button" class="button button-light" type="button" hidden>Đăng xuất</button>
       </div>
     </header>
 
     <main class="page">
-      <section class="overview" aria-label="Tổng quan">
+      <section class="overview" aria-label="Tổng quan" aria-busy="true">
         <h1>Expense</h1>
         <div class="overview-stats">
           <span>Tổng chi <strong id="total-spent">—</strong></span>
@@ -33,11 +79,13 @@
         </div>
       </section>
 
-      <div id="notice" class="notice" role="status" aria-live="polite" hidden>
-        <span id="notice-message"></span>
+      <div id="notice" class="notice" hidden>
+        <span id="notice-message" role="status" aria-live="polite"></span>
+        <span id="notice-hint" class="visually-hidden" role="status"></span>
+        <button id="notice-action" class="notice-action" type="button" hidden></button>
         <button id="notice-close" class="notice-close" type="button" aria-label="Đóng thông báo">×</button>
       </div>
-      <section class="section-card summary-card" aria-labelledby="summary-title">
+      <section class="section-card summary-card" aria-labelledby="summary-title" aria-busy="true">
         <div class="section-heading">
           <div>
             <h2 id="summary-title">Summary</h2>
@@ -51,13 +99,45 @@
         </div>
       </section>
 
-      <section class="section-card ledger-card" aria-labelledby="ledger-title">
+      <section class="section-card ledger-card" aria-labelledby="ledger-title" aria-busy="true">
         <div class="section-heading">
           <div>
             <h2 id="ledger-title">Detail</h2>
           </div>
-          <button id="add-expense" class="button button-coral" type="button">＋ Add line</button>
+          <div class="section-actions">
+            <button id="undo-change" class="button button-light heading-button" type="button" aria-label="Hoàn tác" aria-keyshortcuts="Control+Z Meta+Z" title="Chưa có thay đổi để hoàn tác" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-undo"></use></svg><span>Hoàn tác</span></button>
+            <button id="redo-change" class="button button-light heading-button" type="button" aria-label="Làm lại" aria-keyshortcuts="Control+Y Control+Shift+Z Meta+Shift+Z" title="Chưa có thay đổi để làm lại" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-redo"></use></svg><span>Làm lại</span></button>
+            <button id="export-csv" class="button button-light heading-button" type="button" aria-label="Xuất CSV" title="Xuất CSV" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-download"></use></svg><span>Xuất CSV</span></button>
+            <button id="add-expense" class="button button-coral" type="button">＋ Add line</button>
+          </div>
         </div>
+
+        <div id="detail-toolbar" class="detail-toolbar" role="search" aria-label="Tìm và lọc khoản chi">
+          <div class="toolbar-row">
+            <input id="filter-search" class="filter-search" type="search" placeholder="Tìm nội dung…" aria-label="Tìm theo nội dung" autocomplete="off" enterkeyhint="search">
+            <button id="filter-toggle" class="button button-light button-small filter-toggle" type="button" aria-expanded="false" aria-controls="filter-panel">Lọc &amp; sắp xếp<span id="filter-badge" class="filter-badge" hidden></span></button>
+          </div>
+          <div id="filter-panel" class="filter-panel">
+            <select id="filter-payer" aria-label="Lọc theo người chi"><option value="">Mọi người chi</option></select>
+            <select id="filter-participant" aria-label="Lọc theo người tham gia"><option value="">Mọi người tham gia</option></select>
+            <span class="filter-dates"><label class="filter-date"><span>Từ ngày</span><input id="filter-from" type="date"></label>
+            <label class="filter-date"><span>Đến ngày</span><input id="filter-to" type="date"></label></span>
+            <label class="filter-check"><input id="filter-incomplete" type="checkbox"><span>Thiếu thông tin</span></label>
+            <label class="filter-sort"><span>Sắp xếp</span><select id="filter-sort">
+              <option value="position">Thứ tự nhập</option>
+              <option value="date-desc">Ngày mới nhất</option>
+              <option value="date-asc">Ngày cũ nhất</option>
+              <option value="amount-desc">Số tiền lớn nhất</option>
+              <option value="amount-asc">Số tiền nhỏ nhất</option>
+              <option value="description">Nội dung A→Z</option>
+            </select></label>
+          </div>
+        </div>
+        <div id="filter-status" class="filter-status" hidden>
+          <span><span id="filter-count"></span> · <span id="filter-subtotal"></span></span>
+          <button id="filter-clear" class="button button-light button-small" type="button">Xóa lọc</button>
+        </div>
+        <span id="filter-announce" class="visually-hidden" role="status"></span>
 
         <div class="table-hint"><span aria-hidden="true">↔</span> Vuốt ngang để xem đủ các cột thành viên</div>
         <div class="table-scroll">
@@ -73,7 +153,7 @@
       </section>
 
       <section class="section-card payment-image-card" aria-label="Thông tin chuyển khoản">
-        <img src="/bank.jpg" alt="Mã QR chuyển khoản">
+        <img src="/bank.jpg" alt="Mã QR chuyển khoản" width="440" height="435">
       </section>
 
       <section id="admin-panel" class="section-card admin-card" aria-labelledby="admin-title" hidden>
@@ -91,9 +171,6 @@
             <form id="ledger-form" class="inline-form ledger-create-form">
               <label class="visually-hidden" for="new-ledger-name">Tên sổ mới</label>
               <input id="new-ledger-name" maxlength="80" placeholder="Tên nhóm mới…" required>
-              <label class="visually-hidden" for="new-ledger-password">Mật khẩu xóa sổ</label>
-              <input id="new-ledger-password" type="password" minlength="8" maxlength="128"
-                autocomplete="new-password" placeholder="Mật khẩu xóa (tối thiểu 8 ký tự)" required>
               <button class="button button-dark" type="submit">Tạo sổ</button>
             </form>
             <ul id="ledger-list" class="member-list"></ul>
@@ -148,36 +225,36 @@
           <div class="config-group">
             <h4>Cỡ chữ toàn giao diện</h4>
             <div class="width-inputs">
-              <label>Cỡ chữ: <input type="number" id="font-size-percent" min="75" max="200" step="5" value="90" required>%</label>
+              <label><span>Cỡ chữ:</span> <span class="unit-input"><input type="number" id="font-size-percent" min="75" max="200" step="5" value="90" required><span class="unit">%</span></span></label>
             </div>
             <button id="apply-font-size" class="button button-dark button-small" type="button">Áp dụng</button>
           </div>
           <div class="config-group">
             <h4>Kích thước ảnh QR</h4>
             <div class="width-inputs">
-              <label>Chiều rộng tối đa: <input type="number" id="qr-size-pixels" min="80" max="1600" step="10" value="250" required>px</label>
+              <label><span>Chiều rộng tối đa:</span> <span class="unit-input"><input type="number" id="qr-size-pixels" min="80" max="1600" step="10" value="250" required><span class="unit">px</span></span></label>
             </div>
             <button id="apply-qr-size" class="button button-dark button-small" type="button">Áp dụng</button>
           </div>
           <div class="config-group">
             <h4>Bảng "Summary"</h4>
             <div class="width-inputs">
-              <label>Tên chỉ tiêu: <input type="number" id="col-width-summary-label" min="24" max="2000" value="120" required>px</label>
-              <label>Cột thành viên <span id="summary-member-column-count"></span>: <input type="number" id="col-width-summary-member" min="24" max="2000" value="100" required>px</label>
+              <label><span>Tên chỉ tiêu:</span> <span class="unit-input"><input type="number" id="col-width-summary-label" min="24" max="2000" value="120" required><span class="unit">px</span></span></label>
+              <label><span>Cột thành viên <span id="summary-member-column-count"></span>:</span> <span class="unit-input"><input type="number" id="col-width-summary-member" min="24" max="2000" value="100" required><span class="unit">px</span></span></label>
             </div>
             <button id="apply-summary-widths" class="button button-dark button-small" type="button">Áp dụng</button>
           </div>
-          <div class="config-group">
+          <div class="config-group config-group-wide">
             <h4>Bảng "Detail"</h4>
             <div class="width-inputs">
-              <label>Người chi: <input type="number" id="col-width-payer" min="24" max="2000" value="100" required>px</label>
-              <label>Date: <input type="number" id="col-width-date" min="24" max="2000" value="110" required>px</label>
-              <label>Nội dung: <input type="number" id="col-width-description" min="24" max="2000" value="180" required>px</label>
-              <label>Chi phí: <input type="number" id="col-width-amount" min="24" max="2000" value="60" required>px</label>
-              <label>Cột thành viên <span id="expense-member-column-count"></span>: <input type="number" id="col-width-member" min="24" max="2000" value="60" required>px</label>
-              <label>Số người: <input type="number" id="col-width-count" min="24" max="2000" value="70" required>px</label>
-              <label>Số tiền/Ng: <input type="number" id="col-width-avg" min="24" max="2000" value="80" required>px</label>
-              <label>Xóa: <input type="number" id="col-width-actions" min="24" max="2000" value="68" required>px</label>
+              <label><span>Người chi:</span> <span class="unit-input"><input type="number" id="col-width-payer" min="24" max="2000" value="100" required><span class="unit">px</span></span></label>
+              <label><span>Date:</span> <span class="unit-input"><input type="number" id="col-width-date" min="24" max="2000" value="110" required><span class="unit">px</span></span></label>
+              <label><span>Nội dung:</span> <span class="unit-input"><input type="number" id="col-width-description" min="24" max="2000" value="180" required><span class="unit">px</span></span></label>
+              <label><span>Chi phí:</span> <span class="unit-input"><input type="number" id="col-width-amount" min="24" max="2000" value="60" required><span class="unit">px</span></span></label>
+              <label><span>Cột thành viên <span id="expense-member-column-count"></span>:</span> <span class="unit-input"><input type="number" id="col-width-member" min="24" max="2000" value="60" required><span class="unit">px</span></span></label>
+              <label><span>Số người:</span> <span class="unit-input"><input type="number" id="col-width-count" min="24" max="2000" value="70" required><span class="unit">px</span></span></label>
+              <label><span>Số tiền/Ng:</span> <span class="unit-input"><input type="number" id="col-width-avg" min="24" max="2000" value="80" required><span class="unit">px</span></span></label>
+              <label><span>Xóa:</span> <span class="unit-input"><input type="number" id="col-width-actions" min="24" max="2000" value="68" required><span class="unit">px</span></span></label>
             </div>
             <button id="apply-expense-widths" class="button button-dark button-small" type="button">Áp dụng</button>
           </div>
@@ -191,11 +268,11 @@
       </footer>
     </main>
 
-    <dialog id="login-dialog" class="login-dialog">
+    <dialog id="login-dialog" class="login-dialog" aria-labelledby="login-title" aria-describedby="login-description">
       <form id="login-form" method="dialog">
         <button id="close-login" class="dialog-close" type="button" aria-label="Đóng">×</button>
-        <h2>Admin mode <span aria-hidden="true"></span></h2>
-        <p class="section-description">Login with admin account.</p>
+        <h2 id="login-title">Admin mode <span aria-hidden="true"></span></h2>
+        <p id="login-description" class="section-description">Login with admin account.</p>
         <label for="username">Tên đăng nhập</label>
         <input id="username" name="username" autocomplete="username" required>
         <label for="password">Mật khẩu</label>
@@ -205,7 +282,7 @@
       </form>
     </dialog>
 
-    <dialog id="action-dialog" class="action-dialog">
+    <dialog id="action-dialog" class="action-dialog" aria-labelledby="action-dialog-title" aria-describedby="action-dialog-message">
       <form id="action-form">
         <button id="action-dialog-close" class="dialog-close" type="button" aria-label="Đóng">×</button>
         <h2 id="action-dialog-title"></h2>
@@ -220,12 +297,28 @@
       </form>
     </dialog>
 
-    <dialog id="audit-diff-dialog" class="audit-diff-dialog">
+    <dialog id="audit-diff-dialog" class="audit-diff-dialog" aria-labelledby="audit-diff-title">
       <form method="dialog">
         <button id="audit-diff-close" class="dialog-close" type="button" aria-label="Đóng">×</button>
         <h2 id="audit-diff-title">So sánh Detail</h2>
         <div id="audit-diff-content"></div>
       </form>
     </dialog>
+
+    <dialog id="member-detail-dialog" class="member-detail-dialog" aria-labelledby="member-detail-title">
+      <div class="member-detail">
+        <button id="member-detail-close" class="dialog-close" type="button" aria-label="Đóng">×</button>
+        <h2 id="member-detail-title"></h2>
+        <div id="member-detail-content"></div>
+      </div>
+    </dialog>
+
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+      <symbol id="icon-undo" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 2.75 2.25 6 5.5 9.25"/><path d="M2.5 6h7a4 4 0 0 1 0 8H7.5"/></symbol>
+      <symbol id="icon-redo" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.75 13.75 6 10.5 9.25"/><path d="M13.5 6h-7a4 4 0 0 0 0 8h2"/></symbol>
+      <symbol id="icon-download" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.25v8"/><path d="M4.75 7 8 10.25 11.25 7"/><path d="M2.75 11.5v1.25a1 1 0 0 0 1 1h8.5a1 1 0 0 0 1-1V11.5"/></symbol>
+      <symbol id="icon-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.9 1.6-1.7 0-.5-.2-.9-.5-1.2a1.7 1.7 0 0 1 1.3-2.8H16a5 5 0 0 0 5-5C21 6.6 17 3 12 3Z"/><circle cx="7.5" cy="11" r="1.1"/><circle cx="10.5" cy="7.2" r="1.1"/><circle cx="15" cy="7.4" r="1.1"/></symbol>
+      <symbol id="icon-duplicate" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.25" y="5.25" width="9" height="9" rx="1.75"/><path d="M10.75 2.75v-.25a1.5 1.5 0 0 0-1.5-1.5H2.5A1.5 1.5 0 0 0 1 2.5v6.75a1.5 1.5 0 0 0 1.5 1.5h.25"/></symbol>
+    </svg>
   </body>
 </html>

@@ -4,9 +4,13 @@ Set-StrictMode -Version Latest
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $configPath = Join-Path $projectRoot "wrangler.toml"
 $npxCommand = Get-Command npx.cmd -ErrorAction SilentlyContinue
+$nodeCommand = Get-Command node.exe -ErrorAction SilentlyContinue
 
 if (-not $npxCommand) {
     throw "Node.js and npm are required. Install Node.js 22 or later to use Wrangler."
+}
+if (-not $nodeCommand) {
+    throw "Node.js is required to run the local tests. Install Node.js 22.13 or later."
 }
 if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
     throw "wrangler.toml was not found."
@@ -41,24 +45,48 @@ function Invoke-Wrangler {
     }
 }
 
+Write-Host "Running local tests..." -ForegroundColor Cyan
+Push-Location $projectRoot
+# Without node:sqlite (Node.js older than 22.13) the integration suites fail here instead of being skipped.
+$env:REQUIRE_NODE_SQLITE = "1"
+try {
+    & $nodeCommand.Source --test
+    $testExitCode = $LASTEXITCODE
+}
+finally {
+    Remove-Item -Path Env:\REQUIRE_NODE_SQLITE -ErrorAction SilentlyContinue
+    Pop-Location
+}
+if ($testExitCode -ne 0) {
+    throw "Local tests failed; refusing to deploy."
+}
+
 Write-Host "Checking Cloudflare authentication..." -ForegroundColor Cyan
 Invoke-Wrangler -Arguments @("whoami")
 
 Write-Host "Checking production Admin secrets for Worker '$workerName'..." -ForegroundColor Cyan
+# Under "Stop", Windows PowerShell 5.1 aborts on the first stderr line of a native command captured with
+# 2>&1 (any npm or wrangler notice). Capture with "Continue" and keep only stdout for the JSON.
 Push-Location $projectRoot
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 try {
-    $secretOutput = & $npxCommand.Source --yes wrangler@4 secret list 2>&1
+    $secretOutput = @(& $npxCommand.Source --yes wrangler@4 secret list 2>&1)
     $secretExitCode = $LASTEXITCODE
 }
 finally {
+    $ErrorActionPreference = $previousErrorActionPreference
     Pop-Location
 }
+$secretErrors = @($secretOutput | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
+$secretJson = @($secretOutput | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] })
+$secretErrors | ForEach-Object { Write-Host $_ }
 if ($secretExitCode -ne 0) {
-    $secretOutput | ForEach-Object { Write-Host $_ }
+    $secretJson | ForEach-Object { Write-Host $_ }
     throw "Could not list Worker secrets. Check Wrangler authentication."
 }
 try {
-    $secrets = ($secretOutput -join "`n") | ConvertFrom-Json
+    $secrets = ($secretJson -join "`n") | ConvertFrom-Json
 }
 catch {
     throw "Wrangler returned an unreadable secret list; refusing to deploy."
@@ -68,7 +96,7 @@ $requiredSecrets = @("ADMIN_USERNAME", "ADMIN_PASSWORD", "ADMIN_SESSION_SECRET",
 $missingSecrets = @($requiredSecrets | Where-Object { $_ -notin $secretNames })
 if ($missingSecrets.Count -gt 0) {
     if ("HISTORY_RESTORE_PASSWORD" -in $missingSecrets) {
-        throw "Missing Worker secret HISTORY_RESTORE_PASSWORD. Run .\scripts\change_pass.ps1 to set Admin and history-restore passwords before deploying."
+        throw "Missing Worker secret HISTORY_RESTORE_PASSWORD (the operations password). Run .\scripts\change_pass.ps1 to set the Admin password and the operations password before deploying."
     }
     throw "Missing Worker secrets: $($missingSecrets -join ', '). Run .\scripts\change_pass.ps1 before deploying."
 }
