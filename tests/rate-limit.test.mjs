@@ -124,7 +124,7 @@ test("guest write buckets keep the full IPv6 address", options, async () => {
   );
 });
 
-test("ledger creation and deletion, Store and restore share one operations-password bucket", options, async () => {
+test("ledger creation and deletion, Store, restore and deleting a Store point share one operations-password bucket", options, async () => {
   const app = createApp();
   await app.login();
   const passwordAttempts = () => app.count(
@@ -133,8 +133,10 @@ test("ledger creation and deletion, Store and restore share one operations-passw
   const ledger = await app.createLedger("Sổ phụ");
   assert.equal(passwordAttempts(), 1, "the session's first creation checks the password");
   await app.createLedger("Sổ hai");
-  assert.equal((await app.request("POST", `${ledger.api}/admin/history-points`, { body: { message: "Mốc" }, admin: true })).status, 201);
+  const stored = await app.request("POST", `${ledger.api}/admin/history-points`, { body: { message: "Mốc" }, admin: true });
+  assert.equal(stored.status, 201);
   assert.equal(passwordAttempts(), 1, "authorized creations and Stores need no password and spend nothing");
+  const pointPath = `${ledger.api}/admin/history-points/${stored.data.point.id}`;
 
   await app.login();
   // Missing passwords are refused before the limiter, so they cannot use up attempts.
@@ -142,6 +144,7 @@ test("ledger creation and deletion, Store and restore share one operations-passw
     ["POST", "/api/admin/history-points", { message: "Mốc", password: "" }, "Nhập mật khẩu thao tác để xác thực Store trong phiên Admin này."],
     ["POST", "/api/admin/ledgers", { name: "Sổ ba", deletePassword: "delete-me-123" }, "Nhập mật khẩu thao tác để tạo sổ trong phiên Admin này."],
     ["DELETE", `/api/admin/ledgers/${ledger.slug}`, {}, "Nhập mật khẩu thao tác."],
+    ["DELETE", pointPath, {}, "Nhập mật khẩu thao tác."],
   ]) {
     const response = await app.request(method, path, { body, admin: true });
     assert.equal(response.status, 400, path);
@@ -153,7 +156,8 @@ test("ledger creation and deletion, Store and restore share one operations-passw
     ["POST", "/api/admin/ledgers", { name: "Sổ ba", password: "wrong" }],
     ["DELETE", `/api/admin/ledgers/${ledger.slug}`, { password: "wrong" }],
     ["POST", `${ledger.api}/admin/history-points`, { message: "Mốc", password: "wrong" }],
-    ...["/api", "/api", "/api", ledger.api, ledger.api, ledger.api].map((api) =>
+    ["DELETE", pointPath, { password: "wrong" }],
+    ...["/api", "/api", ledger.api, ledger.api, ledger.api].map((api) =>
       ["POST", `${api}/admin/history-points/any/restore`, { password: "wrong" }]),
   ]) {
     const response = await app.request(method, path, { body, admin: true });
@@ -167,6 +171,7 @@ test("ledger creation and deletion, Store and restore share one operations-passw
     ["DELETE", `/api/admin/ledgers/${ledger.slug}`, { password: "restore-password" }],
     ["POST", "/api/admin/history-points", { message: "Mốc", password: "restore-password" }],
     ["POST", `${ledger.api}/admin/history-points/any/restore`, { password: "restore-password" }],
+    ["DELETE", pointPath, { password: "restore-password" }],
   ]) {
     const response = await app.request(method, path, { body, admin: true });
     assert.equal(response.status, 429, path);

@@ -7,7 +7,7 @@ export function defaultColumnWidths() {
 // Dữ liệu dùng chung của trang. state.expenses giữ bản đã lưu trên máy chủ (hợp nhất theo phản hồi lưu);
 // thay đổi chưa lưu nằm trong hàng đợi tự lưu và trong các ô của bảng Detail.
 export const state = {
-  // Đã tải xong dữ liệu lần đầu (xuất CSV chờ tới lúc này).
+  // Đã tải xong dữ liệu lần đầu (xuất Excel chờ tới lúc này).
   loaded: false,
   members: [],
   groups: [],

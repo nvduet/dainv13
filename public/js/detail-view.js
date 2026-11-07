@@ -34,7 +34,7 @@ let searchTimer = null;
 const tbody = () => document.querySelector("#expense-body");
 const sortStorageKey = (slug) => `so-chi:sap-xep:${slug}`;
 
-// Giá trị đang hiển thị của một dòng (kể cả thay đổi chưa lưu): dùng cho xem trước số liệu, lọc, xuất CSV.
+// Giá trị đang hiển thị của một dòng (kể cả thay đổi chưa lưu): dùng cho xem trước số liệu, lọc, xuất Excel.
 export function readExpenseRow(row) {
   return {
     id: row.dataset.expenseId,

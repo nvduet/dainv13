@@ -504,6 +504,10 @@ td.group-balance:last-child { border-right: 0; }
 .history-point-item { font-size: var(--fs-sm); color: var(--muted); }
 .history-point-item strong { color: var(--ink); font-weight: 600; }
 .history-point-item .button, .audit-entry .button { flex: none; }
+/* Chữ lớn: cụm nút xuống dòng dưới (căn phải) thay vì ép chữ thành cột hẹp. */
+.history-point-item { flex-wrap: wrap; }
+.history-point-item > span:first-child { flex: 1 1 12em; }
+.history-point-actions { flex: none; margin-left: auto; display: flex; align-items: center; gap: var(--space-1); }
 
 /* 14 Cấu hình */
 .column-width-config { margin-top: var(--space-4); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
@@ -595,9 +599,14 @@ dialog::backdrop { background: var(--backdrop); }
 .audit-diff-table tbody tr:last-child > td { border-bottom: 0; }
 .member-detail-table-scroll { max-height: none; overflow: clip; }
 .member-detail-table { width: 100%; }
-.audit-diff-table .diff-deleted td, .audit-diff-table th.diff-deleted, .audit-diff-legend .diff-deleted { background: var(--diff-deleted); }
-.audit-diff-table .diff-added td, .audit-diff-table th.diff-added, .audit-diff-legend .diff-added { background: var(--diff-added); }
-.audit-diff-table .diff-modified td, .audit-diff-table th.diff-modified, .audit-diff-legend .diff-modified { background: var(--diff-modified); }
+.audit-diff-table .diff-deleted td, .audit-diff-table :is(th, td).diff-deleted, .audit-diff-legend .diff-deleted { background: var(--diff-deleted); }
+.audit-diff-table .diff-added td, .audit-diff-table :is(th, td).diff-added, .audit-diff-legend .diff-added { background: var(--diff-added); }
+.audit-diff-table .diff-modified td, .audit-diff-table :is(th, td).diff-modified, .audit-diff-legend .diff-modified { background: var(--diff-modified); }
+/* Summary trong diff phiên: số căn phải, nhãn hàng dính bên trái khi cuộn ngang. */
+.audit-diff-panel h4 { margin: var(--space-3) 0 var(--space-2); color: var(--ink-2); font-size: var(--fs-sm); }
+.audit-diff-panel h3 + h4 { margin-top: 0; }
+.audit-summary-table td:not(.audit-empty) { text-align: right; }
+.audit-summary-table tbody th { top: auto; left: 0; }
 
 /* 17 Chuyển động: chỉ dòng vừa thêm/xóa (expenses.js) */
 .expense-table tr.row-enter > td { animation: row-enter var(--duration-slow) var(--ease-out) backwards; }
@@ -699,10 +708,13 @@ dialog[open]::backdrop { animation: fade-in var(--duration) var(--ease-out); }
   .expense-table .amount-input.is-expression:focus { width: max(100%, 7rem); margin-left: min(0px, 100% - 7rem); }
   .amount-input.is-expression:focus ~ .sign-toggle { right: calc(max(100%, 7rem) + 2px); }
 }
-/* Điện thoại (cả xoay ngang); ô nhập 16 px để iOS không phóng to. */
+/* Điện thoại (cả xoay ngang): ô nhập 16 px ở cỡ chữ mặc định (90 %) trở lên, nhỏ dần theo tỉ lệ khi Admin chọn cỡ
+   nhỏ hơn; iPhone không tự phóng to ô nhỏ nhờ viewport.js. */
 @media (pointer: coarse) and (max-width: 760px), (pointer: coarse) and (max-height: 500px) {
   :root { --table-scale: 1; --summary-fs: var(--fs-sm); }
-  input:not([type="checkbox"]), select, .detail-toolbar :is(select, input:not([type=checkbox])) { font-size: max(16px, 1em); }
+  input:not([type="checkbox"]), select, .detail-toolbar :is(select, input:not([type=checkbox])) {
+    font-size: max(1em, min(16px, 16px * var(--font-scale) / 0.9));
+  }
 }
 
 /* 21 Màu cưỡng bức (High Contrast): không có box-shadow, dùng outline */

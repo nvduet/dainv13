@@ -303,6 +303,21 @@ class MockDatabase {
     }
 
     // Payments and adjustments.
+    // Per-member transfer totals of the Detail audit snapshot (TRANSFERS_SQL).
+    if (sql.startsWith("SELECT member_id AS memberId, SUM(CASE WHEN direction = 'member_to_admin' THEN amount ELSE 0 END) AS paidToAdminVnd")) {
+      const totals = new Map();
+      const add = (memberId, key, amountVnd) => {
+        const total = totals.get(memberId) || { memberId, paidToAdminVnd: 0, refundedVnd: 0 };
+        total[key] += amountVnd;
+        totals.set(memberId, total);
+      };
+      for (const payment of this.payments.filter((item) => item.status === "confirmed")) {
+        if (payment.direction === "member_to_admin") add(payment.memberId, "paidToAdminVnd", payment.amountVnd);
+        if (payment.direction === "admin_to_member") add(payment.memberId, "refundedVnd", payment.amountVnd);
+      }
+      for (const adjustment of this.adjustments) add(adjustment.memberId, "paidToAdminVnd", adjustment.amountVnd);
+      return [...totals.values()].sort((a, b) => (a.memberId < b.memberId ? -1 : 1));
+    }
     if (sql.startsWith("SELECT id, member_id AS memberId, direction, amount_vnd AS amountVnd, status, created_at AS createdAt, confirmed_at AS confirmedAt FROM payments WHERE status = 'confirmed'")) {
       return this.payments
         .filter((payment) => payment.status === "confirmed")

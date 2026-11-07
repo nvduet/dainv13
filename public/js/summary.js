@@ -40,6 +40,12 @@ const SUMMARY_ROWS = [
 ];
 // Lưu ô "Đã chuyển khoản" theo id thành viên: { inFlight, rerun }.
 const transferSaves = new Map();
+// Lịch sử hoàn tác (expense-history.js): saved(memberId, trước, sau, changed) sau mỗi lần lưu thành công (true = đã tự
+// báo, không cần "Đã cập nhật…"), failed(memberId) khi lưu lỗi, dirty() khi một ô bắt đầu/thôi có số chưa lưu.
+let transferHooks = { saved: () => false, failed: () => {}, dirty: () => {} };
+export function watchTransferSaves(hooks) {
+  transferHooks = { ...transferHooks, ...hooks };
+}
 let summaryShape = "";
 let renderingSummary = false;
 
@@ -190,7 +196,10 @@ function patchSummary(tbody, html) {
 // "Đang sửa" = chữ trong ô khác số đã lưu (thuộc tính value, luôn theo số mới nhất của máy chủ).
 // Sửa xong mà trùng số đã lưu (gõ lại đúng số cũ, gõ rồi xóa) thì không còn gì để lưu.
 function refreshTransferDirty(input) {
-  input.dataset.dirty = String(input.value !== input.defaultValue);
+  const dirty = String(input.value !== input.defaultValue);
+  if (input.dataset.dirty === dirty) return;
+  input.dataset.dirty = dirty;
+  transferHooks.dirty();
 }
 
 function syncTransferInput(cell, input, freshCell) {
@@ -275,10 +284,7 @@ export function handleTransferInput(event) {
 
 // Cập nhật state.payments từ phản hồi mà không tải lại /api/state; false nếu không đối chiếu được.
 function applyTransferLocally(memberId, response) {
-  const clientTotal = state.payments
-    .filter((payment) => payment.memberId === memberId && payment.status === "confirmed" &&
-      payment.direction === "member_to_admin")
-    .reduce((total, payment) => total + payment.amountVnd, 0);
+  const clientTotal = currentTransferTotal(memberId);
   if (response.adjustment && clientTotal + response.adjustmentVnd === response.amountVnd) {
     state.payments.unshift(response.adjustment);
     return true;
@@ -338,12 +344,18 @@ async function finishTransferSave(memberId, save, request, submittedValue) {
       state.payments = data.payments;
     }
     renderSummary();
-    showNotice("Đã cập nhật tổng tiền chuyển khoản.");
+    // Tổng trước đó theo máy chủ: tổng mới trừ phần điều chỉnh vừa ghi.
+    const changed = Boolean(response.adjustment);
+    const before = changed ? response.amountVnd - response.adjustmentVnd : response.amountVnd;
+    if (!transferHooks.saved(memberId, before, response.amountVnd, changed)) showNotice("Đã cập nhật tổng tiền chuyển khoản.");
   } catch (caught) {
     showNotice(caught.message, "error");
+    transferHooks.failed(memberId);
   } finally {
     save.inFlight = null;
     if (save.rerun && findTransferInput(memberId)) void saveTransferTotal(memberId);
+    // Lần lưu đã xong hẳn: nút Hoàn tác mô tả mục vừa ghi thay vì "thay đổi mới nhất".
+    transferHooks.dirty();
   }
 }
 
@@ -372,6 +384,30 @@ export function saveTransfersForUnload() {
   for (const input of document.querySelectorAll("#summary-body .paid-transfer-input[data-dirty='true']")) {
     void saveTransferTotal(input.dataset.memberId, { unloading: true });
   }
+}
+
+// Tổng "Đã chuyển khoản" của một người theo dữ liệu trang đang có (khoản nộp đã xác nhận cộng các điều chỉnh).
+export function currentTransferTotal(memberId) {
+  return state.payments
+    .filter((payment) => payment.memberId === memberId && payment.status === "confirmed" && payment.direction === "member_to_admin")
+    .reduce((total, payment) => total + payment.amountVnd, 0);
+}
+
+// Có ô chuyển khoản đang gõ dở hoặc đang lưu (trừ của các thành viên trong except): thay đổi mới nhất chưa vào lịch sử.
+export function transferWorkUnsettled(except = new Set()) {
+  return [...document.querySelectorAll("#summary-body .paid-transfer-input")].some((input) =>
+    !except.has(input.dataset.memberId) &&
+    (input.dataset.dirty === "true" || Boolean(transferSaves.get(input.dataset.memberId)?.inFlight)));
+}
+
+// Hoàn tác/làm lại: đặt tổng như khi Admin gõ vào ô rồi lưu. false nếu không có ô (không phải Admin).
+export function setTransferTotal(memberId, amountVnd) {
+  const input = findTransferInput(memberId);
+  if (!input) return false;
+  input.value = formatVndInput(amountVnd);
+  refreshTransferDirty(input);
+  void saveTransferTotal(memberId);
+  return true;
 }
 
 export async function doneTransfer(button) {

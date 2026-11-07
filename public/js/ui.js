@@ -174,6 +174,9 @@ export function setSaveStatus(message, status = "saved") {
 
 export function showActionDialog({ title, message = "", inputLabel = "", initialValue = "", inputType = "text", preserveInput = false, confirmLabel = "Xác nhận", danger = false }) {
   const actionDialog = document.querySelector("#action-dialog");
+  // Hộp thoại trước đã đóng nhưng sự kiện close của nó chưa tới (mở lại ngay sau Esc): kết thúc nó theo returnValue
+  // của chính nó trước khi đặt lại, để close đến muộn không lấy mất kết quả của hộp thoại mới.
+  if (resolveActionDialog) settleActionDialog();
   document.querySelector("#action-dialog-title").textContent = title;
   const messageElement = document.querySelector("#action-dialog-message");
   messageElement.textContent = message;
@@ -221,8 +224,9 @@ export function clearActionDialogError() {
   document.querySelector("#action-dialog-error").textContent = "";
 }
 
+// Sự kiện close đến lúc hộp thoại đang mở là của lần trước (đã kết thúc khi mở lại): bỏ qua.
 export function settleActionDialog() {
-  if (!resolveActionDialog) return;
+  if (!resolveActionDialog || document.querySelector("#action-dialog").open) return;
   const resolve = resolveActionDialog;
   resolveActionDialog = null;
   const input = document.querySelector("#action-dialog-input");

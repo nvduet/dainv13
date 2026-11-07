@@ -2,6 +2,8 @@
 // Mỗi lần lưu thành công ghi lại giá trị trước của các trường vừa đổi. Hoàn tác đặt lại giá trị đó qua hàng đợi tự lưu
 // như khi người dùng gõ; chỉ báo "Đã hoàn tác" khi máy chủ đã lưu. Trường đã bị người khác (thiết bị khác) đổi tiếp
 // thì bỏ qua và báo không hoàn tác được. Hoàn tác "Thêm dòng" (hay nhân bản) là xóa dòng đó, có thông báo "Hoàn tác".
+// Tổng "Đã chuyển khoản" của Summary (ô của Admin, nút Done) dùng chung lịch sử: hoàn tác đặt lại tổng trước đó qua
+// chính ô đó (summary.js).
 import {
   applyHistoryValues,
   expenseDescription,
@@ -14,10 +16,14 @@ import {
   settleExpenseWork,
 } from "./expenses.js";
 import { state } from "./state.js";
+import { currentTransferTotal, flushTransferInputs, setTransferTotal, transferWorkUnsettled, watchTransferSaves } from "./summary.js";
 import { showNotice } from "./ui.js";
-import { createUndoHistory, describeEntry, diffSavedExpense, planHistoryStep } from "./undo-history.js";
+import { createUndoHistory, describeEntry, diffSavedExpense, planHistoryStep, planTransferStep } from "./undo-history.js";
 
 const history = createUndoHistory({ onChange: refreshHistoryButtons });
+// Tổng chuyển khoản do hoàn tác/làm lại đặt, theo id thành viên: { entry, direction, amountVnd }. Lưu xong đúng tổng đó
+// thì báo hoàn tác/làm lại, không ghi thành thay đổi mới.
+const pendingTransfers = new Map();
 // Giá trị do hoàn tác/làm lại (hoặc lần điền bản sao vừa nhân bản) đặt vào một dòng, theo id khoản chi:
 // { entry, direction, skipped, fields: Map(trường → giá trị), toggles: Map(memberId → tick), failed }.
 // Lưu xong đúng các giá trị đó thì không ghi thành thay đổi mới; hoàn tác/làm lại khi đó mới được báo thành công.
@@ -140,6 +146,46 @@ function showConflict(direction) {
   showNotice(`Không thể ${direction === "undo" ? "hoàn tác" : "làm lại"} vì dữ liệu đã thay đổi.`, "error", 10000);
 }
 
+const putBack = (write) => (write.direction === "undo" ? history.pushUndo : history.pushRedo)(write.entry);
+
+// Gọi một lần lúc khởi động (app.js), khi mọi module đã nạp: summary.js và module này import lẫn nhau.
+export function watchTransferHistory() {
+  watchTransferSaves({
+    // Một tổng chuyển khoản đã lưu: của hoàn tác/làm lại thì báo; Admin gõ hay bấm Done thì thành một mục.
+    saved(memberId, before, after, changed) {
+      const write = pendingTransfers.get(memberId);
+      pendingTransfers.delete(memberId);
+      if (write?.amountVnd === after) return confirmWrite({ ...write, skipped: false });
+      if (changed) history.record({ kind: "transfer", memberId, before, after, label: memberName(memberId) ?? "" });
+      return false;
+    },
+    // Lưu lỗi: mục về ngăn cũ để thử lại sau.
+    failed(memberId) {
+      const write = pendingTransfers.get(memberId);
+      if (!write) return;
+      pendingTransfers.delete(memberId);
+      putBack(write);
+    },
+    dirty: () => refreshHistoryButtons(),
+  });
+}
+
+function stepTransfer(entry, direction) {
+  const exists = state.members.some((member) => member.id === entry.memberId);
+  const amountVnd = exists ? planTransferStep(entry, currentTransferTotal(entry.memberId), direction) : null;
+  if (amountVnd === null) {
+    showConflict(direction);
+    return;
+  }
+  const write = { entry, direction, amountVnd };
+  pendingTransfers.set(entry.memberId, write);
+  if (!setTransferTotal(entry.memberId, amountVnd)) {
+    pendingTransfers.delete(entry.memberId);
+    putBack(write);
+    showNotice("Chỉ Admin mới hoàn tác được thay đổi chuyển khoản. Hãy đăng nhập Admin.", "error");
+  }
+}
+
 function stepEdit(entry, direction) {
   const current = readSavedExpense(entry.expenseId);
   const plan = current && planHistoryStep(entry, current, direction, new Set(state.members.map((member) => member.id)));
@@ -201,9 +247,16 @@ async function step(direction) {
       showNotice("Có thay đổi khoản chi chưa lưu. Hãy xử lý lỗi lưu trước khi tiếp tục.", "error");
       return;
     }
+    try {
+      await flushTransferInputs();
+    } catch (caught) {
+      showNotice(caught.message, "error");
+      return;
+    }
     const entry = direction === "undo" ? history.takeUndo() : history.takeRedo();
     if (!entry) return;
     if (entry.kind === "edit") stepEdit(entry, direction);
+    else if (entry.kind === "transfer") stepTransfer(entry, direction);
     else if (entry.kind === "add") stepAdd(entry, direction);
     else if (direction === "undo") stepDelete(entry);
   } finally {
@@ -264,7 +317,7 @@ export function refreshHistoryButtons() {
   const active = document.activeElement;
   // Hoàn tác/làm lại (hay lần điền bản sao) đang chờ lưu chính nó thì không tính là thay đổi mới của người dùng.
   const writing = [...pendingWrites].some(([id, write]) => !write.failed && expenseHasQueuedWork(id));
-  const latest = !stepping && !writing && expenseWorkUnsettled();
+  const latest = !stepping && !writing && (expenseWorkUnsettled() || transferWorkUnsettled(new Set(pendingTransfers.keys())));
   setHistoryButton(undoButton, latest ? "latest" : history.peekUndo(), "Hoàn tác", UNDO_KEY, "Chưa có thay đổi để hoàn tác");
   setHistoryButton(redoButton, history.peekRedo(), "Làm lại", APPLE ? "⌘⇧Z" : "Ctrl+Y", "Chưa có thay đổi để làm lại");
   // Nút đang được focus vừa bị tắt (hết thay đổi): focus sang nút kia, hay nút "Add line" khi cả hai đều tắt, để bàn

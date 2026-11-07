@@ -10,11 +10,12 @@ import {
   settleExpenseWork,
   watchLocalWrites,
 } from "./expenses.js";
-import { escapeHtml, formatLocalDateTime, formatVnd, unbreakable } from "./format.js";
+import { balanceClass, escapeHtml, formatLocalDateTime, formatVnd, unbreakable } from "./format.js";
 import { ledgerSignature } from "./return-watch.js";
 import { applyDisplaySettings } from "./settings.js";
 import { state } from "./state.js";
 import { flushTransferInputs, renderTotals } from "./summary.js";
+import { buildSummaryDiff, cellKey } from "./summary-diff.js";
 import { finishLoading, isImportantNoticeShown, setButtonLoading, showActionDialog, showNotice } from "./ui.js";
 
 let editingGroupId = null;
@@ -50,7 +51,7 @@ export async function loadState() {
   applyDisplaySettings(data);
   render();
   finishLoading();
-  document.querySelector("#export-csv").disabled = false;
+  document.querySelector("#export-xlsx").disabled = false;
   if (state.isAdmin) {
     await loadAdminData();
   } else {
@@ -246,8 +247,13 @@ async function loadHistoryPoints() {
         <div class="history-point-item">
           <span><strong>${escapeHtml(point.message || "Không có message")}</strong><br>
             ${escapeHtml(formatLocalDateTime(point.createdAt))} · ${point.memberCount} thành viên · ${point.expenseCount} khoản chi</span>
-          <button class="button button-light button-small" type="button"
-            data-action="restore-history-point" data-point-id="${escapeHtml(point.id)}">Khôi phục</button>
+          <span class="history-point-actions">
+            <button class="button button-light button-small" type="button"
+              data-action="restore-history-point" data-point-id="${escapeHtml(point.id)}">Khôi phục</button>
+            <button class="icon-button delete" type="button" data-action="delete-history-point"
+              data-point-id="${escapeHtml(point.id)}" aria-label="Xóa điểm khôi phục ${escapeHtml(point.message || "Không có message")}"
+              title="Xóa điểm khôi phục">×</button>
+          </span>
         </div>`).join("")
       : `<p class="section-description">Chưa có điểm lưu nào.</p>`;
   } catch (caught) {
@@ -303,6 +309,41 @@ function renderAuditSnapshotTable(snapshot, changeTypes, memberChangeTypes) {
   </div>`;
 }
 
+// Bảng Summary của một phía (trước/sau phiên), cùng hàng như bảng Summary của trang; ô đổi giá trị tô "Sửa", cột
+// thành viên được thêm/bị xóa tô cả cột.
+function renderAuditSummaryTable(summary, rows, changes) {
+  if (!summary.members.length) {
+    return `<div class="audit-diff-table-scroll"><table class="audit-diff-table audit-summary-table"><tbody><tr><td class="audit-empty">Chưa có thành viên.</td></tr></tbody></table></div>`;
+  }
+  const mark = (type) => (type ? ` diff-${type}` : "");
+  const memberMark = (member) => changes.get(`member:${member.id}`);
+  const columnMark = (member) => (["added", "deleted"].includes(memberMark(member)) ? memberMark(member) : "");
+  return `<div class="audit-diff-table-scroll">
+    <table class="audit-diff-table audit-summary-table">
+      <thead><tr>
+        <th scope="col">Tên thành viên</th>
+        ${summary.members.map((member) => `<th scope="col" class="${mark(memberMark(member)).trim()}">${escapeHtml(member.name)}</th>`).join("")}
+      </tr></thead>
+      <tbody>
+        ${rows.map((row) => `<tr>
+          <th scope="row">${row.label}</th>
+          ${summary.members.map((member) => {
+            const type = changes.get(cellKey(row.key, member.id)) || columnMark(member);
+            return `<td class="${`${row.balance ? balanceClass(member[row.key]) : ""}${mark(type)}`.trim()}">${escapeHtml(formatVnd(member[row.key]))}</td>`;
+          }).join("")}
+        </tr>`).join("")}
+        <tr>
+          <th scope="row">Số dư nhóm</th>
+          ${summary.segments.map((segment) => {
+            const label = segment.group ? `Số dư nhóm ${segment.group.name}` : `Số dư ${segment.members[0].name} chưa thuộc nhóm`;
+            return `<td colspan="${segment.members.length}" class="${`${balanceClass(segment.balanceVnd)}${mark(changes.get(`segment:${segment.key}`))}`.trim()}" title="${escapeHtml(label)}">${escapeHtml(formatVnd(segment.balanceVnd))}</td>`;
+          }).join("")}
+        </tr>
+      </tbody>
+    </table>
+  </div>`;
+}
+
 function renderAuditSessionDiff(session) {
   const beforeExpenses = new Map((session.before.expenses || []).map((expense) => [expense.id, expense]));
   const afterExpenses = new Map((session.after.expenses || []).map((expense) => [expense.id, expense]));
@@ -351,8 +392,9 @@ function renderAuditSessionDiff(session) {
   for (const id of afterMembers.keys()) {
     if (!beforeMembers.has(id)) afterMemberChanges.set(id, "added");
   }
+  const summaryDiff = buildSummaryDiff(session, state.payments);
   const actorNames = session.actors.map((actor) => actor === "admin" ? "Admin" : "Khách");
-  document.querySelector("#audit-diff-title").textContent = `Detail · ${actorNames.join(" + ")}`;
+  document.querySelector("#audit-diff-title").textContent = `Detail & Summary · ${actorNames.join(" + ")}`;
   document.querySelector("#audit-diff-content").innerHTML = `
     <p class="section-description">Phiên ${escapeHtml(unbreakable(formatLocalDateTime(session.startedAt)))} · hoạt động gần nhất ${escapeHtml(unbreakable(formatLocalDateTime(session.lastActivity)))} · Có thay đổi từ: ${actorNames.map((name) => `<span class="audit-actor">${escapeHtml(name)}</span>`).join(" ")}</p>
     <div class="audit-diff-legend">
@@ -361,9 +403,16 @@ function renderAuditSessionDiff(session) {
       <span class="diff-modified">Sửa</span>
     </div>
     <div class="audit-diff-panels">
-      <section class="audit-diff-panel"><h3>Trước phiên</h3>${renderAuditSnapshotTable(session.before, beforeChanges, beforeMemberChanges)}</section>
-      <section class="audit-diff-panel"><h3>Sau phiên</h3>${renderAuditSnapshotTable(session.after, afterChanges, afterMemberChanges)}</section>
-    </div>`;
+      <section class="audit-diff-panel"><h3>Trước phiên</h3>
+        <h4>Detail</h4>${renderAuditSnapshotTable(session.before, beforeChanges, beforeMemberChanges)}
+        <h4>Summary</h4>${renderAuditSummaryTable(summaryDiff.before, summaryDiff.rows, summaryDiff.changes.before)}
+      </section>
+      <section class="audit-diff-panel"><h3>Sau phiên</h3>
+        <h4>Detail</h4>${renderAuditSnapshotTable(session.after, afterChanges, afterMemberChanges)}
+        <h4>Summary</h4>${renderAuditSummaryTable(summaryDiff.after, summaryDiff.rows, summaryDiff.changes.after)}
+      </section>
+    </div>
+    ${summaryDiff.note ? `<p class="section-description">${escapeHtml(summaryDiff.note)}</p>` : ""}`;
 }
 
 export async function showAuditSessionDiff(button) {
@@ -476,6 +525,31 @@ export async function restoreHistoryPoint(button) {
   });
   await loadState();
   showNotice("Đã khôi phục dữ liệu từ điểm đã chọn.");
+}
+
+// Xóa điểm khôi phục luôn hỏi mật khẩu thao tác, như xóa sổ; dữ liệu sổ không đổi. Nút vừa bấm mất khi danh sách
+// vẽ lại, nên con trỏ chuyển sang nút xóa của điểm kế tiếp (hoặc nút Store khi hết điểm).
+export async function deleteHistoryPoint(button) {
+  const point = state.historyPoints.find((item) => item.id === button.dataset.pointId);
+  const index = state.historyPoints.indexOf(point);
+  const password = await showActionDialog({
+    title: "Xóa điểm khôi phục?",
+    message: `Điểm "${point?.message || "Không có message"}" lưu lúc ${unbreakable(formatLocalDateTime(point?.createdAt))} sẽ bị xóa vĩnh viễn; dữ liệu sổ hiện tại không thay đổi. Nhập mật khẩu thao tác để xác nhận.`,
+    inputLabel: "Mật khẩu thao tác",
+    inputType: "password",
+    preserveInput: true,
+    confirmLabel: "Xóa vĩnh viễn",
+    danger: true,
+  });
+  if (password === null) return;
+  await api(`/api/admin/history-points/${encodeURIComponent(button.dataset.pointId)}`, {
+    method: "DELETE",
+    body: JSON.stringify({ password }),
+  });
+  await loadHistoryPoints();
+  const buttons = document.querySelectorAll('#history-points [data-action="delete-history-point"]');
+  (buttons[Math.min(index, buttons.length - 1)] || document.querySelector("#store-history-point")).focus();
+  showNotice("Đã xóa điểm khôi phục.");
 }
 
 export async function renameMember(button) {

@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="vi" data-skin="graphite">
+<html lang="vi" data-skin="nga" data-mode="light">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <meta name="theme-color" content="#f4f4f3" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#0c0c0d" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f2eee6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#f2eee6" media="(prefers-color-scheme: dark)">
     <meta name="description" content="Expense tracker for a group.">
     <meta name="robots" content="noindex, nofollow">
     <title>Expense</title>
@@ -28,15 +28,17 @@
     <link rel="modulepreload" href="/js/return-watch.js">
     <link rel="modulepreload" href="/js/settings.js">
     <link rel="modulepreload" href="/js/summary.js">
+    <link rel="modulepreload" href="/js/summary-diff.js">
     <link rel="modulepreload" href="/js/expense-view.js">
     <link rel="modulepreload" href="/js/detail-view.js">
     <link rel="modulepreload" href="/js/member-detail.js">
     <link rel="modulepreload" href="/js/expenses.js">
-    <link rel="modulepreload" href="/js/csv.js">
-    <link rel="modulepreload" href="/js/csv-download.js">
+    <link rel="modulepreload" href="/js/xlsx.js">
+    <link rel="modulepreload" href="/js/xlsx-download.js">
     <link rel="modulepreload" href="/js/admin.js">
     <link rel="modulepreload" href="/js/theme.js">
     <link rel="modulepreload" href="/js/theme-picker.js">
+    <link rel="modulepreload" href="/js/viewport.js">
     <script type="module" src="/app.js"></script>
   </head>
   <body>
@@ -51,15 +53,15 @@
           <dialog id="theme-panel" class="theme-panel" aria-label="Đổi giao diện">
             <p id="theme-skin-label">Giao diện</p>
             <div class="theme-skins" role="radiogroup" aria-labelledby="theme-skin-label">
-              <button type="button" role="radio" aria-checked="true" data-skin="graphite"><span class="theme-dots"></span>Than chì</button>
+              <button type="button" role="radio" aria-checked="false" tabindex="-1" data-skin="graphite"><span class="theme-dots"></span>Than chì</button>
               <button type="button" role="radio" aria-checked="false" tabindex="-1" data-skin="rung"><span class="theme-dots"></span>Rừng xanh</button>
-              <button type="button" role="radio" aria-checked="false" tabindex="-1" data-skin="nga"><span class="theme-dots"></span>Ngà &amp; Vàng</button>
+              <button type="button" role="radio" aria-checked="true" data-skin="nga"><span class="theme-dots"></span>Ngà &amp; Vàng</button>
               <button type="button" role="radio" aria-checked="false" tabindex="-1" data-skin="navy"><span class="theme-dots"></span>Navy &amp; Đồng</button>
             </div>
             <p id="theme-mode-label">Chế độ</p>
             <div class="theme-modes" role="radiogroup" aria-labelledby="theme-mode-label">
-              <button type="button" role="radio" aria-checked="true" data-mode="auto">Tự động</button>
-              <button type="button" role="radio" aria-checked="false" tabindex="-1" data-mode="light">Sáng</button>
+              <button type="button" role="radio" aria-checked="false" tabindex="-1" data-mode="auto">Tự động</button>
+              <button type="button" role="radio" aria-checked="true" data-mode="light">Sáng</button>
               <button type="button" role="radio" aria-checked="false" tabindex="-1" data-mode="dark">Tối</button>
             </div>
           </dialog>
@@ -107,7 +109,7 @@
           <div class="section-actions">
             <button id="undo-change" class="button button-light heading-button" type="button" aria-label="Hoàn tác" aria-keyshortcuts="Control+Z Meta+Z" title="Chưa có thay đổi để hoàn tác" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-undo"></use></svg><span>Hoàn tác</span></button>
             <button id="redo-change" class="button button-light heading-button" type="button" aria-label="Làm lại" aria-keyshortcuts="Control+Y Control+Shift+Z Meta+Shift+Z" title="Chưa có thay đổi để làm lại" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-redo"></use></svg><span>Làm lại</span></button>
-            <button id="export-csv" class="button button-light heading-button" type="button" aria-label="Xuất CSV" title="Xuất CSV" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-download"></use></svg><span>Xuất CSV</span></button>
+            <button id="export-xlsx" class="button button-light heading-button" type="button" aria-label="Xuất Excel" title="Xuất Excel" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-download"></use></svg><span>Xuất Excel</span></button>
             <button id="add-expense" class="button button-coral" type="button">＋ Add line</button>
           </div>
         </div>
@@ -149,6 +151,49 @@
         <div class="ledger-footer">
           <span>Chi phí tính theo nghìn đồng</span>
           <span id="save-status" role="status" aria-live="polite">Đã lưu</span>
+        </div>
+      </section>
+
+      <section id="column-width-details" class="section-card column-width-card" aria-labelledby="column-width-title" hidden>
+        <h2 id="column-width-title">Cấu hình</h2>
+        <div class="column-width-config">
+          <div class="config-group">
+            <h4>Cỡ chữ toàn giao diện</h4>
+            <div class="width-inputs">
+              <label><span>Cỡ chữ:</span> <span class="unit-input"><input type="number" id="font-size-percent" min="75" max="200" step="5" value="90" required><span class="unit">%</span></span></label>
+            </div>
+            <button id="apply-font-size" class="button button-dark button-small" type="button">Áp dụng</button>
+          </div>
+          <div class="config-group">
+            <h4>Kích thước ảnh QR</h4>
+            <div class="width-inputs">
+              <label><span>Chiều rộng tối đa:</span> <span class="unit-input"><input type="number" id="qr-size-pixels" min="80" max="1600" step="10" value="250" required><span class="unit">px</span></span></label>
+            </div>
+            <button id="apply-qr-size" class="button button-dark button-small" type="button">Áp dụng</button>
+          </div>
+          <div class="config-group">
+            <h4>Bảng "Summary"</h4>
+            <div class="width-inputs">
+              <label><span>Tên chỉ tiêu:</span> <span class="unit-input"><input type="number" id="col-width-summary-label" min="24" max="2000" value="120" required><span class="unit">px</span></span></label>
+              <label><span>Cột thành viên <span id="summary-member-column-count"></span>:</span> <span class="unit-input"><input type="number" id="col-width-summary-member" min="24" max="2000" value="100" required><span class="unit">px</span></span></label>
+            </div>
+            <button id="apply-summary-widths" class="button button-dark button-small" type="button">Áp dụng</button>
+          </div>
+          <div class="config-group config-group-wide">
+            <h4>Bảng "Detail"</h4>
+            <div class="width-inputs">
+              <label><span>Người chi:</span> <span class="unit-input"><input type="number" id="col-width-payer" min="24" max="2000" value="100" required><span class="unit">px</span></span></label>
+              <label><span>Date:</span> <span class="unit-input"><input type="number" id="col-width-date" min="24" max="2000" value="110" required><span class="unit">px</span></span></label>
+              <label><span>Nội dung:</span> <span class="unit-input"><input type="number" id="col-width-description" min="24" max="2000" value="180" required><span class="unit">px</span></span></label>
+              <label><span>Chi phí:</span> <span class="unit-input"><input type="number" id="col-width-amount" min="24" max="2000" value="60" required><span class="unit">px</span></span></label>
+              <label><span>Cột thành viên <span id="expense-member-column-count"></span>:</span> <span class="unit-input"><input type="number" id="col-width-member" min="24" max="2000" value="60" required><span class="unit">px</span></span></label>
+              <label><span>Số người:</span> <span class="unit-input"><input type="number" id="col-width-count" min="24" max="2000" value="70" required><span class="unit">px</span></span></label>
+              <label><span>Số tiền/Ng:</span> <span class="unit-input"><input type="number" id="col-width-avg" min="24" max="2000" value="80" required><span class="unit">px</span></span></label>
+              <label><span>Xóa:</span> <span class="unit-input"><input type="number" id="col-width-actions" min="24" max="2000" value="68" required><span class="unit">px</span></span></label>
+            </div>
+            <button id="apply-expense-widths" class="button button-dark button-small" type="button">Áp dụng</button>
+          </div>
+          <button id="reset-column-widths" class="button button-light button-small" type="button">Đặt lại mặc định</button>
         </div>
       </section>
 
@@ -217,49 +262,6 @@
           <p class="section-description">Tối đa 999 phiên, gom thay đổi trong vòng 30 phút không hoạt động.</p>
           <div id="audit-list" class="audit-list"></div>
         </section>
-      </section>
-
-      <section id="column-width-details" class="section-card column-width-card" aria-labelledby="column-width-title" hidden>
-        <h2 id="column-width-title">Cấu hình</h2>
-        <div class="column-width-config">
-          <div class="config-group">
-            <h4>Cỡ chữ toàn giao diện</h4>
-            <div class="width-inputs">
-              <label><span>Cỡ chữ:</span> <span class="unit-input"><input type="number" id="font-size-percent" min="75" max="200" step="5" value="90" required><span class="unit">%</span></span></label>
-            </div>
-            <button id="apply-font-size" class="button button-dark button-small" type="button">Áp dụng</button>
-          </div>
-          <div class="config-group">
-            <h4>Kích thước ảnh QR</h4>
-            <div class="width-inputs">
-              <label><span>Chiều rộng tối đa:</span> <span class="unit-input"><input type="number" id="qr-size-pixels" min="80" max="1600" step="10" value="250" required><span class="unit">px</span></span></label>
-            </div>
-            <button id="apply-qr-size" class="button button-dark button-small" type="button">Áp dụng</button>
-          </div>
-          <div class="config-group">
-            <h4>Bảng "Summary"</h4>
-            <div class="width-inputs">
-              <label><span>Tên chỉ tiêu:</span> <span class="unit-input"><input type="number" id="col-width-summary-label" min="24" max="2000" value="120" required><span class="unit">px</span></span></label>
-              <label><span>Cột thành viên <span id="summary-member-column-count"></span>:</span> <span class="unit-input"><input type="number" id="col-width-summary-member" min="24" max="2000" value="100" required><span class="unit">px</span></span></label>
-            </div>
-            <button id="apply-summary-widths" class="button button-dark button-small" type="button">Áp dụng</button>
-          </div>
-          <div class="config-group config-group-wide">
-            <h4>Bảng "Detail"</h4>
-            <div class="width-inputs">
-              <label><span>Người chi:</span> <span class="unit-input"><input type="number" id="col-width-payer" min="24" max="2000" value="100" required><span class="unit">px</span></span></label>
-              <label><span>Date:</span> <span class="unit-input"><input type="number" id="col-width-date" min="24" max="2000" value="110" required><span class="unit">px</span></span></label>
-              <label><span>Nội dung:</span> <span class="unit-input"><input type="number" id="col-width-description" min="24" max="2000" value="180" required><span class="unit">px</span></span></label>
-              <label><span>Chi phí:</span> <span class="unit-input"><input type="number" id="col-width-amount" min="24" max="2000" value="60" required><span class="unit">px</span></span></label>
-              <label><span>Cột thành viên <span id="expense-member-column-count"></span>:</span> <span class="unit-input"><input type="number" id="col-width-member" min="24" max="2000" value="60" required><span class="unit">px</span></span></label>
-              <label><span>Số người:</span> <span class="unit-input"><input type="number" id="col-width-count" min="24" max="2000" value="70" required><span class="unit">px</span></span></label>
-              <label><span>Số tiền/Ng:</span> <span class="unit-input"><input type="number" id="col-width-avg" min="24" max="2000" value="80" required><span class="unit">px</span></span></label>
-              <label><span>Xóa:</span> <span class="unit-input"><input type="number" id="col-width-actions" min="24" max="2000" value="68" required><span class="unit">px</span></span></label>
-            </div>
-            <button id="apply-expense-widths" class="button button-dark button-small" type="button">Áp dụng</button>
-          </div>
-          <button id="reset-column-widths" class="button button-light button-small" type="button">Đặt lại mặc định</button>
-        </div>
       </section>
 
       <footer class="site-footer">

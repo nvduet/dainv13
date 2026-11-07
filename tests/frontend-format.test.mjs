@@ -189,10 +189,10 @@ test("missing or malformed timestamps are shown as they are", () => {
 });
 
 test("every server timestamp in admin.js is shown through formatLocalDateTime", () => {
-  // Bốn nơi hiện giờ (danh sách điểm lưu, hộp thoại khôi phục, danh sách và đầu trang diff nhật ký) đều đổi sang giờ địa phương.
+  // Năm nơi hiện giờ (danh sách điểm lưu, hộp thoại khôi phục và xóa điểm lưu, danh sách và đầu trang diff nhật ký) đều đổi sang giờ địa phương.
   const source = readFileSync(new URL("../public/js/admin.js", import.meta.url), "utf8");
   const reads = [...source.matchAll(/[\w$]+\??\.(?:createdAt|startedAt|lastActivity)\b/g)];
-  assert.equal(reads.length, 5);
+  assert.equal(reads.length, 6);
   for (const read of reads) {
     assert.equal(source.slice(read.index - "formatLocalDateTime(".length, read.index), "formatLocalDateTime(", read[0]);
   }

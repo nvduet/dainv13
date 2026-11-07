@@ -5,8 +5,10 @@
 //   { kind: "edit", expenseId, fields: { [trường]: { before, after } }, added: [memberId], removed: [memberId] }
 //   { kind: "add", expenseId, duplicate } — dòng thêm bằng "Add line" hoặc nút nhân bản
 //   { kind: "delete", expenseId }         — dòng đang chờ xóa (bỏ khỏi lịch sử khi DELETE đã gửi)
-// Mỗi mục còn có label (nội dung khoản chi lúc ghi), time và session (lần focus ô nhập đã tạo thay đổi).
-import { formatThousandInput } from "./format.js";
+//   { kind: "transfer", memberId, before, after } — tổng "Đã chuyển khoản" của một người (ô Summary hoặc nút Done)
+// Mỗi mục còn có label (nội dung khoản chi, hay tên thành viên, lúc ghi), time và session (lần focus ô nhập đã tạo
+// thay đổi).
+import { formatThousandInput, formatVnd } from "./format.js";
 
 export const HISTORY_LIMIT = 50;
 export const COALESCE_MS = 3000;
@@ -69,7 +71,17 @@ export function createUndoHistory({ now = () => Date.now(), limit = HISTORY_LIMI
     const time = now();
     redoStack.length = 0;
     const top = undoStack.at(-1);
-    if (change.kind === "edit" && top?.kind === "edit" && top.expenseId === change.expenseId &&
+    // Tổng chuyển khoản của cùng một người sửa liên tiếp trong 3 giây: một mục, giữ tổng trước đó cũ nhất; sửa về
+    // đúng tổng ban đầu thì mục biến mất.
+    if (change.kind === "transfer" && top?.kind === "transfer" && top.memberId === change.memberId &&
+        time - top.time <= coalesceMs) {
+      top.after = change.after;
+      top.time = time;
+      if (change.label !== undefined) top.label = change.label;
+      if (top.before === top.after) undoStack.pop();
+    } else if (change.kind === "transfer") {
+      if (change.before !== change.after) push(undoStack, { ...change, session: null, time });
+    } else if (change.kind === "edit" && top?.kind === "edit" && top.expenseId === change.expenseId &&
         keyOf(top) === keyOf(change) &&
         (time - top.time <= coalesceMs || (change.session != null && change.session === top.session))) {
       mergeEdit(top, change);
@@ -205,6 +217,13 @@ export function planHistoryStep(entry, current, direction, memberIds = null) {
   };
 }
 
+// Hoàn tác (hoặc làm lại) một mục "transfer" với tổng hiện tại trang biết: chỉ khi tổng vẫn đúng như mục đã ghi (không
+// ai sửa tiếp); null nghĩa là dữ liệu đã thay đổi. Kết quả là tổng cần lưu.
+export function planTransferStep(entry, currentVnd, direction) {
+  const from = direction === "undo" ? entry.after : entry.before;
+  return currentVnd === from ? (direction === "undo" ? entry.before : entry.after) : null;
+}
+
 function shorten(text, max = 40) {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
@@ -225,6 +244,11 @@ function formatValue(field, value, memberName) {
 // tại của khoản chi (mặc định: nội dung lúc ghi); memberName(id): tên thành viên; inverse: mô tả chiều ngược lại (sau
 // khi hoàn tác: "999 → 360", "−An" thay cho "+An").
 export function describeEntry(entry, { description = entry.label, memberName = () => null, inverse = false } = {}) {
+  if (entry.kind === "transfer") {
+    const name = memberName(entry.memberId) ?? entry.label ?? "(thành viên đã xóa)";
+    const [from, to] = inverse ? [entry.after, entry.before] : [entry.before, entry.after];
+    return `Đã chuyển khoản '${shorten(name)}' ${formatVnd(from)} → ${formatVnd(to)}`;
+  }
   const text = String(description ?? "").trim();
   const quoted = text ? `'${shorten(text)}'` : null;
   if (entry.kind === "add") {

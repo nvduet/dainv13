@@ -428,7 +428,7 @@ export function expenseWorkUnsettled() {
   return addsInFlight > 0 || saveState === "saving" || saveState === "pending";
 }
 
-// Các dòng theo thứ tự nhập (không theo cách sắp xếp đang chọn của bảng): xuất CSV, chi tiết thành viên.
+// Các dòng theo thứ tự nhập (không theo cách sắp xếp đang chọn của bảng): xuất Excel, chi tiết thành viên.
 export function inEntryOrder(items) {
   const positions = new Map(state.expenses.map((expense, index) => [expense.id, index]));
   const position = (item) => positions.get(item.id) ?? Number.MAX_SAFE_INTEGER;

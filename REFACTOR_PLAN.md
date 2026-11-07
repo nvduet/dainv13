@@ -117,7 +117,7 @@ $env:ELECTRON_RUN_AS_NODE = "1"
     - gợi ý "Vuốt ngang" chỉ hiện khi bảng tràn;
     - tự lưu chờ hết thời gian gõ, không gửi số đang gõ dở.
   1. Tìm, lọc và sắp xếp khoản chi.
-  2. Xuất CSV / sao lưu (Detail + Summary, mở được bằng Excel).
+  2. Xuất CSV / sao lưu (Detail + Summary, mở được bằng Excel). Từ 2026-11-05 thay bằng file .xlsx 2 sheet.
   3. Hoàn tác khi xóa khoản chi.
   4. Hoàn tác khi chỉnh sửa (ô chi phí, nội dung, người chi, ngày, tick người tham gia).
   5. Xem chi tiết từng thành viên (bấm tên trong Summary).
@@ -167,11 +167,65 @@ $env:ELECTRON_RUN_AS_NODE = "1"
     - G3: 580/580;
     - 156 ảnh giống hệt Mốc 6b từng điểm ảnh;
     - kiểm tra hành vi và giả lập trình duyệt cũ (31/31) đều đạt.
-  - Bản chốt cuối: `scratchpad\checkpoint-7` (= `code`).
+  - Bản chốt của GĐ7: `scratchpad\checkpoint-7`.
+- [x] **Bổ sung – Xóa điểm khôi phục** (chủ dự án yêu cầu 2026-11-04: "xóa điểm khôi phục, dùng chung pass khôi phục"). Đã tích hợp cùng ngày (227 test).
+  - Nút × cạnh "Khôi phục" ở mỗi điểm lưu. Luôn hỏi mật khẩu thao tác, như xóa sổ, kể cả khi phiên đã xác thực cho Store.
+  - Chỉ xóa đúng điểm đó; dữ liệu sổ không đổi; ghi một dòng `delete`/`history_point` vào `audit_log`.
+  - API mới `DELETE /api/admin/history-points/:id`, 3 query D1. Dùng chung giới hạn số lần nhập mật khẩu thao tác.
+  - Sửa kèm một race có sẵn trong hộp thoại dùng chung (`ui.js`): sự kiện `close` của hộp thoại trước đến muộn có thể làm hộp thoại vừa mở lại trả về Hủy (gặp khi bấm Esc rồi mở lại ngay). Ảnh hưởng mọi hộp thoại, không riêng tính năng này.
+  - Kiểm tra:
+    - 227/227 test;
+    - API, E2E và CSP giống hệt Mốc 6b;
+    - G3: 580 + 20 kiểm tra mới (`harness\cdp\g3-delete-point.mjs`, máy tính và điện thoại);
+    - ảnh: chỉ vùng nút của danh sách điểm lưu đổi; ở cỡ chữ 200%, cụm nút xuống dòng dưới.
+  - Bản chốt: `scratchpad\checkpoint-8`, baseline `*-checkpoint-8*`.
+- [x] **Sửa lỗi – Cỡ chữ nhỏ không áp dụng cho ô nhập trên điện thoại** (chủ dự án báo 2026-11-05). Tích hợp cùng ngày (230 test).
+  - Nguyên nhân: trên điện thoại, ô nhập có cỡ tối thiểu 16px (để iPhone không tự phóng to), nên khi chọn cỡ chữ dưới 90%, các ô của bảng Detail vẫn 16px.
+  - Sửa:
+    - ô nhập 16px ở mức 90% trở lên, nhỏ dần theo tỉ lệ khi chọn nhỏ hơn (75% → 13,3px), nên giao diện mặc định không đổi;
+    - `js/viewport.js` thêm `maximum-scale=1` chỉ trên iPhone/iPad để Safari không tự phóng to.
+  - Kiểm tra:
+    - 230/230 test;
+    - E2E, CSP, G3 (thêm `g3-font-scale.mjs`, 53 kiểm tra) đều đạt;
+    - 156 ảnh giống hệt Mốc 8.
+  - Bản chốt: `scratchpad\checkpoint-9`, baseline `*-checkpoint-9*`.
+- [x] **Bổ sung 2026-11-05 – Summary trong diff phiên, hoàn tác Summary, xuất Excel** (chủ dự án yêu cầu). Tích hợp cùng ngày (244 test).
+  1. Diff phiên nhật ký có thêm hai bảng Summary trước/sau, gồm cả chuyển khoản (chủ dự án chọn).
+     - Ảnh chụp phiên có thêm `transfers`: tổng chuyển khoản từng người, đọc trong cùng lô nên không thêm query.
+     - `PUT /api/admin/payments/total` (ô "Đã chuyển khoản", nút Done) nay được ghi vào phiên: từ 3 lên 6 query mỗi lần, lưu lại cùng tổng thì 5.
+     - Phiên cũ không có `transfers`: dùng tổng của phía còn lại, hoặc tổng hiện tại, kèm ghi chú.
+  2. Hoàn tác/làm lại cho "Đã chuyển khoản" và Done: chung lịch sử với Detail (nút Hoàn tác/Làm lại, Ctrl+Z / Ctrl+Y); bị từ chối nếu trang đã thấy tổng đổi từ nơi khác.
+  3. Xuất Excel (chủ dự án chọn .xlsx 2 sheet, thay CSV):
+     - sheet "Detail" và sheet "Summary" bố trí như trên web, kèm hàng "Nhóm";
+     - tạo ngay trên trình duyệt (`js/xlsx.js`, không thư viện);
+     - đã đọc lại bằng openpyxl và LibreOffice; chưa mở thử bằng Microsoft Excel thật.
+  - Kiểm tra:
+    - 244/244 test;
+    - API: chỉ khác bước 67 (thêm `transfers`) và 90 (HTML trang); 347 → 356 query;
+    - E2E: chỉ khác tiêu đề và ô tô màu của dialog diff;
+    - CSP sạch;
+    - G3: 15 script, thêm `g3-xlsx` (66) và `g3-summary-history` (16);
+    - ảnh: chỉ đổi cụm nút tiêu đề Detail ("Xuất Excel"), dialog diff và thông báo xuất file.
+  - Bản chốt: `scratchpad\checkpoint-10`, baseline `*-checkpoint-10*`.
+- [x] **Bổ sung 2026-11-05 – Chuyển "Cấu hình" xuống dưới Detail, giao diện mặc định Ngà & Vàng – Sáng** (chủ dự án yêu cầu). Tích hợp cùng ngày (244 test).
+  1. Thứ tự trang: tổng quan, Summary, Detail, **Cấu hình**, QR, khu Admin. Chỉ dời khối HTML, không đổi CSS hay chức năng.
+  2. Máy chưa từng chọn giao diện thấy **Ngà & Vàng, Sáng** (chủ dự án chọn "mọi người xem", không chỉ Admin).
+     - Áp dụng cả khi thiết bị đang ở chế độ tối, khi bộ nhớ trình duyệt bị chặn, khi giá trị lưu không hợp lệ và khi tắt JavaScript.
+     - Ai đã chọn giao diện trên máy mình thì vẫn giữ lựa chọn đó.
+     - `DEFAULT_THEME` trong `js/theme.js`, `theme-boot.js` và thuộc tính tĩnh `<html data-skin="nga" data-mode="light">` trong `index.html` phải khớp nhau (test `frontend-theme` kiểm tra).
+  - Kiểm tra:
+    - 244/244 test;
+    - API: chỉ khác bước 90 (HTML trang); 356 query như Mốc 10;
+    - E2E giống hệt, 0 lỗi; CSP sạch; G3 15 script đều đạt;
+    - kiểm tra giao diện (theme-check) đã đổi sang mặc định mới, đều đạt;
+    - touch target chỉ đổi thứ tự dòng;
+    - contrast và độ vừa Summary giống Mốc 10;
+    - ảnh: 106 ảnh khác và 34 ảnh đổi kích thước, đúng dự kiến (đổi giao diện mặc định, dời Cấu hình). Ảnh "dark" của các kịch bản mặc định nay là giao diện sáng, vì mặc định ép Sáng.
+  - Bản chốt: `scratchpad\checkpoint-11` (= `code`), baseline `*-checkpoint-11*`.
   - **Chưa deploy.** Khi chủ dự án muốn đưa lên server, chạy `scripts\push_to_server.bat`.
     - Lần deploy đó sẽ áp dụng migration mới `0013_cheaper_audit_log_retention.sql` (thêm ở GĐ2) lên D1 remote.
     - Các sổ khác sổ mặc định được nâng cấp schema dần, ở lần đầu mở sau deploy.
-    - Nên Store từng sổ trên trang hiện tại trước khi deploy, để có điểm khôi phục. Nút "Xuất CSV" chỉ có sau khi deploy bản mới.
+    - Nên Store từng sổ trên trang hiện tại trước khi deploy, để có điểm khôi phục. Nút "Xuất Excel" chỉ có sau khi deploy bản mới.
     - Mật khẩu thao tác (`HISTORY_RESTORE_PASSWORD`) phải được đặt bằng `scripts\change_pass.bat` trước; script deploy sẽ dừng nếu thiếu.
 
 ## 4. Kết quả review chính (đã kiểm chứng)
@@ -206,11 +260,11 @@ $env:ELECTRON_RUN_AS_NODE = "1"
 ## 5. GĐ3 – Mô hình mật khẩu mới (theo yêu cầu chủ dự án)
 
 - **Mật khẩu Admin:** chỉ dùng để đăng nhập (`ADMIN_USERNAME`/`ADMIN_PASSWORD`).
-- **Mật khẩu thao tác dùng chung** (secret `HISTORY_RESTORE_PASSWORD`, giữ tên cũ để không phải cấu hình lại): dùng cho tạo sổ, xóa sổ, Store điểm khôi phục và khôi phục. Đặt bằng `scripts\change_pass.bat`.
+- **Mật khẩu thao tác dùng chung** (secret `HISTORY_RESTORE_PASSWORD`, giữ tên cũ để không phải cấu hình lại): dùng cho tạo sổ, xóa sổ, Store điểm khôi phục, khôi phục và xóa điểm khôi phục (bổ sung 2026-11-04). Đặt bằng `scripts\change_pass.bat`.
   - Tạo sổ và Store: hỏi một lần cho mỗi phiên đăng nhập Admin, dùng chung cho mọi sổ trong phiên. Chủ dự án đã chọn cách này.
-  - Xóa sổ và Khôi phục: luôn hỏi lại, vì đây là thao tác phá hủy.
+  - Xóa sổ, Khôi phục và Xóa điểm khôi phục: luôn hỏi lại, vì đây là thao tác phá hủy.
   - Form tạo sổ bỏ ô "Mật khẩu xóa" riêng. Các sổ cũ đã có mật khẩu xóa riêng chuyển sang dùng mật khẩu thao tác.
-- `change_pass`: mật khẩu Admin và mật khẩu thao tác phải khác nhau, mỗi cái tối thiểu 8 ký tự (giống quy tắc hiện có của mật khẩu xóa sổ).
+- `change_pass`: hai mật khẩu không bị giới hạn độ dài hoặc khoảng trắng ở đầu/cuối, nhưng phải khác nhau và không được để trống.
 
 ## 6. Đề xuất cần chủ dự án quyết định (chưa làm)
 
@@ -244,7 +298,7 @@ $env:ELECTRON_RUN_AS_NODE = "1"
   - Giới hạn đã ghi trong SPEC:
     - rời trang ngay khi bản sao đang được tạo thì còn lại một dòng trống;
     - xóa rồi tải lại trang ngay có thể vẫn thấy dòng đó.
-  - CSV chưa có cột "Admin đã hoàn".
+  - File Excel chưa có hàng "Admin đã hoàn" (bảng Summary trên web cũng không hiện; Số dư đã tính khoản này). Sheet Summary có thêm hàng "Nhóm" mà trang web không có; có thể bỏ nếu không cần.
   - Hộp Chi tiết thành viên: ngày khoản chi theo định dạng của trình duyệt, ngày chuyển khoản theo dấu thời gian (giống nhật ký).
   - Số trên nút "Lọc & sắp xếp" đếm cả khi đang dùng cách sắp xếp khác mặc định.
 

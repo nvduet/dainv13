@@ -7,8 +7,51 @@ import {
   diffSavedExpense,
   HISTORY_LIMIT,
   planHistoryStep,
+  planTransferStep,
   sameValue,
 } from "../public/js/undo-history.js";
+
+const transfer = (memberId, before, after, label = "An") => ({ kind: "transfer", memberId, before, after, label });
+
+test("transfer totals: one entry per member, saves within 3 s coalesce keeping the oldest total, back to the start cancels", () => {
+  const { history, advance } = setup();
+  history.record(transfer("m1", 100_000, 120_000));
+  advance(1000);
+  history.record(transfer("m1", 120_000, 150_000));
+  assert.equal(history.sizes.undo, 1);
+  assert.deepEqual([history.peekUndo().before, history.peekUndo().after], [100_000, 150_000]);
+  advance(1000);
+  history.record(transfer("m1", 150_000, 100_000));
+  assert.equal(history.sizes.undo, 0, "edited back to the first total: nothing left to undo");
+
+  history.record(transfer("m1", 0, 50_000));
+  history.record(transfer("m2", 0, 70_000, "Bình"));
+  assert.equal(history.sizes.undo, 2, "another member is another entry");
+  advance(COALESCE_MS + 1);
+  history.record(transfer("m2", 70_000, 80_000, "Bình"));
+  assert.equal(history.sizes.undo, 3, "after 3 s a new entry");
+  history.record(transfer("m3", 5_000, 5_000, "Chi"));
+  assert.equal(history.sizes.undo, 3, "an unchanged total is not an entry");
+
+  history.pushRedo(transfer("m1", 1, 2));
+  history.record(transfer("m1", 50_000, 60_000));
+  assert.equal(history.sizes.redo, 0, "a new change clears redo");
+});
+
+test("planTransferStep restores a total only while it is still the one the entry set", () => {
+  const entry = transfer("m1", 100_000, 120_000);
+  assert.equal(planTransferStep(entry, 120_000, "undo"), 100_000);
+  assert.equal(planTransferStep(entry, 100_000, "redo"), 120_000);
+  assert.equal(planTransferStep(entry, 130_000, "undo"), null, "changed elsewhere since");
+  assert.equal(planTransferStep(entry, 120_000, "redo"), null);
+});
+
+test("describeEntry names the member and both totals, reversed after an undo", () => {
+  const entry = transfer("m1", 100_000, 120_000, "An cũ");
+  assert.equal(describeEntry(entry, { memberName: (id) => names.get(id) }), "Đã chuyển khoản 'An' 100.000đ → 120.000đ");
+  assert.equal(describeEntry(entry, { memberName: (id) => names.get(id), inverse: true }), "Đã chuyển khoản 'An' 120.000đ → 100.000đ");
+  assert.equal(describeEntry(entry), "Đã chuyển khoản 'An cũ' 100.000đ → 120.000đ", "a deleted member keeps the recorded name");
+});
 
 function setup() {
   let now = 1000;

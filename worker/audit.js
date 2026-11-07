@@ -62,8 +62,24 @@ export function orderMembersByGroup(memberRows, groupRows, groupMemberRows) {
   return { members, groups };
 }
 
-// The Detail snapshot (members, groups, expenses) as JSON, read in one batch. With probeAnchor the
-// batch also reports whether audit_session_anchor already holds the baseline snapshot.
+// Each member's transfer totals, as the Summary counts them: confirmed payments by direction plus every
+// adjustment (adjustments are paid-to-Admin deltas). Members with no row have 0 for both.
+export const TRANSFERS_SQL = `
+  SELECT member_id AS memberId,
+         SUM(CASE WHEN direction = 'member_to_admin' THEN amount ELSE 0 END) AS paidToAdminVnd,
+         SUM(CASE WHEN direction = 'admin_to_member' THEN amount ELSE 0 END) AS refundedVnd
+  FROM (
+    SELECT member_id, direction, amount_vnd AS amount FROM payments WHERE status = 'confirmed'
+    UNION ALL
+    SELECT member_id, 'member_to_admin', amount_delta_vnd FROM payment_adjustments
+  )
+  GROUP BY member_id ORDER BY member_id
+`;
+
+// The Detail snapshot (members, groups, expenses, per-member transfer totals, so a session can show the
+// Summary too) as JSON, read in one batch. With probeAnchor the batch also reports whether
+// audit_session_anchor already holds the baseline snapshot. Snapshots recorded before transfers were
+// added have no "transfers" key.
 export async function readDetailSnapshot(db, { probeAnchor = false } = {}) {
   const results = await db.batch([
     db.prepare(MEMBERS_SQL),
@@ -72,9 +88,10 @@ export async function readDetailSnapshot(db, { probeAnchor = false } = {}) {
     db.prepare("SELECT expense_id AS expenseId, member_id AS memberId FROM expense_participants ORDER BY expense_id, member_id"),
     db.prepare(MEMBER_GROUPS_SQL),
     db.prepare(MEMBER_GROUP_MEMBERS_SQL),
+    db.prepare(TRANSFERS_SQL),
     ...(probeAnchor ? [db.prepare("SELECT 1 AS hasAnchor FROM audit_session_anchor WHERE id = 1")] : []),
   ]);
-  const [members, expenses, participants, groups, groupMembers, anchor] = results.map((result) => result.results);
+  const [members, expenses, participants, groups, groupMembers, transfers, anchor] = results.map((result) => result.results);
   const participantsByExpense = groupParticipantsByExpense(participants);
   const ordered = orderMembersByGroup(members, groups, groupMembers);
   const snapshot = {
@@ -84,6 +101,7 @@ export async function readDetailSnapshot(db, { probeAnchor = false } = {}) {
       ...expense,
       participantIds: participantsByExpense.get(expense.id) || [],
     })),
+    transfers,
   };
   return { json: JSON.stringify(snapshot), hasAnchor: anchor === undefined || anchor.length > 0 };
 }

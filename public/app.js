@@ -5,6 +5,7 @@ import {
   closeAuditDiffDialog,
   closeLoginDialog,
   createLedger,
+  deleteHistoryPoint,
   deleteLedger,
   deleteMember,
   deleteMemberGroup,
@@ -20,7 +21,6 @@ import {
   showAuditSessionDiff,
   storeHistoryPoint,
 } from "./js/admin.js";
-import { downloadLedgerCsv } from "./js/csv-download.js";
 import {
   clearFilters,
   handleDetailFocusOut,
@@ -34,6 +34,7 @@ import {
   noteDetailFocus,
   redoLastChange,
   undoLastChange,
+  watchTransferHistory,
 } from "./js/expense-history.js";
 import {
   addExpense,
@@ -66,6 +67,7 @@ import {
   saveTransfersForUnload,
 } from "./js/summary.js";
 import { initThemePicker } from "./js/theme-picker.js";
+import { isAppleTouchDevice, viewportContent } from "./js/viewport.js";
 import {
   cancelActionDialog,
   clearActionDialogError,
@@ -78,6 +80,7 @@ import {
   showNotice,
   submitActionDialog,
 } from "./js/ui.js";
+import { downloadLedgerXlsx } from "./js/xlsx-download.js";
 
 const clickActions = new Map([
   ["edit-member-group", editMemberGroup],
@@ -85,6 +88,7 @@ const clickActions = new Map([
   ["delete-ledger", deleteLedger],
   ["audit-session-diff", showAuditSessionDiff],
   ["restore-history-point", restoreHistoryPoint],
+  ["delete-history-point", deleteHistoryPoint],
   ["delete-expense", deleteExpense],
   ["duplicate-expense", duplicateExpense],
   ["member-detail", openMemberDetail],
@@ -206,7 +210,7 @@ document.querySelector("#apply-font-size").addEventListener("click", applyFontSi
 document.querySelector("#apply-qr-size").addEventListener("click", applyQrSize);
 document.addEventListener("keydown", (event) => { focusByTab = event.key === "Tab"; }, true);
 document.addEventListener("focusin", revealFocusedControl);
-// Phase 6: tìm/lọc/sắp xếp, xuất CSV, chi tiết thành viên, nút hành động của thông báo, hoàn tác/làm lại.
+// Phase 6: tìm/lọc/sắp xếp, xuất Excel, chi tiết thành viên, nút hành động của thông báo, hoàn tác/làm lại.
 initNotice();
 document.querySelector("#notice-action").addEventListener("click", runNoticeAction);
 document.querySelector("#detail-toolbar").addEventListener("input", handleFilterInput);
@@ -214,18 +218,22 @@ document.querySelector("#detail-toolbar").addEventListener("change", handleFilte
 document.querySelector("#filter-toggle").addEventListener("click", toggleFilterPanel);
 document.querySelector("#filter-clear").addEventListener("click", clearFilters);
 document.querySelector("#expense-body").addEventListener("focusout", handleDetailFocusOut);
-document.querySelector("#export-csv").addEventListener("click", downloadLedgerCsv);
+document.querySelector("#export-xlsx").addEventListener("click", downloadLedgerXlsx);
 document.querySelector("#member-detail-close").addEventListener("click", closeMemberDetail);
 document.querySelector("#member-detail-dialog").addEventListener("click", closeMemberDetailOnBackdrop);
 document.querySelector("#undo-change").addEventListener("click", () => void undoLastChange());
 document.querySelector("#redo-change").addEventListener("click", () => void redoLastChange());
 document.querySelector("#expense-body").addEventListener("focusin", noteDetailFocus);
 document.addEventListener("keydown", handleHistoryShortcut);
+// Tổng "Đã chuyển khoản" của Summary vào lịch sử Hoàn tác/Làm lại.
+watchTransferHistory();
 document.addEventListener("beforeinput", keepNativeUndoInField, true);
 document.addEventListener("keydown", dismissNoticeOnEscape);
 watchTableOverflow();
 // Phase 6b: nút "Đổi giao diện" (lựa chọn chỉ lưu trên máy này).
 initThemePicker();
+// iPhone/iPad: không tự phóng to khi chạm vào ô nhập nhỏ hơn 16 px (viewport.js).
+document.querySelector('meta[name="viewport"]').content = viewportContent(isAppleTouchDevice(navigator));
 
 loadState().catch((caught) => {
   finishLoading();

@@ -36,14 +36,14 @@ const blockedStorage = {
 };
 
 // A stand-in for the bits of the document theme-boot.js and applyTheme touch: <html> attributes and the two theme-color
-// tags of index.html, with the static default (data-skin="graphite", Than chì page colours).
+// tags of index.html, with the static default (data-skin="nga" data-mode="light", Ngà & Vàng light page colour).
 function fakeDocument() {
-  const attributes = new Map([["lang", "vi"], ["data-skin", "graphite"]]);
+  const attributes = new Map([["lang", "vi"], ["data-skin", "nga"], ["data-mode", "light"]]);
   const meta = (media, content) => {
     const values = new Map([["name", "theme-color"], ["media", media], ["content", content]]);
     return { getAttribute: (name) => values.get(name) ?? null, setAttribute: (name, value) => values.set(name, String(value)), values };
   };
-  const metas = [meta("(prefers-color-scheme: light)", "#f4f4f3"), meta("(prefers-color-scheme: dark)", "#0c0c0d")];
+  const metas = [meta("(prefers-color-scheme: light)", "#f2eee6"), meta("(prefers-color-scheme: dark)", "#f2eee6")];
   return {
     documentElement: {
       getAttribute: (name) => attributes.get(name) ?? null,
@@ -75,9 +75,10 @@ function runBoot(storage) {
   return document.snapshot();
 }
 
-test("stored skin and mode are read back; anything else falls back to Than chì, Tự động", () => {
-  assert.deepEqual(readTheme(memoryStorage({ [STORAGE_KEYS.skin]: "nga", [STORAGE_KEYS.mode]: "dark" })), { skin: "nga", mode: "dark" });
-  assert.deepEqual(readTheme(memoryStorage({ [STORAGE_KEYS.skin]: "rung" })), { skin: "rung", mode: "auto" });
+test("stored skin and mode are read back; anything else falls back to Ngà & Vàng, Sáng", () => {
+  assert.deepEqual(DEFAULT_THEME, { skin: "nga", mode: "light" }, "the owner's default (2026-11-05)");
+  assert.deepEqual(readTheme(memoryStorage({ [STORAGE_KEYS.skin]: "graphite", [STORAGE_KEYS.mode]: "auto" })), { skin: "graphite", mode: "auto" });
+  assert.deepEqual(readTheme(memoryStorage({ [STORAGE_KEYS.skin]: "rung" })), { skin: "rung", mode: "light" });
   assert.deepEqual(readTheme(memoryStorage()), DEFAULT_THEME);
   for (const [skin, mode] of [["Than chì", "night"], ["", ""], ["constructor", "toString"], ["__proto__", "AUTO"], ["NAVY", "Dark"]]) {
     assert.deepEqual(readTheme(memoryStorage({ [STORAGE_KEYS.skin]: skin, [STORAGE_KEYS.mode]: mode })), DEFAULT_THEME, `${skin}/${mode}`);
@@ -141,7 +142,10 @@ test("theme-boot.js applies exactly what theme.js would, for every stored value 
   const defaults = fakeDocument();
   applyTheme(defaults, readTheme(blockedStorage));
   assert.deepEqual(runBoot(blockedStorage), defaults.snapshot());
-  assert.deepEqual(runBoot(blockedStorage), { skin: "graphite", mode: null, colors: ["#f4f4f3", "#0c0c0d"] }, "the static default stays");
+  assert.deepEqual(runBoot(blockedStorage), { skin: "nga", mode: "light", colors: ["#f2eee6", "#f2eee6"] }, "the static default stays");
+  // A saved "Tự động" removes the static data-mode="light", so CSS follows the device again.
+  assert.deepEqual(runBoot(memoryStorage({ [STORAGE_KEYS.skin]: "graphite", [STORAGE_KEYS.mode]: "auto" })),
+    { skin: "graphite", mode: null, colors: ["#f4f4f3", "#0c0c0d"] });
 });
 
 test("theme-boot.js is a small classic script loaded before the stylesheet, with no inline script", () => {
@@ -155,9 +159,12 @@ test("theme-boot.js is a small classic script loaded before the stylesheet, with
 });
 
 test("index.html carries the default theme and the picker in the approved order and wording", () => {
-  assert.match(html, /<html lang="vi" data-skin="graphite">/);
-  assert.ok(html.includes(`<meta name="theme-color" content="${PAGE_COLORS.graphite[0]}" media="(prefers-color-scheme: light)">`));
-  assert.ok(html.includes(`<meta name="theme-color" content="${PAGE_COLORS.graphite[1]}" media="(prefers-color-scheme: dark)">`));
+  assert.match(html, /<html lang="vi" data-skin="nga" data-mode="light">/);
+  // Forced Sáng: the browser bar is Ngà & Vàng's light page colour whatever the device's mode.
+  assert.ok(html.includes(`<meta name="theme-color" content="${PAGE_COLORS.nga[0]}" media="(prefers-color-scheme: light)">`));
+  assert.ok(html.includes(`<meta name="theme-color" content="${PAGE_COLORS.nga[0]}" media="(prefers-color-scheme: dark)">`));
+  const checked = [...html.matchAll(/role="radio" aria-checked="true" data-(skin|mode)="([a-z]+)"/g)].map(([, kind, key]) => `${kind}:${key}`);
+  assert.deepEqual(checked, ["skin:nga", "mode:light"], "the picker starts on the default");
   assert.match(html, /<button id="theme-button"[^>]*aria-label="Đổi giao diện"[^>]*aria-haspopup="dialog"[^>]*aria-expanded="false"[^>]*aria-controls="theme-panel"/);
   const skins = [...html.matchAll(/role="radio"[^>]*data-skin="([a-z]+)"><span class="theme-dots"><\/span>([^<]+)</g)].map(([, key, name]) => [key, name]);
   assert.deepEqual(skins, [["graphite", "Than chì"], ["rung", "Rừng xanh"], ["nga", "Ngà &amp; Vàng"], ["navy", "Navy &amp; Đồng"]]);

@@ -2,7 +2,8 @@
 // chạy trước khi trang hiện) đọc và áp dụng đúng theo các quy tắc này; tests/frontend-theme.test.mjs kiểm hai bên khớp.
 export const SKINS = Object.freeze(["graphite", "rung", "nga", "navy"]);
 export const MODES = Object.freeze(["auto", "light", "dark"]);
-export const DEFAULT_THEME = Object.freeze({ skin: "graphite", mode: "auto" });
+// Mặc định cho máy chưa từng chọn (chủ dự án chọn 2026-11-05): Ngà & Vàng, Sáng. index.html mang sẵn đúng giá trị này.
+export const DEFAULT_THEME = Object.freeze({ skin: "nga", mode: "light" });
 export const STORAGE_KEYS = Object.freeze({ skin: "so-chi-skin", mode: "so-chi-mode" });
 // Màu nền trang [sáng, tối] của từng giao diện, cho thẻ <meta name="theme-color"> (thanh trình duyệt trên điện thoại).
 export const PAGE_COLORS = Object.freeze({
@@ -12,7 +13,7 @@ export const PAGE_COLORS = Object.freeze({
   navy: ["#edf0f5", "#0a0f1a"],
 });
 
-// Giá trị lạ hoặc thiếu: giao diện mặc định (Than chì, theo máy).
+// Giá trị lạ hoặc thiếu: giao diện mặc định (Ngà & Vàng, Sáng).
 export function normalizeTheme(skin, mode) {
   return {
     skin: SKINS.includes(skin) ? skin : DEFAULT_THEME.skin,

@@ -344,11 +344,77 @@ test("history points restore Detail data but keep settings and the audit trail",
   assert.ok(app.db.rows("SELECT COUNT(*) AS count FROM audit_sessions")[0].count >= sessionsBefore);
 });
 
+test("deleting a Store point always asks for the operations password and leaves the ledger's data untouched", options, async () => {
+  const app = createApp();
+  await app.login();
+  const an = await app.addMember("An");
+  await app.addExpense({ payerId: an, amountVnd: 50_000, participantChanges: { add: [an] } });
+  const first = await app.request("POST", "/api/admin/history-points", {
+    body: { message: "Mốc 1", password: "restore-password" }, admin: true,
+  });
+  const second = await app.request("POST", "/api/admin/history-points", { body: { message: "Mốc 2" }, admin: true });
+  assert.equal(second.status, 201, "the session is authorized for Store");
+  const pointId = first.data.point.id;
+  const path = `/api/admin/history-points/${pointId}`;
+  const stateBefore = await app.state("/api", true);
+  const { createdAt } = (await app.request("GET", "/api/admin/history-points", { admin: true }))
+    .data.points.find((point) => point.id === pointId);
+
+  assert.equal((await app.request("DELETE", path)).status, 401);
+  // A Store authorization does not cover deleting: the password is always asked for.
+  for (const [body, status, error] of [
+    [undefined, 400, "Nhập mật khẩu thao tác."],
+    [{ password: "" }, 400, "Nhập mật khẩu thao tác."],
+    [{ password: "bad" }, 401, "Mật khẩu thao tác không đúng."],
+  ]) {
+    const response = await app.request("DELETE", path, { body, admin: true });
+    assert.equal(response.status, status, JSON.stringify(body));
+    assert.deepEqual(response.data, { error });
+  }
+  assert.equal(app.count("SELECT COUNT(*) AS count FROM history_points"), 2);
+  const missing = await app.request("DELETE", "/api/admin/history-points/missing", { body: { password: "restore-password" }, admin: true });
+  assert.equal(missing.status, 404);
+  assert.deepEqual(missing.data, { error: "Không tìm thấy điểm khôi phục." });
+
+  const queries = app.db.queryCount;
+  const deleted = await app.request("DELETE", path, { body: { password: "restore-password" }, admin: true });
+  assert.equal(deleted.status, 200);
+  assert.equal(app.db.queryCount - queries, 3, "point lookup, password limiter, delete + audit");
+  assert.deepEqual(deleted.data, { deleted: true, id: pointId });
+  const list = await app.request("GET", "/api/admin/history-points", { admin: true });
+  assert.deepEqual(list.data.points.map((point) => point.message), ["Mốc 2"]);
+  const stateAfter = await app.state("/api", true);
+  assert.deepEqual([stateAfter.members, stateAfter.expenses, stateAfter.payments], [stateBefore.members, stateBefore.expenses, stateBefore.payments]);
+  const [entry] = app.db.rows("SELECT actor, action, entity, entity_id AS entityId, before_json AS beforeJson, after_json AS afterJson FROM audit_log WHERE action = 'delete' AND entity = 'history_point'");
+  assert.deepEqual({ ...entry, beforeJson: JSON.parse(entry.beforeJson) }, {
+    actor: "admin", action: "delete", entity: "history_point", entityId: pointId, afterJson: null,
+    beforeJson: { createdAt, memberCount: 1, expenseCount: 1, message: "Mốc 1" },
+  });
+
+  assert.equal((await app.request("DELETE", path, { body: { password: "restore-password" }, admin: true })).status, 404);
+  assert.equal((await app.request("POST", `${path}/restore`, { body: { password: "restore-password" }, admin: true })).status, 404);
+
+  // A point belongs to its ledger: another ledger's API cannot see or delete it.
+  const ledger = await app.createLedger("Sổ phụ");
+  const scoped = await app.request("POST", `${ledger.api}/admin/history-points`, {
+    body: { message: "Mốc sổ phụ", password: "restore-password" }, admin: true,
+  });
+  const scopedPath = `/admin/history-points/${scoped.data.point.id}`;
+  assert.equal((await app.request("DELETE", `/api${scopedPath}`, { body: { password: "restore-password" }, admin: true })).status, 404);
+  assert.equal((await app.request("DELETE", `${ledger.api}${scopedPath}`, { body: { password: "restore-password" }, admin: true })).status, 200);
+  assert.equal(app.count(`SELECT COUNT(*) AS count FROM "${ledger.prefix}history_points"`), 0);
+  assert.equal(app.count("SELECT COUNT(*) AS count FROM history_points"), 1);
+});
+
 test("every operations-password check refuses a missing secret or one equal to the Admin password", options, async () => {
   const app = createApp();
   await app.login();
   const ledger = await app.createLedger("Sổ phụ");
   await app.login();
+  const point = (await app.request("POST", "/api/admin/history-points", {
+    body: { message: "Mốc", password: SECRETS.HISTORY_RESTORE_PASSWORD }, admin: true,
+  })).data.point;
+  await app.login(); // a fresh session, not yet authorized for ledger creation and Store
   for (const [secret, error] of [
     [undefined, "Chưa cấu hình mật khẩu thao tác phía máy chủ."],
     [SECRETS.ADMIN_PASSWORD, "Mật khẩu thao tác phải khác mật khẩu Admin. Hãy cấu hình lại secret."],
@@ -359,6 +425,7 @@ test("every operations-password check refuses a missing secret or one equal to t
       ["DELETE", `/api/admin/ledgers/${ledger.slug}`, { password: SECRETS.ADMIN_PASSWORD }],
       ["POST", `${ledger.api}/admin/history-points`, { message: "Mốc", password: SECRETS.ADMIN_PASSWORD }],
       ["POST", "/api/admin/history-points/any/restore", { password: SECRETS.ADMIN_PASSWORD }],
+      ["DELETE", `/api/admin/history-points/${point.id}`, { password: SECRETS.ADMIN_PASSWORD }],
     ]) {
       const response = await app.request(method, path, { body, admin: true });
       assert.equal(response.status, 503, `${method} ${path}`);
@@ -367,6 +434,7 @@ test("every operations-password check refuses a missing secret or one equal to t
   }
   assert.equal(app.count("SELECT COUNT(*) AS count FROM ledgers"), 2);
   assert.equal(app.count(`SELECT COUNT(*) AS count FROM "${ledger.prefix}history_points"`), 0);
+  assert.equal(app.count("SELECT COUNT(*) AS count FROM history_points"), 1);
 });
 
 test("creating a ledger asks for the operations password once per Admin session, for every ledger", options, async () => {
@@ -458,6 +526,44 @@ test("the operations authorization lasts 8 hours and is asked for again once it 
   assert.equal(stored.status, 201);
   assert.deepEqual(hoursLeft(), [8]);
   assert.equal((await app.state("/api", true)).storePasswordVerified, true);
+});
+
+test("transfer totals are part of the audit snapshots and a changed total is recorded in a session", options, async () => {
+  const app = createApp();
+  await app.login();
+  const an = await app.addMember("An");
+  const binh = await app.addMember("Bình");
+  await app.addExpense({ payerId: an, amountVnd: 100_000, participantChanges: { add: [an, binh] } });
+  // A legacy refund (Admin → member) and a legacy confirmed payment are counted like the Summary counts them.
+  app.db.run(`INSERT INTO payments (id, member_id, direction, amount_vnd, status) VALUES
+    ('p-refund', '${an}', 'admin_to_member', 20000, 'confirmed'),
+    ('p-pending', '${an}', 'member_to_admin', 99000, 'pending')`);
+  app.db.run("UPDATE audit_sessions SET last_activity = datetime('now', '-31 minutes')");
+  const sessionsBefore = app.count("SELECT COUNT(*) AS count FROM audit_sessions");
+
+  const saved = await app.request("PUT", "/api/admin/payments/total", { body: { memberId: binh, amountVnd: 50_000 }, admin: true });
+  assert.equal(saved.status, 200);
+  const sessions = (await app.request("GET", "/api/admin/audit", { admin: true })).data.sessions;
+  assert.equal(sessions.length, sessionsBefore + 1, "the transfer opened a new session");
+  const { session } = (await app.request("GET", `/api/admin/audit/${sessions[0].id}`, { admin: true })).data;
+  assert.deepEqual(session.actors, ["admin"]);
+  const sorted = (transfers) => [...transfers].sort((a, b) => (a.memberId < b.memberId ? -1 : 1));
+  // "before" is the previous session's last snapshot, taken before the rows were inserted behind the app's back.
+  assert.deepEqual(session.before.transfers, []);
+  assert.deepEqual(sorted(session.after.transfers), sorted([
+    { memberId: an, paidToAdminVnd: 0, refundedVnd: 20_000 },
+    { memberId: binh, paidToAdminVnd: 50_000, refundedVnd: 0 },
+  ]));
+  assert.deepEqual(session.after.expenses, session.before.expenses);
+
+  // Saving the same total again changes nothing: no adjustment, the session is not touched.
+  const activity = app.db.rows("SELECT last_activity AS value, after_json AS json FROM audit_sessions ORDER BY rowid DESC LIMIT 1")[0];
+  app.db.run("UPDATE audit_sessions SET last_activity = datetime('now', '-1 minute')");
+  const again = await app.request("PUT", "/api/admin/payments/total", { body: { memberId: binh, amountVnd: 50_000 }, admin: true });
+  assert.deepEqual(again.data, { amountVnd: 50_000, changed: false });
+  const after = app.db.rows("SELECT last_activity AS value, after_json AS json FROM audit_sessions ORDER BY rowid DESC LIMIT 1")[0];
+  assert.equal(after.json, activity.json);
+  assert.notEqual(after.value, activity.value, "untouched: still the backdated activity time");
 });
 
 test("detail audit sessions merge activity within 30 minutes and expose before/after snapshots", options, async () => {

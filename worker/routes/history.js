@@ -79,6 +79,25 @@ export async function storeHistoryPoint(ctx) {
   return json({ point, storePasswordVerified: true }, 201);
 }
 
+// Deleting a point always asks for the operations password, like deleting a ledger; the ledger's data is untouched.
+export async function deleteHistoryPoint(ctx) {
+  const { request, env, db, params, auditActor } = ctx;
+  const id = decodePathParam(params[0]);
+  const point = id === null ? null : await db.prepare(`
+    SELECT created_at AS createdAt, member_count AS memberCount, expense_count AS expenseCount, message
+    FROM history_points WHERE id = ?
+  `).bind(id).first();
+  if (!point) return error("Không tìm thấy điểm khôi phục.", 404);
+  await requireOperationsPasswordConfigured(env);
+  const body = await readJson(request, { allowEmpty: true });
+  await requireOperationsPassword(ctx, body.password, "Nhập mật khẩu thao tác.");
+  await db.batch([
+    db.prepare("DELETE FROM history_points WHERE id = ?").bind(id),
+    audit(db, auditActor, "delete", "history_point", id, point, null),
+  ]);
+  return json({ deleted: true, id });
+}
+
 export async function restoreHistoryPoint(ctx) {
   const { request, env, db, params, auditActor } = ctx;
   await requireOperationsPasswordConfigured(env);

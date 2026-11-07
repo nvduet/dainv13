@@ -4,9 +4,10 @@ import { ApiError } from "./http.js";
 import { RATE_LIMITS, rateLimitStatements, refuseIfLimited } from "./rate-limit.js";
 
 // One "operations password" (the secret HISTORY_RESTORE_PASSWORD) guards creating and deleting
-// ledgers, Store and restore. Creating a ledger and Store ask for it once per Admin session: the
-// authorization lives in the unprefixed admin_session_store_auth table (always reached through
-// ctx.globalDB), so it covers every ledger. Deleting a ledger and restore always ask.
+// ledgers, Store, restore and deleting a Store point. Creating a ledger and Store ask for it once per
+// Admin session: the authorization lives in the unprefixed admin_session_store_auth table (always
+// reached through ctx.globalDB), so it covers every ledger. Deleting a ledger, restore and deleting a
+// Store point always ask.
 export function operationsAuthorizationQuery(globalDB, sessionId) {
   return globalDB.prepare(`
     SELECT session_id AS sessionId FROM admin_session_store_auth

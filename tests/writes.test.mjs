@@ -311,7 +311,9 @@ test("per-request D1 query budgets", options, async () => {
     // A client's first hit in a window cleans up older windows in the limiter's own round trip.
     assert.equal(await queries("POST", "/expenses", { body: {}, headers: { "cf-connecting-ip": `198.51.100.${index}` } }), 5);
     assert.equal(await queries("POST", "/members", { body: { name: "Bình" }, admin: true }), 6);
-    assert.equal(await queries("PUT", "/admin/payments/total", { body: { memberId: an, amountVnd: 2 }, admin: true }), 3);
+    // A transfer total is tracked like a Detail write (before/after snapshots, session); unchanged, no session.
+    assert.equal(await queries("PUT", "/admin/payments/total", { body: { memberId: an, amountVnd: 2 }, admin: true }), 6);
+    assert.equal(await queries("PUT", "/admin/payments/total", { body: { memberId: an, amountVnd: 2 }, admin: true }), 5);
   }
 });
 

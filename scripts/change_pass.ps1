@@ -5,7 +5,6 @@ Set-StrictMode -Version Latest
 $OutputEncoding = New-Object System.Text.UTF8Encoding $false
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$minimumPasswordLength = 8
 $npxCommand = Get-Command npx.cmd -ErrorAction SilentlyContinue
 if (-not $npxCommand) {
     throw "Node.js and npm are required. Install Node.js 22 or later to use Wrangler."
@@ -49,34 +48,22 @@ $password = $null
 $operationsPassword = $null
 $sessionSecret = $null
 try {
-    $securePassword = Read-Host "New production Admin password (at least $minimumPasswordLength characters)" -AsSecureString
-    if ($securePassword.Length -lt $minimumPasswordLength) {
-        throw "The Admin password must contain at least $minimumPasswordLength characters."
+    $securePassword = Read-Host "New production Admin password" -AsSecureString
+    if ($securePassword.Length -eq 0) {
+        throw "The Admin password cannot be empty."
     }
 
     # Stored as HISTORY_RESTORE_PASSWORD (name kept so nothing else needs reconfiguring).
-    $secureOperationsPassword = Read-Host "New operations password for creating/deleting ledgers, Store and restore (at least $minimumPasswordLength characters, different from the Admin password)" -AsSecureString
-    if ($secureOperationsPassword.Length -lt $minimumPasswordLength) {
-        throw "The operations password must contain at least $minimumPasswordLength characters."
+    $secureOperationsPassword = Read-Host "New operations password for creating/deleting ledgers, Store and restore (must differ from the Admin password)" -AsSecureString
+    if ($secureOperationsPassword.Length -eq 0) {
+        throw "The operations password cannot be empty."
     }
 
     $passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
     $password = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordPointer)
-    if ($password.Contains("`r") -or $password.Contains("`n")) {
-        throw "The Admin password cannot contain a newline."
-    }
-    if ($password -cne $password.Trim()) {
-        throw "The Admin password cannot start or end with whitespace."
-    }
 
     $operationsPasswordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureOperationsPassword)
     $operationsPassword = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($operationsPasswordPointer)
-    if ($operationsPassword.Contains("`r") -or $operationsPassword.Contains("`n")) {
-        throw "The operations password cannot contain a newline."
-    }
-    if ($operationsPassword -cne $operationsPassword.Trim()) {
-        throw "The operations password cannot start or end with whitespace."
-    }
     if ([string]::Equals($password, $operationsPassword, [StringComparison]::Ordinal)) {
         throw "The operations password must differ from the Admin password."
     }

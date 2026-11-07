@@ -4,7 +4,7 @@ import { error } from "./http.js";
 import { RATE_LIMITS, enforceRateLimit } from "./rate-limit.js";
 import { getAuditSession, listAuditSessions } from "./routes/audit.js";
 import { createExpense, deleteExpense, updateExpense } from "./routes/expenses.js";
-import { listHistoryPoints, restoreHistoryPoint, storeHistoryPoint } from "./routes/history.js";
+import { deleteHistoryPoint, listHistoryPoints, restoreHistoryPoint, storeHistoryPoint } from "./routes/history.js";
 import { createLedger, deleteLedger, listLedgers } from "./routes/ledgers.js";
 import { createGroup, deleteGroup, updateGroup } from "./routes/member-groups.js";
 import { createMember, deleteMember, renameMember } from "./routes/members.js";
@@ -20,8 +20,9 @@ const { login: LOGIN, createLedger: CREATE_LEDGER, restorePassword: RESTORE_PASS
 
 // scope "ledger": served for the default ledger (/api/...) and for /api/g/<slug>/...; scope "global":
 // only at /api/... (ledger management). rateLimits run in order before the handler; trackDetail routes
-// change Detail data and are recorded in audit_sessions. Ledger creation and deletion and Store spend
-// the shared operations-password limiter in their handlers, only for an actual password attempt.
+// change Detail data and are recorded in audit_sessions. Ledger creation and deletion, Store and deleting
+// a Store point spend the shared operations-password limiter in their handlers, only for an actual
+// password attempt.
 const ROUTE_DEFAULTS = { scope: "ledger", admin: false, rateLimits: [], trackDetail: false };
 export const ROUTES = Object.freeze([
   { method: "GET", pattern: /^\/api\/state$/, handler: state },
@@ -50,6 +51,7 @@ export const ROUTES = Object.freeze([
     handler: storeHistoryPoint },
   { method: "POST", pattern: /^\/api\/admin\/history-points\/([^/]+)\/restore$/, admin: ADMIN,
     rateLimits: [RESTORE_PASSWORD], trackDetail: true, handler: restoreHistoryPoint },
+  { method: "DELETE", pattern: /^\/api\/admin\/history-points\/([^/]+)$/, admin: ADMIN, handler: deleteHistoryPoint },
 
   { method: "PUT", pattern: /^\/api\/admin\/column-widths$/, admin: ADMIN, rateLimits: [WRITE],
     handler: settingHandler("column-widths") },
@@ -58,7 +60,7 @@ export const ROUTES = Object.freeze([
   { method: "PUT", pattern: /^\/api\/admin\/qr-size$/, admin: ADMIN, rateLimits: [WRITE],
     handler: settingHandler("qr-size") },
   { method: "PUT", pattern: /^\/api\/admin\/payments\/total$/, admin: ADMIN, rateLimits: [WRITE],
-    handler: reconcilePaymentTotal },
+    trackDetail: true, handler: reconcilePaymentTotal },
 
   { method: "POST", pattern: /^\/api\/expenses$/, rateLimits: [WRITE], trackDetail: true, handler: createExpense },
   { method: "PUT", pattern: /^\/api\/expenses\/([^/]+)$/, rateLimits: [WRITE], trackDetail: true,
