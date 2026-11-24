@@ -5,12 +5,14 @@ Chi tiết tính năng, quyền truy cập và lưu ý dữ liệu nằm trong [
 
 ## Mẹo dùng
 
-- "Xuất Excel" ở tiêu đề Detail tải một file Excel (.xlsx) gồm hai trang Detail và
+- "Xuất Excel" ở đầu trang (cạnh Tổng chi, Khoản chi) tải một file Excel (.xlsx) gồm hai trang Detail và
   Summary về máy; nên tải định kỳ ngoài các điểm Store.
-- Xóa nhầm khoản chi: bấm "Hoàn tác" trên thông báo trong 6 giây. Sửa nhầm: nút
+- Xóa nhầm khoản chi: bấm "Hoàn tác" trên thông báo trong 6 giây; quá 6 giây vẫn bấm nút "Hoàn tác" ở đầu trang được (dòng được tạo lại đúng chỗ). Sửa nhầm: nút
   "Hoàn tác"/"Làm lại" hoặc Ctrl+Z / Ctrl+Y khi con trỏ không ở trong ô nhập (cả ô
   "Đã chuyển khoản" và nút Done của Summary).
+  Lịch sử hoàn tác (50 bước) được nhớ trên trình duyệt của từng máy, còn sau khi tải lại trang hay mở lại lần sau.
   Hoàn tác không biết thay đổi từ máy khác mà trang chưa tải về.
+- Store nhập lời nhắn và (lần đầu trong phiên Admin) mật khẩu thao tác trong cùng một hộp thoại; nhập sai thì sửa ngay trong hộp thoại.
 - Ô Chi phí nhận phép tính như `120+45`; nút "Nhân bản" chép một dòng; bấm tên
   thành viên ở Summary để xem chi tiết người đó.
 - Quay lại trang sau ít nhất 30 giây, trang tự tải dữ liệu mới.
@@ -53,9 +55,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\change_pass.ps1
 Hoặc chạy `scripts\change_pass.bat`. Các giá trị mật khẩu được nhập tại prompt
 bảo mật và gửi trực tiếp tới Cloudflare Workers; chúng không được ghi vào file
 dự án. Mật khẩu thao tác dùng chung cho tạo sổ, xóa sổ, Store, khôi phục và xóa
-điểm khôi phục; nó phải khác mật khẩu Admin. Mật khẩu không bị giới hạn độ dài
-hay khoảng trắng ở đầu/cuối, nhưng không được để trống. Không deploy ứng dụng
-công khai trước khi thiết lập đủ secrets.
+điểm khôi phục; nó
+phải khác mật khẩu Admin. Cả hai mật khẩu cần ít nhất 8 ký tự và không bắt đầu
+hoặc kết thúc bằng khoảng trắng. Không deploy ứng dụng công khai trước khi thiết
+lập đủ secrets.
 
 ## Deploy
 

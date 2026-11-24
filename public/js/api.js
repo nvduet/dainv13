@@ -1,6 +1,7 @@
-// Lỗi kèm mã HTTP (0 = không nhận được phản hồi) và số giây Retry-After (nếu có) để hàng đợi lưu tự thử lại.
-function apiError(message, status, retryAfter = null) {
-  return Object.assign(new Error(message), { status, retryAfter });
+// Lỗi kèm mã HTTP (0 = không nhận được phản hồi) và số giây Retry-After (nếu có) để hàng đợi lưu tự thử lại; field: ô
+// mà máy chủ nói lỗi thuộc về (vd. "password": thiếu hay sai mật khẩu thao tác), để hộp thoại đánh dấu đúng ô đó.
+function apiError(message, status, retryAfter = null, field = null) {
+  return Object.assign(new Error(message), { status, retryAfter }, field ? { field } : {});
 }
 
 // Gọi API JSON; trang /g/<slug> tự đổi /api/... thành /api/g/<slug>/... (trừ quản lý sổ toàn cục).
@@ -34,7 +35,8 @@ export async function api(path, options = {}) {
       : `Máy chủ trả về dữ liệu không đọc được (HTTP ${response.status}).`, response.status, retryAfter);
   }
   if (!response.ok) {
-    throw apiError(body?.error || `Yêu cầu thất bại (${response.status}).`, response.status, retryAfter);
+    const field = typeof body?.field === "string" ? body.field : null;
+    throw apiError(body?.error || `Yêu cầu thất bại (${response.status}).`, response.status, retryAfter, field);
   }
   return body;
 }

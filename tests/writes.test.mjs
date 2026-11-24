@@ -314,6 +314,83 @@ test("per-request D1 query budgets", options, async () => {
     // A transfer total is tracked like a Detail write (before/after snapshots, session); unchanged, no session.
     assert.equal(await queries("PUT", "/admin/payments/total", { body: { memberId: an, amountVnd: 2 }, admin: true }), 6);
     assert.equal(await queries("PUT", "/admin/payments/total", { body: { memberId: an, amountVnd: 2 }, admin: true }), 5);
+    // DELETE: limiter, before-snapshot, expense read, delete batch, after-snapshot, session. Undoing it re-creates the
+    // row with one POST: limiter, before-snapshot, PK read (already back?), insert batch, after-snapshot, session.
+    // Already back (another tab, a later visit): no write, no session. A refused body: limiter, before-snapshot.
+    assert.equal(await queries("DELETE", `/expenses/${id}`), 6);
+    const recreate = { id, position: 0, payerId: an, date: null, description: "Taxi", amountVnd: 5_000, participantIds: [an] };
+    assert.equal(await queries("POST", "/expenses", { body: recreate }), 6);
+    assert.equal(await queries("POST", "/expenses", { body: recreate }), 4);
+    assert.equal(await queries("POST", "/expenses", { body: { position: 0 } }), 2);
+  }
+});
+
+// Free-tier guard for rows read and written by re-creating a deleted row (undo of a delete): its INSERT scans expenses
+// once, like a plain add (rows counted inside MAX); its batch writes the row, its participants and one audit row, so
+// exactly a plain add's rows plus the participants; repeating it writes only the limiter's row, like a no-op save. The
+// position a plain add now answers comes from its own INSERT (RETURNING): same plan, same rows.
+test("re-creating a deleted row scans expenses once and writes only its own rows", options, async () => {
+  const { app, targets } = await ledgers();
+  let scanned = 0;
+  app.db.sqlite.function("counted", (value) => {
+    scanned += 1;
+    return value;
+  });
+  const prepare = app.db.prepare.bind(app.db);
+  app.db.prepare = (sql) => prepare(sql
+    .replace("COALESCE(MAX(position), -1) + 1 FROM", "COALESCE(MAX(counted(position)), -1) + 1 FROM")
+    .replace("WHEN MAX(position = ?)", "WHEN MAX(counted(position) = ?)"));
+  const totalChanges = () => app.db.rows("SELECT total_changes() AS count")[0].count;
+  for (const { api, prefix } of targets) {
+    const members = [];
+    for (const name of ["An", "Bình", "Chi"]) members.push(await app.addMember(name, api));
+    for (let index = 0; index < 20; index += 1) {
+      app.db.run(`INSERT INTO "${prefix}expenses" (id, description, position) VALUES (?, 'Dòng', ?)`, `${prefix}row-${index}`, index * 2);
+    }
+    const send = async (method, path, body) => {
+      scanned = 0;
+      const changes = totalChanges();
+      const response = await app.request(method, `${api}${path}`, { body });
+      assert.ok(response.status < 300, JSON.stringify(response.data));
+      return { scanned, written: totalChanges() - changes, data: response.data };
+    };
+    // The first write of a session also opens it: compare requests after that one.
+    await send("POST", "/expenses", {});
+    const plain = await send("POST", "/expenses", {});
+    assert.equal(plain.scanned, 21, "a plain add reads every row once (MAX)");
+    const values = { id: `${prefix}row-1`, position: 2, payerId: members[0], date: "2026-10-02", description: "Lại", amountVnd: 9_000, participantIds: members };
+    assert.equal((await send("DELETE", `/expenses/${values.id}`)).written > 0, true);
+    const recreated = await send("POST", "/expenses", values);
+    assert.equal(recreated.data.created, true);
+    assert.equal(recreated.scanned, 21, "one pass over the rows, like a plain add");
+    assert.equal(recreated.written, plain.written + members.length, "the row, its participants, one audit row");
+    const noop = await send("PUT", `/expenses/${values.id}`, { description: "Lại" });
+    const again = await send("POST", "/expenses", values);
+    assert.equal(again.data.created, false);
+    assert.equal(again.written, noop.written, "already back: only the limiter's row, like a no-op save");
+    const plan = (sql) => app.db.rows(`EXPLAIN QUERY PLAN ${sql}`, "x").map(({ detail }) => detail);
+    const insert = `INSERT INTO "${prefix}expenses" (id, payer_id, description, amount_vnd, expense_date, position)
+      SELECT ?, NULL, '', 0, NULL, COALESCE(MAX(position), -1) + 1 FROM "${prefix}expenses"`;
+    assert.deepEqual(plan(`${insert} RETURNING position`), plan(insert));
+  }
+});
+
+// Two tabs undoing the same delete at the same time: the row comes back once (one 201, one 200 created: false).
+test("concurrent re-creations of one deleted row make one row", options, async () => {
+  const { app, targets } = await ledgers({ simulateIo: true });
+  for (const { api, prefix } of targets) {
+    const an = await app.addMember("An", api);
+    const id = await app.addExpense({ description: "Taxi", payerId: an, participantChanges: { add: [an] } }, api);
+    assert.equal((await app.request("DELETE", `${api}/expenses/${id}`)).status, 200);
+    const body = { id, position: 0, payerId: an, date: null, description: "Taxi", amountVnd: 0, participantIds: [an] };
+    const responses = await Promise.all([1, 2].map(() => app.request("POST", `${api}/expenses`, { body })));
+    assert.deepEqual(statuses(responses), [200, 201]);
+    assert.deepEqual(responses.map(({ data }) => data.created).sort(), [false, true]);
+    assert.deepEqual(responses[0].data.expense, responses[1].data.expense);
+    assert.equal(app.count(`SELECT COUNT(*) AS count FROM "${prefix}expenses" WHERE id = ?`, id), 1);
+    assert.equal(app.count(`SELECT COUNT(*) AS count FROM "${prefix}expense_participants" WHERE expense_id = ?`, id), 1);
+    assert.equal(app.count(`SELECT COUNT(*) AS count FROM "${prefix}audit_log" WHERE action = 'create' AND entity_id = ?`, id), 2,
+      "the first add and one re-creation");
   }
 });
 

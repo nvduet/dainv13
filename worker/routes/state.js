@@ -9,13 +9,15 @@ import {
 import { json } from "../http.js";
 import { operationsAuthorizationQuery } from "../operations-password.js";
 
-// Everything the page needs, read in one batch (ledger tables and global settings share the database).
+// Everything the page needs, read in one batch (ledger tables and global settings share the database). Each expense
+// carries its position (its place in entry order, already read by the ORDER BY): undoing a delete re-creates the row
+// there.
 export async function state({ db, globalDB, ledger, adminSession }) {
   const results = await db.batch([
     db.prepare(MEMBERS_SQL),
     db.prepare(`
       SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd,
-             expense_date AS date, created_at AS createdAt, updated_at AS updatedAt
+             expense_date AS date, created_at AS createdAt, updated_at AS updatedAt, position
       FROM expenses ORDER BY position, created_at, id
     `),
     db.prepare("SELECT expense_id AS expenseId, member_id AS memberId FROM expense_participants"),
@@ -41,7 +43,8 @@ export async function state({ db, globalDB, ledger, adminSession }) {
   const participantsByExpense = groupParticipantsByExpense(participants);
   const ordered = orderMembersByGroup(members, groups, groupMembers);
   return json({
-    ledger: { slug: ledger.slug, name: ledger.name },
+    // id tells two ledgers that had the same slug apart (one deleted, the other created later with the same name).
+    ledger: { id: ledger.id, slug: ledger.slug, name: ledger.name },
     members: ordered.members,
     groups: ordered.groups,
     expenses: expenses.map((expense) => ({

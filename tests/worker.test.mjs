@@ -221,8 +221,8 @@ class MockDatabase {
         ? this.expenseRow(["id", "payerId", "description", "amountVnd", "date", "createdAt", "updatedAt"])
         : [];
     }
-    if (sql === "SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd, expense_date AS date, created_at AS createdAt, updated_at AS updatedAt FROM expenses ORDER BY position, created_at, id") {
-      return this.expenseRow(["id", "payerId", "description", "amountVnd", "date", "createdAt", "updatedAt"]);
+    if (sql === "SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd, expense_date AS date, created_at AS createdAt, updated_at AS updatedAt, position FROM expenses ORDER BY position, created_at, id") {
+      return this.expenseRow(["id", "payerId", "description", "amountVnd", "date", "createdAt", "updatedAt", "position"]);
     }
     if (sql === "SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd, expense_date AS date, position FROM expenses ORDER BY position, created_at, id") {
       return this.expenseRow(["id", "payerId", "description", "amountVnd", "date", "position"]);
@@ -230,7 +230,7 @@ class MockDatabase {
     if (sql === "SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd, expense_date AS date, position, created_at AS createdAt, updated_at AS updatedAt FROM expenses ORDER BY position, created_at, id") {
       return this.expenseRow(["id", "payerId", "description", "amountVnd", "date", "position", "createdAt", "updatedAt"]);
     }
-    if (sql.startsWith("INSERT INTO expenses (id, payer_id, description, amount_vnd, expense_date, position) SELECT ?, NULL, '', 0, NULL,")) {
+    if (sql === "INSERT INTO expenses (id, payer_id, description, amount_vnd, expense_date, position) SELECT ?, NULL, '', 0, NULL, COALESCE(MAX(position), -1) + 1 FROM expenses RETURNING position") {
       this.expense = {
         id: v[0],
         payerId: null,
@@ -241,7 +241,7 @@ class MockDatabase {
         updatedAt: NOW,
       };
       this.expenseParticipants = [];
-      return [];
+      return [{ position: 0 }];
     }
     if (sql.startsWith("UPDATE expenses SET ")) {
       let index = 0;
@@ -761,14 +761,14 @@ test("deleting a ledger always needs the operations password; the default ledger
 
   const missingPasswordResponse = await send(env, path, { method: "DELETE", body: { password: "" }, cookie });
   assert.equal(missingPasswordResponse.status, 400);
-  assert.deepEqual(await missingPasswordResponse.json(), { error: "Nhập mật khẩu thao tác." });
+  assert.deepEqual(await missingPasswordResponse.json(), { error: "Nhập mật khẩu thao tác.", field: "password" });
   const wrongPasswordResponse = await send(env, path, {
     method: "DELETE",
     body: { password: "incorrect-password" },
     cookie,
   });
   assert.equal(wrongPasswordResponse.status, 401);
-  assert.deepEqual(await wrongPasswordResponse.json(), { error: "Mật khẩu thao tác không đúng." });
+  assert.deepEqual(await wrongPasswordResponse.json(), { error: "Mật khẩu thao tác không đúng.", field: "password" });
   assert.equal(env.DB.ledgers.some((ledger) => ledger.slug === "legacy-ledger"), true);
 
   const deleteResponse = await send(env, path, {
@@ -958,6 +958,7 @@ test("expense drafts save partial fields and validate optional dates", async () 
   assert.equal(created.description, "");
   assert.equal(created.amountVnd, 0);
   assert.deepEqual(created.participantIds, []);
+  assert.equal(created.position, 0, "a new row's place in entry order comes back with it");
 
   const partialResponse = await send(env, `/api/expenses/${created.id}`, {
     method: "PUT",
@@ -995,6 +996,11 @@ test("expense drafts save partial fields and validate optional dates", async () 
     body: { amountVnd: -1_000_000_000_001 },
   });
   assert.equal(excessiveNegativeResponse.status, 400);
+
+  const deleteResponse = await send(env, `/api/expenses/${created.id}`, { method: "DELETE" });
+  assert.equal(deleteResponse.status, 200);
+  assert.deepEqual(await deleteResponse.json(), { deleted: true });
+  assert.equal(DB.expense, null);
 });
 
 test("history points are Admin-only and restore business data without changing settings", async () => {

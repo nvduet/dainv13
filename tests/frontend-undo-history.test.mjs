@@ -5,10 +5,13 @@ import {
   createUndoHistory,
   describeEntry,
   diffSavedExpense,
+  DELETE_SETTLE_MS,
   HISTORY_LIMIT,
   planHistoryStep,
   planTransferStep,
+  pruneHistory,
   sameValue,
+  stacksToStore,
 } from "../public/js/undo-history.js";
 
 const transfer = (memberId, before, after, label = "An") => ({ kind: "transfer", memberId, before, after, label });
@@ -272,4 +275,147 @@ test("the values an undo (or a duplicate's fill) wrote are not recorded as a cha
   const typed = diffSavedExpense("e1", saved({ amountVnd: 999000 }), saved({ amountVnd: 500000 }), { fields: { amountVnd: 500000 }, toggles: new Map() }, other);
   assert.deepEqual(typed.keys, ["amountVnd"]);
   assert.equal(other.fields.size, 1);
+});
+
+// ---------- Lịch sử lưu trên thiết bị, dùng chung giữa các tab ----------
+
+const snap = (extra = {}) => ({
+  payerId: "m1", date: "2026-10-01", description: "Ăn trưa", amountVnd: 360000, participantIds: ["m1"], position: 1, deleted: true, sentAt: 90,
+  confirmed: true, ...extra,
+});
+
+function pageHistory(origin, clock = { now: 1000 }) {
+  let id = 0;
+  return createUndoHistory({ origin, now: () => clock.now, newId: () => `${origin}-${(id += 1)}` });
+}
+
+test("entries carry an id, the recording page and time; a step moves them to this page", () => {
+  const clock = { now: 1000 };
+  const history = pageHistory("A", clock);
+  history.record(edit("e1", { amountVnd: [1, 2] }, { session: 3 }));
+  const entry = history.peekUndo();
+  assert.deepEqual([entry.id, entry.origin, entry.at, entry.time, entry.session], ["A-1", "A", 1000, 1000, 3]);
+  const other = pageHistory("B", clock);
+  other.replace({ undo: [{ ...history.takeUndo() }], redo: [] });
+  clock.now = 5000;
+  const moved = other.takeUndo();
+  other.pushRedo(moved);
+  assert.deepEqual([moved.origin, moved.at, moved.session, moved.time], ["B", 5000, null, 1000], "another page's session means nothing here; time stays for coalescing");
+  other.pushUndo({ ...moved });
+  assert.deepEqual(other.sizes, { undo: 1, redo: 0 }, "one entry is in one place only (same id)");
+});
+
+test("a change never coalesces with an entry another page (another tab, an earlier visit) recorded", () => {
+  const history = pageHistory("A");
+  history.replace({ undo: [{ ...edit("e1", { amountVnd: [1, 2] }, { session: 7 }), id: "old", origin: "B", time: 1000, at: 1000 }], redo: [] });
+  history.record(edit("e1", { amountVnd: [2, 3] }, { session: 7 }));
+  assert.equal(history.sizes.undo, 2);
+  history.record(edit("e1", { amountVnd: [3, 4] }, { session: 7 }));
+  assert.equal(history.sizes.undo, 2, "this page's own entries still coalesce");
+  history.replace({ undo: [{ ...transfer("m1", 1, 2), id: "t", session: null, origin: "B", time: 1000, at: 1000 }], redo: [] });
+  history.record(transfer("m1", 2, 3));
+  assert.equal(history.sizes.undo, 2);
+});
+
+test("snapshots are updated in place; replace() and entries() do not count as changes", () => {
+  let changes = 0;
+  const history = createUndoHistory({ origin: "A", onChange: () => { changes += 1; } });
+  history.record({ kind: "delete", expenseId: "e1", label: "", snapshot: snap({ deleted: false, position: null }) });
+  history.record({ kind: "add", expenseId: "e9", duplicate: false, label: "" });
+  changes = 0;
+  const marked = history.update((entry) => entry.kind === "delete", (entry) => {
+    entry.snapshot = { ...entry.snapshot, deleted: true, position: 4 };
+    return true;
+  });
+  assert.deepEqual([marked, changes, history.peekUndo().kind], [1, 1, "add"]);
+  assert.deepEqual(history.entries().undo[0].snapshot, snap({ position: 4 }));
+  history.replace({ undo: [], redo: history.entries().undo });
+  assert.deepEqual([history.sizes, changes], [{ undo: 0, redo: 2 }, 1]);
+});
+
+test("steps waiting for the server are stored back on the stack they came from", () => {
+  const a = edit("e1", { amountVnd: [1, 2] });
+  const b = edit("e2", { amountVnd: [1, 2] });
+  const stored = stacksToStore({ undo: [a], redo: [] }, [{ entry: b, direction: "undo" }, { entry: transfer("m1", 1, 2), direction: "redo" }]);
+  assert.deepEqual([stored.undo.map((entry) => entry.expenseId), stored.redo.length], [["e1", "e2"], 1]);
+});
+
+test("pruning keeps what can still be applied to the data the page just loaded", () => {
+  const entry = (kind, expenseId, extra = {}) => ({ kind, expenseId, id: `${kind}-${expenseId}-${extra.tag ?? ""}`, origin: "old-page", at: 100, time: 100, label: "", ...extra });
+  const undo = [
+    entry("edit", "gone", { fields: { amountVnd: { before: 1, after: 2 } }, added: [], removed: [] }),
+    entry("edit", "shown", { fields: { amountVnd: { before: 1, after: 2 } }, added: [], removed: [] }),
+    entry("edit", "deleted", { fields: { amountVnd: { before: 1, after: 2 } }, added: [], removed: [] }),
+    entry("add", "deleted"),
+    entry("delete", "deleted", { snapshot: snap() }),
+    entry("delete", "came-back", { snapshot: snap() }),
+    // DELETE sent (by another tab, or by a page closed meanwhile) but not answered: the row may still be there.
+    entry("delete", "sent-recently", { snapshot: snap({ confirmed: false, sentAt: 500 - DELETE_SETTLE_MS + 1 }) }),
+    entry("delete", "sent-long-ago", { snapshot: snap({ confirmed: false, sentAt: 500 - DELETE_SETTLE_MS }) }),
+    entry("delete", "sent-elsewhere", { snapshot: snap({ confirmed: false, sentAt: 400 }) }),
+    entry("delete", "waiting-elsewhere", { snapshot: snap({ deleted: false, position: null, sentAt: null, confirmed: false }) }),
+    entry("delete", "restored-here", { origin: "A", snapshot: snap({ deleted: false, position: null }) }),
+    entry("delete", "waiting-here", { origin: "A", snapshot: snap({ deleted: false, position: null }) }),
+    { kind: "transfer", memberId: "m1", id: "t1", origin: "old-page", at: 100, before: 1, after: 2 },
+    { kind: "transfer", memberId: "m9", id: "t9", origin: "old-page", at: 100, before: 1, after: 2 },
+    entry("edit", "new-elsewhere", { at: 9999, fields: { date: { before: null, after: "2026-10-01" } }, added: [], removed: [] }),
+  ];
+  const redo = [
+    entry("edit", "undone-add", { fields: { description: { before: "", after: "Taxi" } }, added: [], removed: [] }),
+    entry("add", "undone-add", { snapshot: snap() }),
+    entry("add", "plain-gone"),
+    entry("add", "shown"),
+    entry("delete", "shown", { tag: "redo", snapshot: snap({ deleted: false }) }),
+    entry("delete", "gone", { tag: "redo", snapshot: snap({ deleted: false }) }),
+  ];
+  const kept = pruneHistory({ undo, redo }, {
+    expenseIds: new Set(["shown", "came-back", "sent-recently", "sent-long-ago", "waiting-elsewhere", "restored-here"]),
+    memberIds: new Set(["m1"]),
+    deletingIds: new Set(["waiting-here"]),
+    origin: "A",
+    loadedAt: 500,
+  });
+  assert.deepEqual(kept.undo.map((item) => item.id), [
+    "edit-shown-",
+    "edit-deleted-",
+    "add-deleted-",
+    "delete-deleted-",
+    "delete-sent-recently-",
+    "delete-sent-elsewhere-",
+    "delete-waiting-elsewhere-",
+    "delete-waiting-here-",
+    "t1",
+    "edit-new-elsewhere-",
+  ]);
+  assert.deepEqual(kept.redo.map((item) => item.id), ["edit-undone-add-", "add-undone-add-", "add-shown-", "delete-shown-redo"]);
+  assert.equal(kept.removed, 7, "a confirmed delete whose row is back, and an unanswered one past the settle window, are dropped");
+  const history = createUndoHistory({ origin: "A" });
+  history.replace({ undo, redo });
+  // Nothing shown any more (e.g. a restore point emptied the ledger): only rows that can be re-created and their
+  // older entries stay, with what another page recorded after the load.
+  assert.equal(history.prune({ expenseIds: new Set(), memberIds: new Set(), loadedAt: 500 }), 10);
+  assert.deepEqual(history.entries().undo.map((item) => item.id),
+    ["edit-deleted-", "add-deleted-", "delete-deleted-", "delete-came-back-", "delete-sent-recently-", "delete-sent-long-ago-",
+      "delete-sent-elsewhere-", "delete-waiting-elsewhere-", "edit-new-elsewhere-"]);
+  assert.deepEqual(history.entries().redo.map((item) => item.id), ["edit-undone-add-", "add-undone-add-"]);
+});
+
+test("pruning keeps a redo chain an undone add can re-create, rows being re-created and attempted re-creations", () => {
+  const entry = (kind, expenseId, extra = {}) => ({ kind, expenseId, id: `${kind}-${expenseId}`, origin: "A", at: 100, time: 100, label: "", ...extra });
+  const edit = (expenseId) => entry("edit", expenseId, { fields: { description: { before: "", after: "N" } }, added: [], removed: [] });
+  const context = (extra = {}) => ({ expenseIds: new Set(), memberIds: new Set(), origin: "A", loadedAt: 500, ...extra });
+  // Undo went back through "delete N" (re-created), "edit N" and "add N" (deleted again): redo is [delete, edit, add].
+  const chain = pruneHistory({ undo: [], redo: [entry("delete", "n", { snapshot: snap({ deleted: false }) }), edit("n"), entry("add", "n", { snapshot: snap() })] }, context());
+  assert.deepEqual(chain.redo.map((item) => item.kind), ["delete", "edit", "add"]);
+  // A row this page is re-creating right now (POST out): its older steps stay although the load does not list it.
+  const busy = pruneHistory({ undo: [edit("r"), entry("add", "r")], redo: [] }, context({ recreatingIds: new Set(["r"]) }));
+  assert.equal(busy.removed, 0);
+  // A re-creation whose POST went out without an answer: kept whether or not the row is back (step() finishes it).
+  for (const listed of [true, false]) {
+    const attempted = pruneHistory({
+      undo: [entry("delete", "x", { snapshot: snap({ attemptedAt: 400 }) })],
+      redo: [entry("add", "y", { snapshot: snap({ attemptedAt: 400 }) })],
+    }, context({ expenseIds: new Set(listed ? ["x", "y"] : []) }));
+    assert.equal(attempted.removed, 0, `row listed: ${listed}`);
+  }
 });

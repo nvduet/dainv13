@@ -32,13 +32,17 @@ export async function requireOperationsPasswordConfigured(env) {
   }
 }
 
+// A missing or wrong password answers { error, field: "password" }: the page tells it from the other refusals of the
+// same requests (ledger name, admin gate, rate limits), which are not about the password field.
+const PASSWORD_FIELD = "password";
+
 function requirePasswordSent(password, missingMessage) {
-  if (typeof password !== "string" || password.length === 0) throw new ApiError(missingMessage, 400);
+  if (typeof password !== "string" || password.length === 0) throw new ApiError(missingMessage, 400, {}, PASSWORD_FIELD);
 }
 
 async function checkOperationsPassword(env, password) {
   if (!await secureEqual(password, env.HISTORY_RESTORE_PASSWORD)) {
-    throw new ApiError("Mật khẩu thao tác không đúng.", 401);
+    throw new ApiError("Mật khẩu thao tác không đúng.", 401, {}, PASSWORD_FIELD);
   }
 }
 

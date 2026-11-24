@@ -17,11 +17,14 @@ export const PAGE_SECURITY_HEADERS = Object.freeze({
   "X-Robots-Tag": "noindex, nofollow",
 });
 
+// field: the request field the error is about (e.g. "password" for a missing or wrong operations password); the page
+// puts the message on that field of its dialog. Other errors carry none.
 export class ApiError extends Error {
-  constructor(message, status, headers = {}) {
+  constructor(message, status, headers = {}, field = null) {
     super(message);
     this.status = status;
     this.headers = headers;
+    this.field = field;
   }
 }
 
@@ -32,8 +35,8 @@ export function json(data, status = 200, headers = {}) {
   });
 }
 
-export function error(message, status = 400, headers = {}) {
-  return json({ error: message }, status, headers);
+export function error(message, status = 400, headers = {}, field = null) {
+  return json(field ? { error: message, field } : { error: message }, status, headers);
 }
 
 function tooLarge() {

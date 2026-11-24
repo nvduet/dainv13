@@ -57,7 +57,7 @@ test("validation messages built from constants are unchanged", { skip: sqliteUna
   const app = createApp();
   await app.login();
   const expense = await app.addExpense();
-  assert.deepEqual((await app.state()).ledger, DEFAULT_LEDGER);
+  assert.deepEqual((await app.state()).ledger, { id: "default", ...DEFAULT_LEDGER });
   for (const [method, path, body, message] of [
     ["PUT", "/api/admin/font-size", { fontSize: 74 }, "Cỡ chữ phải nằm trong khoảng 75% đến 200%."],
     ["PUT", "/api/admin/qr-size", { qrSize: 1601 }, "Kích thước ảnh QR phải nằm trong khoảng 80px đến 1600px."],

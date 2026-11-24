@@ -4,8 +4,9 @@
 // local: state.expenses hiện tại (gồm dòng tạm "pending-…" đang chờ POST); server: danh sách của GET /api/state;
 // preferLocal: id trang vừa tự lưu hoặc tạo trong lúc chờ phản hồi (bản trên trang mới hơn bản trong phản hồi);
 // removed: id vừa xóa xong trong lúc đó; isDeleting(id): dòng đang chờ xóa trên trang (vẫn ẩn).
-// Kết quả: expenses (theo thứ tự máy chủ, rồi bản trang vừa tạo mà phản hồi chưa có, rồi dòng tạm), deleting (bản mới
-// nhất của các dòng đang chờ xóa), serverIds, dropped (id trên trang không còn trong danh sách mới).
+// Kết quả: expenses (theo thứ tự máy chủ; bản trang vừa tạo mà phản hồi chưa có chen theo chỗ của nó (position): dòng
+// thêm mới về cuối, dòng được tạo lại về chỗ cũ; rồi dòng tạm), deleting (bản mới nhất của các dòng đang chờ xóa),
+// serverIds, dropped (id trên trang không còn trong danh sách mới).
 export function mergeExpenseLists({ local, server, preferLocal = new Set(), removed = new Set(), isDeleting = () => false }) {
   const localById = new Map(local.map((expense) => [expense.id, expense]));
   const serverIds = new Set(server.map((expense) => expense.id));
@@ -17,7 +18,13 @@ export function mergeExpenseLists({ local, server, preferLocal = new Set(), remo
     else expenses.push(preferLocal.has(expense.id) && localById.has(expense.id) ? localById.get(expense.id) : expense);
   }
   for (const id of preferLocal) {
-    if (!serverIds.has(id) && localById.has(id) && !removed.has(id) && !isDeleting(id)) expenses.push(localById.get(id));
+    if (serverIds.has(id) || !localById.has(id) || removed.has(id) || isDeleting(id)) continue;
+    const expense = localById.get(id);
+    const at = Number.isSafeInteger(expense.position)
+      ? expenses.findIndex((item) => Number.isSafeInteger(item.position) && item.position > expense.position)
+      : -1;
+    if (at === -1) expenses.push(expense);
+    else expenses.splice(at, 0, expense);
   }
   // Dòng tạm đang chờ POST ("Add line", nhân bản) vẫn ở cuối bảng; POST xong sẽ thay nó như thường.
   for (const expense of local) {

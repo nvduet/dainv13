@@ -172,6 +172,14 @@ export function renamePinnedRow(oldId, newId) {
   if (index !== -1) view.pinned[index] = newId;
 }
 
+// Một dòng vừa được đặt vào bảng theo thứ tự nhập (tạo lại khi hoàn tác một lần xóa): áp lại lọc/sắp xếp đang chọn,
+// trừ khi một dòng của bảng đang được sửa (sẽ áp khi focus rời bảng, như thường).
+export function rearrangeDetailView() {
+  if (!view.arranged && isDefaultView(view.filter, view.sort)) return;
+  if (focusedRowId() !== null) return;
+  renderDetailViewStatus(arrange());
+}
+
 // Focus rời bảng Detail (không sang một dòng khác của bảng): áp lại lọc/sắp xếp cho các dòng vừa sửa.
 export function handleDetailFocusOut() {
   if (!view.arranged && isDefaultView(view.filter, view.sort)) return;

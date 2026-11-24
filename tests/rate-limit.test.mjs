@@ -148,7 +148,7 @@ test("ledger creation and deletion, Store, restore and deleting a Store point sh
   ]) {
     const response = await app.request(method, path, { body, admin: true });
     assert.equal(response.status, 400, path);
-    assert.deepEqual(response.data, { error });
+    assert.deepEqual(response.data, { error, field: "password" });
   }
   assert.equal(passwordAttempts(), 1);
 
@@ -162,7 +162,7 @@ test("ledger creation and deletion, Store, restore and deleting a Store point sh
   ]) {
     const response = await app.request(method, path, { body, admin: true });
     assert.equal(response.status, 401, path);
-    assert.deepEqual(response.data, { error: "Mật khẩu thao tác không đúng." });
+    assert.deepEqual(response.data, { error: "Mật khẩu thao tác không đúng.", field: "password" });
   }
   assert.equal(passwordAttempts(), 10);
 

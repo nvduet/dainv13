@@ -63,7 +63,9 @@ test("the signature ignores order and padding but sees every data change", () =>
   };
   const same = {
     ...base,
-    expenses: [{ ...base.expenses[1], payerId: "" }, { ...base.expenses[0], description: "Ăn trưa ", participantIds: ["m2", "m1"] }],
+    // The ledger's id and an expense's position (GET /api/state has them, a PUT answer has no position) are no change.
+    ledger: { ...base.ledger, id: "default" },
+    expenses: [{ ...base.expenses[1], payerId: "", position: 1 }, { ...base.expenses[0], description: "Ăn trưa ", participantIds: ["m2", "m1"], position: 0 }],
     payments: [...base.payments],
   };
   assert.equal(ledgerSignature(same), ledgerSignature(base));

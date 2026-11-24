@@ -2,6 +2,7 @@ import {
   COLUMN_WIDTH,
   DEFAULT_COLUMN_WIDTHS,
   MAX_AMOUNT_VND,
+  MAX_EXPENSE_POSITION,
   MAX_MEMBERS,
   MAX_NAME_LENGTH,
 } from "../public/shared/constants.mjs";
@@ -22,6 +23,18 @@ export function validSignedAmount(value) {
 
 export function validId(value) {
   return typeof value === "string" && value.length >= 1 && value.length <= 80;
+}
+
+// The id under which a deleted expense is re-created (undo): ids the server creates (crypto.randomUUID) and older ids
+// alike, but never the page's placeholder prefix "pending-" or something like "." / ".." that the page could not save
+// or delete through /api/expenses/<id> afterwards.
+export function validExpenseId(value) {
+  return validId(value) && /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(value) && !/^pending-/i.test(value);
+}
+
+// An expense's place in entry order (expenses.position), capped so that a later "MAX(position) + 1" stays exact.
+export function validPosition(value) {
+  return Number.isSafeInteger(value) && value >= 0 && value <= MAX_EXPENSE_POSITION;
 }
 
 export function validIds(value, { allowEmpty = false } = {}) {

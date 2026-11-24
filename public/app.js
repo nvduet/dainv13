@@ -34,6 +34,7 @@ import {
   noteDetailFocus,
   redoLastChange,
   undoLastChange,
+  watchStoredHistory,
   watchTransferHistory,
 } from "./js/expense-history.js";
 import {
@@ -74,6 +75,7 @@ import {
   dismissNoticeOnEscape,
   finishLoading,
   hideNotice,
+  holdBusyActionDialog,
   initNotice,
   runNoticeAction,
   settleActionDialog,
@@ -160,8 +162,11 @@ document.querySelector("#expense-body").addEventListener("focusout", handleExpen
 document.querySelector("#action-dialog-cancel").addEventListener("click", cancelActionDialog);
 document.querySelector("#action-dialog-close").addEventListener("click", cancelActionDialog);
 document.querySelector("#audit-diff-close").addEventListener("click", closeAuditDiffDialog);
-document.querySelector("#action-dialog-input").addEventListener("input", clearActionDialogError);
+document.querySelector("#action-form").addEventListener("input", clearActionDialogError);
 document.querySelector("#action-dialog").addEventListener("close", settleActionDialog);
+// Hộp thoại đang chạy thao tác: Esc không đóng nó (keydown, trước mọi nơi khác) và không có yêu cầu đóng nào khác.
+document.querySelector("#action-dialog").addEventListener("cancel", holdBusyActionDialog);
+document.addEventListener("keydown", holdBusyActionDialog, true);
 document.addEventListener("click", handleClick);
 document.addEventListener("submit", handleSubmit);
 applyExpenseColumnWidths();
@@ -227,6 +232,8 @@ document.querySelector("#expense-body").addEventListener("focusin", noteDetailFo
 document.addEventListener("keydown", handleHistoryShortcut);
 // Tổng "Đã chuyển khoản" của Summary vào lịch sử Hoàn tác/Làm lại.
 watchTransferHistory();
+// Lịch sử lưu trên máy theo sổ, các tab cùng sổ dùng chung; bước do tab khác ghi cần dữ liệu mới trước khi áp.
+watchStoredHistory(refreshAfterReturn);
 document.addEventListener("beforeinput", keepNativeUndoInField, true);
 document.addEventListener("keydown", dismissNoticeOnEscape);
 watchTableOverflow();

@@ -110,7 +110,7 @@ test("a ledger created before 0013 is upgraded once and then matches a new ledge
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const response = await app.request("GET", "/api/g/so-cu/state");
     assert.equal(response.status, 200);
-    assert.deepEqual(response.data.ledger, { slug: "so-cu", name: "Sổ cũ" });
+    assert.deepEqual(response.data.ledger, { id, slug: "so-cu", name: "Sổ cũ" });
   }
   assert.equal(upgrades, 1);
   assert.equal(version(), LEDGER_SCHEMA_VERSION);

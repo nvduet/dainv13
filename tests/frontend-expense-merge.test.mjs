@@ -35,3 +35,10 @@ test("a row deleted while the GET was out does not come back, and rows waiting t
   assert.deepEqual(result.expenses.map((item) => item.id), ["a", "b"]);
   assert.deepEqual(result.deleting.map((item) => [item.id, item.amountVnd]), [["waiting", 7]], "its newest copy, for 'Hoàn tác'");
 });
+
+test("a row the page re-created while the GET was out goes back to its place by position; a new row to the end", () => {
+  const local = [expense("a", { position: 0 }), expense("c", { position: 2 }), expense("b", { position: 1 }), expense("new", { position: 3 }), expense("pending-1")];
+  const server = [expense("a", { position: 0 }), expense("c", { position: 2 })];
+  const result = mergeExpenseLists({ local, server, preferLocal: new Set(["b", "new"]) });
+  assert.deepEqual(result.expenses.map((item) => item.id), ["a", "b", "c", "new", "pending-1"]);
+});

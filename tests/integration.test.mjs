@@ -54,6 +54,7 @@ test("guests save expense drafts field by field with server-side validation", op
     participantIds: [],
     createdAt: null,
     updatedAt: null,
+    position: 0,
   });
 
   const put = (body) => app.request("PUT", `/api/expenses/${id}`, { body });
@@ -362,6 +363,7 @@ test("deleting a Store point always asks for the operations password and leaves 
 
   assert.equal((await app.request("DELETE", path)).status, 401);
   // A Store authorization does not cover deleting: the password is always asked for.
+  // Missing and wrong passwords name the password field (the page marks that field of its dialog).
   for (const [body, status, error] of [
     [undefined, 400, "Nhập mật khẩu thao tác."],
     [{ password: "" }, 400, "Nhập mật khẩu thao tác."],
@@ -369,7 +371,7 @@ test("deleting a Store point always asks for the operations password and leaves 
   ]) {
     const response = await app.request("DELETE", path, { body, admin: true });
     assert.equal(response.status, status, JSON.stringify(body));
-    assert.deepEqual(response.data, { error });
+    assert.deepEqual(response.data, { error, field: "password" });
   }
   assert.equal(app.count("SELECT COUNT(*) AS count FROM history_points"), 2);
   const missing = await app.request("DELETE", "/api/admin/history-points/missing", { body: { password: "restore-password" }, admin: true });
@@ -444,10 +446,10 @@ test("creating a ledger asks for the operations password once per Admin session,
   // An old cached page still sends deletePassword; it is ignored.
   const missing = await create({ name: "Sổ A", deletePassword: "delete-me-123" });
   assert.equal(missing.status, 400);
-  assert.deepEqual(missing.data, { error: "Nhập mật khẩu thao tác để tạo sổ trong phiên Admin này." });
+  assert.deepEqual(missing.data, { error: "Nhập mật khẩu thao tác để tạo sổ trong phiên Admin này.", field: "password" });
   const wrong = await create({ name: "Sổ A", password: "delete-me-123" });
   assert.equal(wrong.status, 401);
-  assert.deepEqual(wrong.data, { error: "Mật khẩu thao tác không đúng." });
+  assert.deepEqual(wrong.data, { error: "Mật khẩu thao tác không đúng.", field: "password" });
   assert.equal(app.count("SELECT COUNT(*) AS count FROM ledgers"), 1);
   assert.equal((await app.state("/api", true)).storePasswordVerified, false);
 
@@ -475,12 +477,40 @@ test("creating a ledger asks for the operations password once per Admin session,
   // Restore still always asks.
   const restore = await app.request("POST", "/api/g/so-a/admin/history-points/any/restore", { body: {}, admin: true });
   assert.equal(restore.status, 400);
-  assert.deepEqual(restore.data, { error: "Nhập mật khẩu thao tác." });
+  assert.deepEqual(restore.data, { error: "Nhập mật khẩu thao tác.", field: "password" });
 
   await app.login();
   assert.equal((await app.state("/api/g/so-b", true)).storePasswordVerified, false);
   assert.equal((await create({ name: "Sổ C" })).status, 400);
   assert.equal((await app.request("POST", "/api/g/so-b/admin/history-points", { body: { message: "Mốc" }, admin: true })).status, 400);
+});
+
+test("only operations-password refusals name the password field; other refusals of the same requests carry none", options, async () => {
+  const app = createApp();
+  await app.login();
+  const create = (body, admin = true) => app.request("POST", "/api/admin/ledgers", { body, admin });
+  const expectRefusal = async (pending, status, data, label) => {
+    const response = await pending;
+    assert.equal(response.status, status, label);
+    assert.deepEqual(response.data, data, label);
+  };
+  // A session that is not authorized yet: the ledger name is checked before the password.
+  await expectRefusal(create({ name: "!!!" }), 400, { error: "Tên sổ cần chứa ít nhất một ký tự chữ hoặc số." }, "name without letters");
+  await expectRefusal(create({ name: "   ", password: "restore-password" }), 400, { error: "Tên sổ cần có từ 1 đến 80 ký tự." }, "blank name");
+  await expectRefusal(create({ name: "Sổ A" }), 400,
+    { error: "Nhập mật khẩu thao tác để tạo sổ trong phiên Admin này.", field: "password" }, "password missing");
+  await expectRefusal(create({ name: "Chill guys", password: "restore-password" }), 409,
+    { error: "Tên này đã được dùng để tạo link sổ khác." }, "name taken");
+  await expectRefusal(create({ name: "Sổ A", password: "restore-password" }, false), 401,
+    { error: "Chỉ Admin đã đăng nhập mới được quản lý sổ." }, "admin gate");
+  await expectRefusal(app.request("POST", "/api/admin/history-points", { body: { message: "   ", password: "restore-password" }, admin: true }), 400,
+    { error: "Nhập message từ 1 đến 200 ký tự cho điểm lưu." }, "Store message");
+  // An authorized session (no password sent): a bad name is still only about the name.
+  assert.equal((await create({ name: "Sổ A", password: "restore-password" })).status, 201);
+  await expectRefusal(create({ name: "日本" }), 400, { error: "Tên sổ cần chứa ít nhất một ký tự chữ hoặc số." }, "authorized, name without letters");
+  await expectRefusal(create({ name: "Sổ A" }), 409, { error: "Tên này đã được dùng để tạo link sổ khác." }, "authorized, name taken");
+  await expectRefusal(app.request("DELETE", "/api/admin/ledgers/khong-co", { body: { password: "restore-password" }, admin: true }), 404,
+    { error: "Không tìm thấy sổ chi tiêu." }, "unknown ledger");
 });
 
 test("a Store authorization from one ledger covers Store in another ledger and ledger creation", options, async () => {
@@ -516,7 +546,7 @@ test("the operations authorization lasts 8 hours and is asked for again once it 
   ]) {
     const response = await app.request("POST", path, { body, admin: true });
     assert.equal(response.status, 400, path);
-    assert.deepEqual(response.data, { error });
+    assert.deepEqual(response.data, { error, field: "password" });
   }
 
   // Entering the password again renews the session's row for another 8 hours.
@@ -673,7 +703,7 @@ test("ledgers are isolated by link and deleting one drops every prefixed object"
 
   const scopedApi = "/api/g/da-lat-2026";
   const scopedState = await app.state(scopedApi);
-  assert.deepEqual(scopedState.ledger, { slug: "da-lat-2026", name: "Đà Lạt 2026" });
+  assert.deepEqual(scopedState.ledger, { id: ledgerId, slug: "da-lat-2026", name: "Đà Lạt 2026" });
   assert.deepEqual(scopedState.members, []);
   assert.equal((await app.request("POST", `${scopedApi}/members`, { body: { name: "Hà" } })).status, 401);
   const scopedMember = await app.addMember("Hà", scopedApi);
@@ -746,7 +776,7 @@ test("deleting a ledger always asks for the operations password, also for older 
     ]) {
       const response = await remove(body);
       assert.equal(response.status, status, `${slug} ${JSON.stringify(body)}`);
-      assert.deepEqual(response.data, { error });
+      assert.deepEqual(response.data, { error, field: "password" });
     }
     const deleted = await remove({ password: "restore-password" });
     assert.equal(deleted.status, 200);
@@ -800,4 +830,135 @@ test("unknown routes and malformed JSON return API errors, never server errors",
   const state = await app.request("GET", "/api/state");
   assert.equal(state.headers.get("cache-control"), "no-store");
   assert.match(state.headers.get("content-type"), /^application\/json/);
+});
+
+// Undo of a committed delete (or redo of an "Add line"/duplicate whose row was deleted): one POST with the row's id,
+// values and position re-creates it atomically, on the default ledger and on a table-prefixed one. GET /api/state
+// gives every expense's position and the ledger's id; DELETE answers as before.
+test("a deleted expense is re-created under its old id, values and position in one request", options, async () => {
+  const app = createApp();
+  await app.login();
+  const created = await app.createLedger("Sổ tạo lại");
+  for (const { api, prefix, ledgerId } of [
+    { api: "/api", prefix: "", ledgerId: "default" },
+    { api: created.api, prefix: created.prefix, ledgerId: created.id },
+  ]) {
+    const an = await app.addMember("An", api);
+    const binh = await app.addMember("Bình", api);
+    const ids = [];
+    for (const description of ["Một", "Hai", "Ba", "Bốn"]) {
+      ids.push(await app.addExpense({ description, payerId: an, date: "2026-10-02", amountVnd: 120_000, participantChanges: { add: [binh, an] } }, api));
+    }
+    const state = await app.state(api);
+    assert.equal(state.ledger.id, ledgerId);
+    assert.deepEqual(state.expenses.map(({ description, position }) => [description, position]), [["Một", 0], ["Hai", 1], ["Ba", 2], ["Bốn", 3]]);
+    const order = async () => (await app.state(api)).expenses.map(({ description, position }) => `${description}@${position}`);
+    const count = (table) => app.count(`SELECT COUNT(*) AS count FROM "${prefix}${table}"`);
+
+    const deleted = await app.request("DELETE", `${api}/expenses/${ids[1]}`);
+    assert.equal(deleted.status, 200);
+    assert.deepEqual(deleted.data, { deleted: true }, "the DELETE answer is unchanged");
+    assert.deepEqual(await order(), ["Một@0", "Ba@2", "Bốn@3"]);
+
+    const values = { id: ids[1], position: 1, payerId: an, date: "2026-10-02", description: "Hai", amountVnd: 120_000, participantIds: [binh, an] };
+    const back = await app.request("POST", `${api}/expenses`, { body: values });
+    assert.equal(back.status, 201, JSON.stringify(back.data));
+    const { createdAt, updatedAt } = back.data.expense;
+    assert.match(createdAt, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    assert.deepEqual(back.data, {
+      expense: { id: ids[1], payerId: an, description: "Hai", amountVnd: 120_000, date: "2026-10-02", createdAt, updatedAt, position: 1, participantIds: [an, binh].sort() },
+      created: true,
+    });
+    assert.deepEqual(await order(), ["Một@0", "Hai@1", "Ba@2", "Bốn@3"], "back in its old place");
+    const [auditRow] = app.db.rows(`SELECT actor, before_json AS beforeJson, after_json AS afterJson FROM "${prefix}audit_log"
+      WHERE action = 'create' AND entity = 'expense' AND entity_id = ? ORDER BY id DESC LIMIT 1`, ids[1]);
+    assert.deepEqual(auditRow, {
+      actor: "public",
+      beforeJson: null,
+      afterJson: JSON.stringify({ id: ids[1], payerId: an, date: "2026-10-02", description: "Hai", amountVnd: 120_000, participantIds: [an, binh].sort() }),
+    }, "one create audit row with what was stored, in the plain add's key order");
+
+    // Repeating it (another tab, a later visit, a lost answer) writes nothing and answers the row that is there.
+    const counts = () => ["expenses", "expense_participants", "audit_log", "audit_sessions"].map(count);
+    const before = counts();
+    const again = await app.request("POST", `${api}/expenses`, { body: { ...values, description: "Khác", amountVnd: 1 } });
+    assert.equal(again.status, 200);
+    assert.deepEqual(again.data, { expense: back.data.expense, created: false });
+    assert.deepEqual(counts(), before);
+    // The row is an ordinary row again.
+    assert.equal((await app.request("PUT", `${api}/expenses/${ids[1]}`, { body: { amountVnd: 130_000 } })).data.expense.amountVnd, 130_000);
+
+    // Free position past the end: taken as asked; taken position or none: at the end, like a new row.
+    assert.equal((await app.request("DELETE", `${api}/expenses/${ids[3]}`)).status, 200);
+    const last = await app.request("POST", `${api}/expenses`, { body: { ...values, id: ids[3], position: 9, description: "Bốn" } });
+    assert.equal(last.data.expense.position, 9);
+    const taken = await app.request("POST", `${api}/expenses`, { body: { ...values, id: `taken-${prefix}`, position: 0, description: "Chỗ đã có" } });
+    assert.deepEqual([taken.status, taken.data.expense.position, taken.data.created], [201, 10, true]);
+    const unknown = await app.request("POST", `${api}/expenses`, { body: { ...values, id: `unknown-${prefix}`, position: null, description: "Không rõ chỗ" } });
+    assert.deepEqual([unknown.status, unknown.data.expense.position], [201, 11]);
+    assert.deepEqual(await order(), ["Một@0", "Hai@1", "Ba@2", "Bốn@9", "Chỗ đã có@10", "Không rõ chỗ@11"]);
+
+    // A payer or participant deleted meanwhile is left out; the answer and the audit row show what was stored.
+    const chi = await app.addMember("Chi", api);
+    const dung = await app.addMember("Dũng", api);
+    const partial = { ...values, id: `partial-${prefix}`, position: null, payerId: dung, description: "  Một phần  ", participantIds: [chi, dung, an] };
+    assert.equal((await app.request("DELETE", `${api}/members/${dung}`, { admin: true })).status, 200);
+    const dropped = await app.request("POST", `${api}/expenses`, { body: partial });
+    assert.equal(dropped.status, 201);
+    assert.deepEqual([dropped.data.expense.payerId, dropped.data.expense.description, dropped.data.expense.participantIds],
+      [null, "Một phần", [an, chi].sort()]);
+    const droppedAudit = app.db.rows(`SELECT after_json AS afterJson FROM "${prefix}audit_log" WHERE action = 'create' AND entity_id = ?`, partial.id)[0];
+    assert.deepEqual(JSON.parse(droppedAudit.afterJson), { id: partial.id, payerId: null, date: "2026-10-02", description: "Một phần", amountVnd: 120_000, participantIds: [an, chi].sort() });
+    const empty = await app.request("POST", `${api}/expenses`, { body: { ...values, id: `empty-${prefix}`, position: null, payerId: null, date: null, description: "", amountVnd: 0, participantIds: [] } });
+    assert.deepEqual([empty.status, empty.data.expense.participantIds, empty.data.expense.payerId], [201, [], null]);
+
+    // Plain adds are unchanged, and their answer says where the row went.
+    for (const request of [{}, { body: {} }]) {
+      const plain = await app.request("POST", `${api}/expenses`, request);
+      assert.equal(plain.status, 201);
+      assert.deepEqual(Object.keys(plain.data), ["expense"]);
+      assert.equal(plain.data.expense.position, Math.max(...(await app.state(api)).expenses.map(({ position }) => position)));
+    }
+  }
+});
+
+test("a re-creation body must hold exactly the row's fields, each valid like a save", options, async () => {
+  const app = createApp();
+  await app.login();
+  const created = await app.createLedger("Sổ kiểm tra");
+  for (const { api, prefix } of [{ api: "/api", prefix: "" }, { api: created.api, prefix: created.prefix }]) {
+    const an = await app.addMember("An", api);
+    const valid = { id: "row-1", position: 0, payerId: an, date: "2026-10-02", description: "Ăn", amountVnd: 1_000, participantIds: [an] };
+    const noId = { ...valid };
+    delete noId.id;
+    const tooMany = Array.from({ length: 51 }, (_, index) => `m-${index}`);
+    for (const [body, error] of [
+      [{ position: 1 }, "Dữ liệu khoản chi không hợp lệ."],
+      [{ other: 1 }, "Dữ liệu khoản chi không hợp lệ."],
+      [noId, "Dữ liệu khoản chi không hợp lệ."],
+      [{ ...valid, participantChanges: { add: [an] } }, "Dữ liệu khoản chi không hợp lệ."],
+      [{ ...valid, id: "" }, "Mã khoản chi không hợp lệ."],
+      [{ ...valid, id: "x".repeat(81) }, "Mã khoản chi không hợp lệ."],
+      [{ ...valid, id: 7 }, "Mã khoản chi không hợp lệ."],
+      // The page's placeholder prefix and ids the page could not save or delete through /api/expenses/<id> afterwards.
+      ...["pending-1", "Pending-x", ".", "..", "a.b", "a/b", " a", "-a", "a b"].map((id) => [{ ...valid, id }, "Mã khoản chi không hợp lệ."]),
+      ...[-1, 1.5, "1", true, 2 ** 53, 1_000_000_001, { at: 1 }].map((position) => [{ ...valid, position }, "Vị trí khoản chi không hợp lệ."]),
+      [{ ...valid, payerId: 5 }, "Người chi không hợp lệ."],
+      [{ ...valid, date: "2026-02-30" }, "Ngày phải có định dạng YYYY-MM-DD hợp lệ."],
+      [{ ...valid, description: "x".repeat(201) }, "Nội dung không được dài quá 200 ký tự."],
+      [{ ...valid, description: null }, "Nội dung không được dài quá 200 ký tự."],
+      [{ ...valid, amountVnd: 1.5 }, "Số tiền phải là số đồng nguyên trong giới hạn cho phép."],
+      [{ ...valid, amountVnd: 1_000_000_000_001 }, "Số tiền phải là số đồng nguyên trong giới hạn cho phép."],
+      [{ ...valid, participantIds: [an, an] }, "Danh sách người tham gia không hợp lệ."],
+      [{ ...valid, participantIds: an }, "Danh sách người tham gia không hợp lệ."],
+      [{ ...valid, participantIds: tooMany }, "Danh sách người tham gia không hợp lệ."],
+    ]) {
+      const response = await app.request("POST", `${api}/expenses`, { body });
+      assert.equal(response.status, 400, JSON.stringify(body));
+      assert.deepEqual(response.data, { error }, JSON.stringify(body));
+    }
+    for (const body of ["{oops", "[]", "null"]) assert.equal((await app.request("POST", `${api}/expenses`, { body })).status, 400, body);
+    assert.equal(app.count(`SELECT COUNT(*) AS count FROM "${prefix}expenses"`), 0, "nothing was inserted");
+    assert.equal((await app.request("POST", `${api}/expenses`, { body: valid })).status, 201);
+  }
 });

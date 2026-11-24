@@ -39,6 +39,25 @@ test("api() errors carry the HTTP status (0 without a response) and Retry-After;
   assert.deepEqual(await api("/api/expenses/e1", { method: "PUT", body: "{}" }), { expense: { id: "e1" } });
 });
 
+test("api() errors carry the field the server names (a missing or wrong operations password); other errors have none", async (t) => {
+  for (const [reply, field] of [
+    [jsonResponse({ error: "Mật khẩu thao tác không đúng.", field: "password" }, 401), "password"],
+    [jsonResponse({ error: "Nhập mật khẩu thao tác để tạo sổ trong phiên Admin này.", field: "password" }, 400), "password"],
+    [jsonResponse({ error: "Tên sổ cần chứa ít nhất một ký tự chữ hoặc số." }, 400), undefined],
+    [jsonResponse({ error: "Đã vượt số lần nhập mật khẩu thao tác. Hãy thử lại sau." }, 429, { "retry-after": "60" }), undefined],
+    [jsonResponse({ error: "Lỗi", field: 7 }, 400), undefined],
+    [new Response("<html>Bad gateway</html>", { status: 502 }), undefined],
+    [new TypeError("Failed to fetch"), undefined],
+  ]) {
+    stubBrowser(t, "/", reply);
+    await assert.rejects(api("/api/admin/ledgers", { method: "POST", body: "{}" }), (caught) => {
+      assert.equal(caught.field, field);
+      assert.equal(Object.hasOwn(caught, "field"), field !== undefined);
+      return true;
+    });
+  }
+});
+
 test("on a ledger page, ledger APIs go to /api/g/<slug>/ but ledger management stays global", async (t) => {
   const requests = stubBrowser(t, "/g/da-lat-2026", () => jsonResponse({}, 200));
   await api("/api/expenses/e1", { method: "PUT", body: "{}" });

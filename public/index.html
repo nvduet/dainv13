@@ -23,6 +23,7 @@
     <link rel="modulepreload" href="/js/save-queue.js">
     <link rel="modulepreload" href="/js/delete-queue.js">
     <link rel="modulepreload" href="/js/undo-history.js">
+    <link rel="modulepreload" href="/js/history-store.js">
     <link rel="modulepreload" href="/js/expense-history.js">
     <link rel="modulepreload" href="/js/expense-merge.js">
     <link rel="modulepreload" href="/js/return-watch.js">
@@ -79,6 +80,11 @@
           <span>Khoản chi <strong id="expense-count">—</strong></span>
           <span>Thành viên <strong id="member-count">—</strong></span>
         </div>
+        <div class="overview-actions">
+          <button id="undo-change" class="button button-light heading-button" type="button" aria-label="Hoàn tác" aria-keyshortcuts="Control+Z Meta+Z" title="Chưa có thay đổi để hoàn tác" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-undo"></use></svg><span>Hoàn tác</span></button>
+          <button id="redo-change" class="button button-light heading-button" type="button" aria-label="Làm lại" aria-keyshortcuts="Control+Y Control+Shift+Z Meta+Shift+Z" title="Chưa có thay đổi để làm lại" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-redo"></use></svg><span>Làm lại</span></button>
+          <button id="export-xlsx" class="button button-light heading-button" type="button" aria-label="Xuất Excel" title="Xuất Excel" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-download"></use></svg><span>Xuất Excel</span></button>
+        </div>
       </section>
 
       <div id="notice" class="notice" hidden>
@@ -107,9 +113,6 @@
             <h2 id="ledger-title">Detail</h2>
           </div>
           <div class="section-actions">
-            <button id="undo-change" class="button button-light heading-button" type="button" aria-label="Hoàn tác" aria-keyshortcuts="Control+Z Meta+Z" title="Chưa có thay đổi để hoàn tác" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-undo"></use></svg><span>Hoàn tác</span></button>
-            <button id="redo-change" class="button button-light heading-button" type="button" aria-label="Làm lại" aria-keyshortcuts="Control+Y Control+Shift+Z Meta+Shift+Z" title="Chưa có thay đổi để làm lại" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-redo"></use></svg><span>Làm lại</span></button>
-            <button id="export-xlsx" class="button button-light heading-button" type="button" aria-label="Xuất Excel" title="Xuất Excel" disabled><svg aria-hidden="true" focusable="false"><use href="#icon-download"></use></svg><span>Xuất Excel</span></button>
             <button id="add-expense" class="button button-coral" type="button">＋ Add line</button>
           </div>
         </div>
@@ -289,8 +292,7 @@
         <button id="action-dialog-close" class="dialog-close" type="button" aria-label="Đóng">×</button>
         <h2 id="action-dialog-title"></h2>
         <p id="action-dialog-message" class="section-description" hidden></p>
-        <label id="action-dialog-label" for="action-dialog-input" hidden></label>
-        <input id="action-dialog-input" autocomplete="off" hidden>
+        <div id="action-dialog-fields" class="action-dialog-fields"></div>
         <p id="action-dialog-error" class="form-error" role="alert"></p>
         <div class="dialog-actions">
           <button id="action-dialog-cancel" class="button button-light" type="button">Hủy</button>

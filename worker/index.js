@@ -57,7 +57,7 @@ export default {
       if (LEDGER_PAGE_PATH.test(url.pathname)) return await serveLedgerPage(request, env);
       return await env.ASSETS.fetch(request);
     } catch (caught) {
-      if (caught instanceof ApiError) return error(caught.message, caught.status, caught.headers);
+      if (caught instanceof ApiError) return error(caught.message, caught.status, caught.headers, caught.field);
       console.error("Request failed", caught);
       return error("Đã xảy ra lỗi máy chủ. Hãy thử lại; nếu vẫn tiếp diễn, liên hệ Admin.", 500);
     }

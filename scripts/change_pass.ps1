@@ -5,8 +5,25 @@ Set-StrictMode -Version Latest
 $OutputEncoding = New-Object System.Text.UTF8Encoding $false
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+$nodeCommand = Get-Command node.exe -ErrorAction SilentlyContinue
 $npxCommand = Get-Command npx.cmd -ErrorAction SilentlyContinue
 if (-not $npxCommand) {
+    $nodeNpx = Join-Path $env:ProgramFiles "nodejs\npx.cmd"
+    if (Test-Path -LiteralPath $nodeNpx) {
+        $npxCommand = Get-Item -LiteralPath $nodeNpx
+    }
+}
+$wranglerCommand = Get-Command wrangler.cmd -ErrorAction SilentlyContinue
+if (-not $wranglerCommand) {
+    $globalWrangler = Join-Path $env:APPDATA "npm\wrangler.cmd"
+    if (Test-Path -LiteralPath $globalWrangler) {
+        $wranglerCommand = Get-Item -LiteralPath $globalWrangler
+    }
+}
+if (-not $nodeCommand -and -not $wranglerCommand) {
+    throw "Node.js and npm are required. Install Node.js 22 or later to use Wrangler."
+}
+if (-not $npxCommand -and -not $wranglerCommand) {
     throw "Node.js and npm are required. Install Node.js 22 or later to use Wrangler."
 }
 
@@ -18,7 +35,12 @@ function Set-WorkerSecret {
 
     Push-Location $projectRoot
     try {
-        $Value | & $npxCommand.Source --yes wrangler@4 secret put $Name
+        if ($wranglerCommand) {
+            $Value | & $wranglerCommand.Source secret put $Name
+        }
+        else {
+            $Value | & $npxCommand.Source --yes wrangler@4 secret put $Name
+        }
         $exitCode = $LASTEXITCODE
     }
     finally {
@@ -29,15 +51,9 @@ function Set-WorkerSecret {
     }
 }
 
-$username = Read-Host "Production Admin username (default: admin)"
-if ([string]::IsNullOrWhiteSpace($username)) {
-    $username = "admin"
-}
-if ($username.Contains("`r") -or $username.Contains("`n")) {
-    throw "The username cannot contain a newline."
-}
-if ($username -cne $username.Trim()) {
-    throw "The username cannot start or end with whitespace."
+$username = Read-Host "Production Admin username"
+if ([string]::IsNullOrEmpty($username)) {
+    throw "The username cannot be empty."
 }
 
 $securePassword = $null
@@ -54,7 +70,7 @@ try {
     }
 
     # Stored as HISTORY_RESTORE_PASSWORD (name kept so nothing else needs reconfiguring).
-    $secureOperationsPassword = Read-Host "New operations password for creating/deleting ledgers, Store and restore (must differ from the Admin password)" -AsSecureString
+    $secureOperationsPassword = Read-Host "New operations password for creating/deleting ledgers, Store and restore (different from the Admin password)" -AsSecureString
     if ($secureOperationsPassword.Length -eq 0) {
         throw "The operations password cannot be empty."
     }

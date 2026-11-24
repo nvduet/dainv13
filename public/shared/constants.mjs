@@ -7,6 +7,9 @@ export const MAX_NAME_LENGTH = 80;
 export const MAX_DESCRIPTION_LENGTH = 200;
 export const MAX_HISTORY_MESSAGE_LENGTH = 200;
 export const MAX_HISTORY_POINTS = 50;
+// Chỗ (position) lớn nhất máy chủ nhận khi tạo lại một khoản chi: thứ tự nhập không bao giờ tới gần, và "MAX + 1" sau
+// đó vẫn là số nguyên chính xác.
+export const MAX_EXPENSE_POSITION = 1_000_000_000;
 export const MAX_AUDIT_SESSIONS = 999;
 export const AUDIT_SESSION_IDLE_MINUTES = 30;
 export const ADMIN_SESSION_HOURS = 8;

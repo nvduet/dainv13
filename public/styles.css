@@ -174,7 +174,12 @@ a { color: var(--green-text); }
 .admin-state { padding: 2px 10px; border: 1px solid var(--line); border-radius: var(--radius-full); color: var(--muted); font-size: var(--fs-xs); }
 
 .page { width: 100%; margin: 0 auto; padding: 0 var(--page-px); }
-.overview { padding: var(--space-5) 0 var(--space-4); display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+/* Tiêu đề bên trái; ô số liệu rồi Hoàn tác, Làm lại, Xuất Excel bên phải, cùng hàng (thiếu chỗ thì xuống hàng, căn phải). */
+.overview {
+  padding: var(--space-5) 0 var(--space-4); display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-4);
+  container: overview / inline-size;
+}
+.overview h1 { margin-right: auto; }
 h1 { margin-bottom: 0; font-size: var(--fs-2xl); font-weight: 700; letter-spacing: -0.01em; }
 .overview-stats { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .overview-stats > span {
@@ -182,6 +187,16 @@ h1 { margin-bottom: 0; font-size: var(--fs-2xl); font-weight: 700; letter-spacin
   border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-xs); color: var(--muted); font-size: var(--fs-xs);
 }
 .overview-stats strong { color: var(--ink); font-size: var(--fs-lg); font-weight: 700; line-height: 1.3; }
+.overview-actions { display: flex; gap: var(--space-2); }
+.overview-actions svg { width: 1.15em; height: 1.15em; flex: none; }
+/* Hàng hẹp hơn tiêu đề + ba ô số liệu + ba nút có chữ (đo ở bốn giao diện, có dư; ô số liệu rộng ít nhất 112px ở cỡ chữ
+   nhỏ, theo chữ ở cỡ chữ lớn): nút chỉ còn biểu tượng, tên đọc vẫn là aria-label. Gồm mọi điện thoại (≤ 760px; mục 19
+   lặp lại quy tắc này cho trình duyệt không có container query). */
+@container overview (width < max(540px + 21.5rem, 270px + 37rem)) {
+  .overview-actions { gap: 6px; }
+  .overview-actions .heading-button { min-width: max(36px, 2.4em); min-height: max(36px, 2.4em); padding: 0; }
+  .heading-button span { display: none; }
+}
 .site-footer { padding: var(--space-2) 2px var(--space-6); display: flex; justify-content: space-between; gap: var(--space-3); color: var(--muted); font-size: var(--fs-xs); }
 
 /* 5 Nút */
@@ -218,6 +233,8 @@ h1 { margin-bottom: 0; font-size: var(--fs-2xl); font-weight: 700; letter-spacin
 .icon-button { font-size: 1.43rem; }
 .icon-button:hover, .member-edit:hover, .dialog-close:hover { background: var(--green-pale); color: var(--green-text); }
 .icon-button.delete:hover { background: var(--coral-pale); color: var(--coral-text); }
+/* Hộp thoại đang chạy thao tác (ui.js): "×" tắt như nút "Hủy". */
+.dialog-close:disabled { background: transparent; color: var(--muted); cursor: not-allowed; opacity: .55; }
 .member-edit { color: var(--green-text); font-size: var(--fs-sm); font-weight: 600; }
 
 /* 6 Ô nhập */
@@ -242,18 +259,23 @@ h3 { margin-bottom: var(--space-1); font-size: var(--fs-lg); font-weight: 650; }
 .section-description { margin: var(--space-1) 0 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.5; }
 
 /* 8 Thông báo */
+/* Ở đáy màn hình: không che Hoàn tác, Làm lại, Xuất Excel ở hàng tổng quan đầu trang (đo ở 320–1400 px, lời nhắn 1–3 dòng).
+   --keyboard-inset (ui.js): phần đáy bàn phím ảo đang che, để thông báo luôn nằm trên bàn phím. */
 .notice {
-  position: fixed; top: var(--space-4); right: 0; left: 0; z-index: var(--z-notice);
+  position: fixed; right: 0; bottom: calc(var(--space-4) + var(--keyboard-inset, 0px)); left: 0; z-index: var(--z-notice);
   width: min(520px, calc(100% - 32px)); min-height: 48px; margin: 0 auto; padding: 10px 8px 10px 14px; display: flex; align-items: center; gap: 10px;
   border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-md); font-size: var(--fs-md);
   transition: opacity var(--duration) var(--ease-out), transform var(--duration-slow) var(--ease-out);
 }
-/* hidden: trượt lên, trong suốt nhưng vẫn hiển thị (aria-live luôn sẵn sàng). */
+/* hidden: trượt xuống, trong suốt nhưng vẫn hiển thị (aria-live luôn sẵn sàng). */
 .notice[hidden] {
-  display: flex !important; opacity: 0; transform: translateY(calc(-100% - var(--space-5))); pointer-events: none;
+  display: flex !important; opacity: 0; transform: translateY(calc(100% + var(--space-5))); pointer-events: none;
   transition-duration: var(--duration-fast); transition-timing-function: var(--ease-in);
 }
 .notice[hidden] :is(.notice-close, .notice-action) { visibility: hidden; }
+/* Bàn phím ảo đang mở (ui.js): đỉnh phần còn thấy, không che ô đang gõ ngay trên bàn phím. */
+:root[data-keyboard] .notice { top: calc(var(--viewport-top, 0px) + var(--space-4)); bottom: auto; }
+:root[data-keyboard] .notice[hidden] { transform: translateY(calc(-100% - var(--space-5))); }
 .notice::before { width: 22px; height: 22px; flex: none; display: grid; place-items: center; border-radius: 50%; color: #fff; font-size: 13px; font-weight: 700; line-height: 1; }
 .notice.success { color: var(--success-ink); background: var(--success-bg); border-color: var(--success-line); }
 .notice.success::before { background: var(--ok-icon); color: var(--on-ok-icon); content: "✓"; content: "✓" / ""; }
@@ -336,7 +358,6 @@ td.group-balance:last-child { border-right: 0; }
 /* 11 Detail */
 .ledger-card { container-type: inline-size; }
 .section-actions { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
-.section-actions svg { width: 1.15em; height: 1.15em; flex: none; }
 /* Tìm/lọc/sắp xếp (detail-view.js). */
 .detail-toolbar { margin-bottom: var(--space-3); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .toolbar-row, .filter-panel { display: contents; }
@@ -414,6 +435,8 @@ td.group-balance:last-child { border-right: 0; }
 .expense-table tbody tr:hover > td { background-image: linear-gradient(var(--row-hover), var(--row-hover)); }
 .expense-table tbody tr:focus-within > td { background-image: linear-gradient(var(--row-active), var(--row-active)); }
 .expense-table tbody tr.row-copied > td { background-image: linear-gradient(var(--green-pale), var(--green-pale)); }
+/* Bản sao được cuộn vào tầm nhìn chừa chỗ cho thông báo "Đã nhân bản khoản chi." ở đáy màn hình. */
+.expense-table tbody tr.row-copied > td.member-actions { scroll-margin-bottom: calc(96px + var(--keyboard-inset, 0px)); }
 .expense-table td:is(.expense-payer, .expense-date, .expense-description, .expense-amount) { padding: 0 1px; }
 .expense-table tbody td.cell-incomplete { background-color: var(--incomplete); box-shadow: inset 0 -2px 0 var(--incomplete-mark); }
 .expense-table tbody td.cell-incomplete:first-child { background-color: var(--incomplete-sticky); box-shadow: inset -1px 0 0 var(--line), inset 0 -2px 0 var(--incomplete-mark); }
@@ -572,11 +595,19 @@ dialog::backdrop { background: var(--backdrop); }
 .login-dialog h2, .action-dialog h2, .member-detail h2 { margin: 0 0 var(--space-1); padding-right: 36px; font-size: var(--fs-xl); }
 .login-dialog .section-description, .action-dialog .section-description { margin: 0 0 var(--space-2); }
 .login-dialog label, .action-dialog label { margin-top: var(--space-1); }
+/* Các ô của hộp thoại thao tác (ui.js) là phần tử của lưới form; ô sau cách ô trước rõ hơn khoảng nhãn–ô. */
+.action-dialog-fields { display: contents; }
 .action-dialog input { width: 100%; }
+.action-dialog input + label { margin-top: var(--space-2); }
+.action-dialog input[aria-invalid="true"] { border-color: var(--coral-text); }
 .dialog-close { position: absolute; top: 12px; right: 12px; min-width: 32px; min-height: 32px; font-size: 22px; }
 .dialog-actions { margin-top: var(--space-2); display: flex; justify-content: flex-end; gap: var(--space-2); }
+/* Nhãn lúc đang chạy (ui.js busyLabel, kèm vòng quay) dài hơn nhãn nghỉ: xuống dòng thay vì làm hộp thoại tràn ngang.
+   Cũng vậy với chữ không có chỗ ngắt ở tiêu đề, lời nhắn (mốc giờ giữ trên một dòng, tên sổ dài): chỉ ngắt khi không vừa. */
+.action-dialog .dialog-actions .button { white-space: normal; text-align: center; }
+.action-dialog :is(h2, .section-description) { overflow-wrap: anywhere; }
 .login-submit { margin-top: var(--space-2); }
-.form-error { min-height: 1.2em; margin: 0; color: var(--coral-text); font-size: var(--fs-sm); }
+.form-error { min-height: 1.2em; margin: 0; color: var(--coral-text); font-size: var(--fs-sm); white-space: pre-line; overflow-wrap: anywhere; }
 
 /* 16 Diff phiên (toàn màn hình) */
 .audit-diff-dialog { inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--page); overflow: auto; }
@@ -654,7 +685,14 @@ dialog[open]::backdrop { animation: fade-in var(--duration) var(--ease-out); }
   :root { --table-scale: 1; --summary-fs: var(--fs-sm); --page-px: 12px; --card-p: 14px; }
   .site-header { min-height: 52px; }
   .admin-state { display: none; }
-  .overview { flex-direction: column; align-items: stretch; gap: var(--space-3); padding: var(--space-4) 0 var(--space-3); }
+  /* Ba nút ở cuối dòng "Expense" mà dòng không cao thêm (lề âm bằng phần nút cao hơn dòng chữ); ô số liệu ở hàng dưới.
+     Căn bằng lề auto (không justify-content): thiếu chỗ thì phần thừa tràn sang phải, cuộn tới được, không lọt qua mép
+     trái. Nút chỉ còn biểu tượng cả khi trình duyệt không có container query. */
+  .overview { gap: var(--space-3) var(--space-2); padding: var(--space-4) 0 var(--space-3); justify-content: normal; }
+  .overview-stats { order: 1; flex: 1 1 100%; }
+  .overview-actions { margin-block: min(0px, (var(--fs-2xl) * 1.45 - max(36px, 2.4em)) / 2); margin-left: auto; gap: 6px; }
+  .overview-actions .heading-button { min-width: max(36px, 2.4em); min-height: max(36px, 2.4em); padding: 0; }
+  .overview-actions .heading-button span { display: none; }
   /* Số dài: ô xuống hàng thay vì "…". */
   .overview-stats > span { min-width: max-content; flex: 1 1 0; padding: 7px 10px 8px; }
   .section-heading { flex-wrap: wrap; }
@@ -666,9 +704,6 @@ dialog[open]::backdrop { animation: fade-in var(--duration) var(--ease-out); }
   .filter-date, .filter-sort { min-width: 0; flex-direction: column; align-items: stretch; gap: 2px; font-size: var(--fs-xs); }
   .filter-check { justify-content: center; }
   .member-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .section-actions { gap: 6px; }
-  .heading-button { min-width: max(36px, 2.4em); padding: 0; }
-  .section-actions .button span { display: none; }
   .member-detail-table :is(.md-date, .md-role) { display: none; }
   .md-meta { display: block; color: var(--muted); font-size: var(--fs-xs); }
   .audit-diff-panels { grid-template-columns: 1fr; }

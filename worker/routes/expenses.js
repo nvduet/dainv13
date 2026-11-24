@@ -3,8 +3,11 @@ import { audit } from "../audit.js";
 import { decodePathParam, error, json, readJson } from "../http.js";
 import {
   validExpenseDate,
+  validExpenseId,
   validId,
+  validIds,
   validParticipantChanges,
+  validPosition,
   validSignedAmount,
 } from "../validation.js";
 
@@ -16,13 +19,16 @@ const EXPENSE_COLUMNS = Object.freeze({
   amountVnd: "amount_vnd",
 });
 const PATCH_FIELDS = new Set([...Object.keys(EXPENSE_COLUMNS), "participantChanges"]);
+// Body of a re-creation (POST /api/expenses): every one of these keys, nothing else.
+const RECREATE_FIELDS = Object.freeze(["id", "position", "payerId", "date", "description", "amountVnd", "participantIds"]);
 
-function expenseReads(db, id) {
+// withPosition: the row's place in entry order too (re-creation answers; PUT answers and audit rows stay as they were).
+function expenseReads(db, id, { withPosition = false } = {}) {
   return [
     db.prepare(`
       SELECT id, payer_id AS payerId, description, amount_vnd AS amountVnd,
              expense_date AS date,
-             created_at AS createdAt, updated_at AS updatedAt
+             created_at AS createdAt, updated_at AS updatedAt${withPosition ? ", position" : ""}
       FROM expenses WHERE id = ?
     `).bind(id),
     db.prepare(`
@@ -38,9 +44,9 @@ function expenseFromResults(expenseResult, participantsResult) {
   return { ...expense, participantIds: participantsResult.results.map((row) => row.memberId) };
 }
 
-async function getExpense(db, id) {
+async function getExpense(db, id, options = {}) {
   if (id === null) return null;
-  const [expense, participants] = await db.batch(expenseReads(db, id));
+  const [expense, participants] = await db.batch(expenseReads(db, id, options));
   return expenseFromResults(expense, participants);
 }
 
@@ -54,11 +60,8 @@ function applyParticipantChanges(participantIds, changes) {
   return next;
 }
 
-async function validateExpensePatch(db, body) {
-  const fields = Object.keys(body);
-  if (fields.length === 0 || fields.some((field) => !PATCH_FIELDS.has(field))) {
-    return "Không có trường khoản chi hợp lệ để lưu.";
-  }
+// The value checks PUT and a re-creation share (each field only when sent).
+function fieldProblem(body) {
   if (Object.hasOwn(body, "payerId") &&
       body.payerId !== null && body.payerId !== "" && !validId(body.payerId)) {
     return "Người chi không hợp lệ.";
@@ -73,6 +76,16 @@ async function validateExpensePatch(db, body) {
   if (Object.hasOwn(body, "amountVnd") && !validSignedAmount(body.amountVnd)) {
     return "Số tiền phải là số đồng nguyên trong giới hạn cho phép.";
   }
+  return null;
+}
+
+async function validateExpensePatch(db, body) {
+  const fields = Object.keys(body);
+  if (fields.length === 0 || fields.some((field) => !PATCH_FIELDS.has(field))) {
+    return "Không có trường khoản chi hợp lệ để lưu.";
+  }
+  const problem = fieldProblem(body);
+  if (problem) return problem;
   if (Object.hasOwn(body, "participantChanges") && !validParticipantChanges(body.participantChanges)) {
     return "Danh sách người tham gia không hợp lệ.";
   }
@@ -104,7 +117,12 @@ function participantWrites(db, id, removeIds, addIds) {
   ];
 }
 
-export async function createExpense({ db, auditActor }) {
+// POST /api/expenses: no body or {} (what "Add line" and the duplicate button send) adds an empty row at the end
+// of entry order; the answer also says where (its position, from the INSERT itself). A body with every
+// RECREATE_FIELDS key re-creates a deleted row (recreateExpense); anything else is refused.
+export async function createExpense({ request, db, auditActor }) {
+  const body = await readJson(request, { allowEmpty: true });
+  if (Object.keys(body).length > 0) return recreateExpense(db, auditActor, body);
   const id = crypto.randomUUID();
   const expense = {
     id,
@@ -114,14 +132,79 @@ export async function createExpense({ db, auditActor }) {
     amountVnd: 0,
     participantIds: [],
   };
-  await db.batch([
+  const [inserted] = await db.batch([
     db.prepare(`
       INSERT INTO expenses (id, payer_id, description, amount_vnd, expense_date, position)
       SELECT ?, NULL, '', 0, NULL, COALESCE(MAX(position), -1) + 1 FROM expenses
+      RETURNING position
     `).bind(id),
     audit(db, auditActor, "create", "expense", id, null, expense),
   ]);
-  return json({ expense: { ...expense, createdAt: null, updatedAt: null } }, 201);
+  return json({ expense: { ...expense, createdAt: null, updatedAt: null, position: inserted.results[0]?.position ?? null } }, 201);
+}
+
+function recreateProblem(body) {
+  if (Object.keys(body).length !== RECREATE_FIELDS.length || !RECREATE_FIELDS.every((field) => Object.hasOwn(body, field))) {
+    return "Dữ liệu khoản chi không hợp lệ.";
+  }
+  if (!validExpenseId(body.id)) return "Mã khoản chi không hợp lệ.";
+  if (body.position !== null && !validPosition(body.position)) return "Vị trí khoản chi không hợp lệ.";
+  if (!validIds(body.participantIds, { allowEmpty: true })) return "Danh sách người tham gia không hợp lệ.";
+  return fieldProblem(body);
+}
+
+// Undo of a delete (or redo of an "Add line"/duplicate whose row was deleted): the row comes back under its old id
+// with its old values, at its old position while no row has it (otherwise at the end, like a new row; null: at the
+// end), in one atomic batch that also writes the participants and the audit row and reads the stored row back.
+// A payer or participant deleted meanwhile is left out (the answer shows what was stored). Idempotent: when the
+// row already exists (another tab, a later visit or a lost answer re-created it) nothing is written and the answer
+// is that row, created: false. Costs one PK read more than a plain add, only on this rare path.
+async function recreateExpense(db, auditActor, body) {
+  const problem = recreateProblem(body);
+  if (problem) return error(problem);
+  const { id, position, participantIds } = body;
+  const existing = await getExpense(db, id, { withPosition: true });
+  if (existing) return json({ expense: existing, created: false });
+  const date = body.date || null;
+  const description = body.description.trim();
+  // The audit row has the keys (and key order) of a plain add's and records what was stored: the payer and the
+  // participants come from the inserted rows (a member deleted meanwhile is not in them), the rest is
+  // JSON.stringify'd here like every other audit value.
+  const auditHead = JSON.stringify({ id }).slice(0, -1);
+  const auditMiddle = JSON.stringify({ date, description, amountVnd: body.amountVnd }).slice(1, -1);
+  let results;
+  try {
+    results = await db.batch([
+      db.prepare(`
+        INSERT INTO expenses (id, payer_id, description, amount_vnd, expense_date, position)
+        SELECT ?, (SELECT id FROM members WHERE id = ?), ?, ?, ?,
+               CASE WHEN ? IS NULL THEN COALESCE(MAX(position), -1) + 1
+                    WHEN MAX(position = ?) THEN MAX(position) + 1 ELSE ? END
+        FROM expenses
+      `).bind(id, body.payerId || null, description, body.amountVnd, date, position, position, position),
+      ...(participantIds.length ? [db.prepare(`
+        INSERT INTO expense_participants (expense_id, member_id)
+        SELECT ?, id FROM members WHERE id IN (${participantIds.map(() => "?").join(",")})
+      `).bind(id, ...participantIds)] : []),
+      db.prepare(`
+        INSERT INTO audit_log (actor, action, entity, entity_id, before_json, after_json)
+        SELECT ?, 'create', 'expense', id, NULL,
+               ? || ',"payerId":' || json_quote(payer_id) || ',' || ? || ',"participantIds":' || (
+                 SELECT json_group_array(member_id) FROM (
+                   SELECT member_id FROM expense_participants WHERE expense_id = ? ORDER BY member_id
+                 )
+               ) || '}'
+        FROM expenses WHERE id = ?
+      `).bind(auditActor, auditHead, auditMiddle, id, id),
+      ...expenseReads(db, id, { withPosition: true }),
+    ]);
+  } catch (caught) {
+    // The same row re-created at the same time (two tabs): the other insert won.
+    const raced = await getExpense(db, id, { withPosition: true });
+    if (raced) return json({ expense: raced, created: false });
+    throw caught;
+  }
+  return json({ expense: expenseFromResults(...results.slice(-2)), created: true }, 201);
 }
 
 export async function updateExpense({ request, db, params, auditActor }) {

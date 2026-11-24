@@ -8,18 +8,23 @@ import {
   captureDetailView,
   pinExpenseRow,
   readExpenseRow,
+  rearrangeDetailView,
   renamePinnedRow,
 } from "./detail-view.js";
 import {
-  forgetExpense,
+  flushHistory,
   forgetExpenseDelete,
+  forgetExpenseWrites,
   markDuplicateFill,
+  noteExpenseDeleted,
+  noteExpenseDeleting,
   noteSaveFailed,
   noteUserEdit,
   recordExpenseAdd,
   recordExpenseDelete,
   recordExpenseSave,
   refreshHistoryButtons,
+  syncHistoryWithState,
   undoShortcutHint,
 } from "./expense-history.js";
 import {
@@ -48,8 +53,9 @@ const expenseQueue = createSaveQueue({
 });
 // Xóa có thể hoàn tác: dòng ẩn ngay (Summary và tổng đầu trang không tính nó), DELETE gửi khi thông báo
 // "Đã xóa khoản chi." hết hạn hoặc bị đóng, khi trang ẩn/đóng (keepalive), trước Store, khôi phục, đăng xuất và
-// làm mới dữ liệu. Dữ liệu giữ cho mỗi dòng: expense (bản đã lưu mới nhất), index, nextId (chỗ cũ), row (dòng đang
-// mờ dần), amountText/descriptionText (chữ đang gõ dở, để hiện lại đúng như cũ).
+// làm mới dữ liệu. Dữ liệu giữ cho mỗi dòng: expense (bản đã lưu mới nhất, kèm chỗ của dòng trên máy chủ để tạo lại
+// dòng đúng chỗ khi hoàn tác sau khi DELETE đã gửi), index, nextId (chỗ cũ trên bảng), row (dòng đang mờ dần),
+// amountText/descriptionText (chữ đang gõ dở, để hiện lại đúng như cũ).
 const deleteQueue = createDeleteQueue({
   send: (id, { keepalive }) => api(`/api/expenses/${encodeURIComponent(id)}`, { method: "DELETE", keepalive }),
   onCommitted: handleDeleteCommitted,
@@ -435,9 +441,10 @@ export function inEntryOrder(items) {
   return [...items].sort((left, right) => position(left) - position(right));
 }
 
-// Phản hồi lưu hợp nhất với bản đã lưu, trừ những trường/tick vẫn còn giá trị mới hơn đang chờ lưu.
+// Phản hồi lưu hợp nhất với bản đã lưu, trừ những trường/tick vẫn còn giá trị mới hơn đang chờ lưu. Phản hồi của PUT
+// không có chỗ của dòng (position): giữ chỗ đã biết.
 function mergeExpense(current, saved, pending = {}, participantToggles = new Map()) {
-  const merged = { ...saved };
+  const merged = { position: current.position ?? null, ...saved };
   for (const field of Object.keys(pending)) {
     if (Object.hasOwn(current, field)) merged[field] = current[field];
   }
@@ -460,15 +467,22 @@ function mergeSavedExpense(id, saved, pending = {}, participantToggles = new Map
 
 function noteLocalWrite(kind, id = null) {
   for (const watcher of localWriteWatchers) {
-    if (kind === "expense") watcher.expenseIds.add(id);
-    else if (kind === "delete") watcher.deletedIds.add(id);
-    else watcher.payments = true;
+    if (kind === "expense") {
+      watcher.expenseIds.add(id);
+      // Dòng vừa xóa xong rồi được tạo lại (hoàn tác, cùng id) trong lúc chờ GET: dòng có lại, không bị ẩn.
+      watcher.deletedIds.delete(id);
+    } else if (kind === "delete") {
+      watcher.deletedIds.add(id);
+    } else {
+      watcher.payments = true;
+    }
   }
 }
 
-// Làm mới dữ liệu (admin.js): khoản chi trang tự lưu/tạo/xóa và chuyển khoản trang tự lưu trong lúc chờ GET.
+// Làm mới dữ liệu (admin.js): khoản chi trang tự lưu/tạo/xóa và chuyển khoản trang tự lưu trong lúc chờ GET (gửi lúc
+// sentAt).
 export function watchLocalWrites() {
-  const watcher = { expenseIds: new Set(), deletedIds: new Set(), payments: false };
+  const watcher = { expenseIds: new Set(), deletedIds: new Set(), payments: false, sentAt: Date.now() };
   watcher.stop = () => localWriteWatchers.delete(watcher);
   localWriteWatchers.add(watcher);
   return watcher;
@@ -565,8 +579,9 @@ export function retryExpenseSaves() {
 
 // Dữ liệu mới từ máy chủ (tải lại sau thao tác Admin, làm mới khi quay lại trang). Dòng đang chờ xóa vẫn ẩn (giữ bản
 // mới nhất để "Hoàn tác"); khoản chi máy chủ không còn thì thôi chờ xóa. preferLocal: khoản chi trang vừa tự lưu hoặc
-// tạo trong lúc chờ phản hồi (bản trên trang mới hơn); removed: khoản chi vừa xóa xong trong lúc đó.
-export function mergeServerExpenses(expenses, { preferLocal = new Set(), removed = new Set() } = {}) {
+// tạo trong lúc chờ phản hồi (bản trên trang mới hơn); removed: khoản chi vừa xóa xong trong lúc đó; loadedAt: lúc gửi
+// GET. Lịch sử Hoàn tác/Làm lại được đối chiếu với dữ liệu mới (lần đầu: đọc lịch sử đã lưu của sổ).
+export function mergeServerExpenses(expenses, { preferLocal = new Set(), removed = new Set(), loadedAt = Date.now() } = {}) {
   const result = mergeExpenseLists({ local: state.expenses, server: expenses, preferLocal, removed, isDeleting: (id) => deleteQueue.has(id) });
   for (const expense of result.deleting) deleteQueue.data(expense.id).expense = expense;
   // Khoản chi đang chờ xóa mà máy chủ đã không còn: thôi chờ xóa, bỏ cả thay đổi chưa lưu giữ cho "Hoàn tác" (một điểm
@@ -574,10 +589,15 @@ export function mergeServerExpenses(expenses, { preferLocal = new Set(), removed
   for (const id of deleteQueue.pendingIds()) {
     if (result.serverIds.has(id) || !deleteQueue.forget(id)) continue;
     void expenseQueue.discard(id);
-    forgetExpense(id);
+    forgetExpenseWrites(id);
   }
-  for (const id of result.dropped) forgetExpense(id);
+  for (const id of result.dropped) forgetExpenseWrites(id);
   state.expenses = result.expenses;
+  syncHistoryWithState({
+    loadedAt,
+    expenseIds: new Set(state.expenses.map((expense) => expense.id)),
+    deletingIds: new Set(deleteQueue.ids()),
+  });
 }
 
 function refocusAddButton(button) {
@@ -691,10 +711,10 @@ function neighbourRow(row) {
   return null;
 }
 
-// Xóa một dòng mà người dùng còn hoàn tác được: nút ×, "Hoàn tác" sau khi nhân bản, hoàn tác "Thêm dòng" (record:
-// false, lịch sử đã có mục "Thêm dòng"). Dòng thôi khớp tr[data-expense-id] ngay và mờ dần; thay đổi chưa lưu của nó
-// được giữ (không gửi) để hiện lại khi hoàn tác, và bị bỏ khi xóa thật. Focus trong dòng chuyển sang cùng ô của dòng
-// kế bên (không có thì nút "Add line"). Không gọi máy chủ; luôn trả về Promise.
+// Xóa một dòng mà người dùng còn hoàn tác được: nút ×, "Hoàn tác" sau khi nhân bản, hoàn tác "Thêm dòng" hay làm lại
+// một lần xóa (record: false, lịch sử đã có mục đó). Dòng thôi khớp tr[data-expense-id] ngay và mờ dần; thay đổi chưa
+// lưu của nó được giữ (không gửi) để hiện lại khi hoàn tác, và bị bỏ khi xóa thật. Focus trong dòng chuyển sang cùng ô
+// của dòng kế bên (không có thì nút "Add line"). Không gọi máy chủ; luôn trả về Promise.
 export function removeExpenseWithUndo(id, { record = true } = {}) {
   const row = findExpenseRow(id);
   const index = state.expenses.findIndex((expense) => expense.id === id);
@@ -721,9 +741,29 @@ export function removeExpenseWithUndo(id, { record = true } = {}) {
     data.focusedAfter.focus({ preventScroll: true });
   }
   renderTotals();
-  if (record) recordExpenseDelete(id, expense.description);
+  if (record) recordExpenseDelete(id, expense.description, removedExpenseSnapshot(id));
   showDeleteNotice();
   return Promise.resolve();
+}
+
+// Dòng lúc bị xóa (bản đã lưu mới nhất và chỗ của nó trên máy chủ, theo dữ liệu trang đã tải), cho lịch sử hoàn tác.
+// Chỗ có sẵn từ lúc xóa nên DELETE gửi lúc trang đóng (không kịp nhận phản hồi) vẫn tạo lại được dòng đúng chỗ.
+function deletedValues(data) {
+  const { expense } = data;
+  return {
+    payerId: expense.payerId || null,
+    date: expense.date || null,
+    description: String(expense.description ?? ""),
+    amountVnd: Number(expense.amountVnd) || 0,
+    participantIds: [...(expense.participantIds || [])],
+    position: Number.isSafeInteger(expense.position) && expense.position >= 0 ? expense.position : null,
+  };
+}
+
+// Ảnh chụp của một dòng đang chờ xóa (DELETE chưa gửi), null nếu dòng không chờ xóa.
+export function removedExpenseSnapshot(id) {
+  const data = deleteQueue.data(id);
+  return data ? { ...deletedValues(data), deleted: false, sentAt: null, confirmed: false } : null;
 }
 
 // "Đã xóa khoản chi." (nhiều dòng: "Đã xóa n khoản chi.") kèm "Hoàn tác" cho mọi dòng đang chờ xóa, 6 giây (dừng đếm
@@ -761,6 +801,12 @@ function hideDeleteNotice() {
 
 export function hasPendingDelete(id = null) {
   return id === null ? deleteQueue.pendingIds().length > 0 : deleteQueue.isPending(id);
+}
+
+// DELETE của dòng đã bắt đầu (chờ PUT đang chạy của dòng, hay đang gửi): kết quả dùng chung với lần gửi đó (true: đã
+// xóa; không gửi DELETE thứ hai); null nếu dòng không có DELETE nào đang chạy.
+export function deleteInProgress(id) {
+  return deleteQueue.has(id) && !deleteQueue.isPending(id) ? deleteQueue.commit(id) : null;
 }
 
 // Dòng hiện lại (hoàn tác, DELETE lỗi): bản đã lưu mới nhất, cộng thay đổi chưa lưu còn giữ trong hàng đợi (chữ gõ dở
@@ -836,8 +882,10 @@ export function commitPendingDeletes() {
   hideDeleteNotice();
   return Promise.all(deleteQueue.ids().map((id) => {
     const data = deleteQueue.data(id);
+    if (deleteQueue.isPending(id)) noteExpenseDeleting(id, deletedValues(data));
     const inFlight = expenseQueue.discard(id).then((saved) => {
-      if (saved?.expense && data) data.expense = { ...saved.expense };
+      // Phản hồi của PUT không có chỗ của dòng: giữ chỗ đã biết (để tạo lại dòng đúng chỗ).
+      if (saved?.expense && data) data.expense = { position: data.expense?.position ?? null, ...saved.expense };
     });
     return deleteQueue.commit(id, { wait: inFlight });
   }));
@@ -856,13 +904,19 @@ export async function flushPendingDeletes() {
 export function commitDeletesNow() {
   clearTimeout(deleteTimer);
   hideDeleteNotice();
-  for (const id of deleteQueue.ids()) expenseQueue.discard(id);
+  for (const id of deleteQueue.ids()) {
+    if (deleteQueue.isPending(id)) noteExpenseDeleting(id, deletedValues(deleteQueue.data(id)));
+    expenseQueue.discard(id);
+  }
+  // Lịch sử (dòng đã xóa hẳn, kèm giá trị và chỗ của nó) ghi trước khi trang đóng.
+  flushHistory();
   deleteQueue.sendAllNow();
 }
 
-function handleDeleteCommitted(id) {
+// DELETE xong (kể cả 404: dòng đã bị xóa ở nơi khác): lịch sử giữ dòng, hoàn tác tạo lại được nó.
+function handleDeleteCommitted(id, data) {
   noteLocalWrite("delete", id);
-  forgetExpense(id);
+  noteExpenseDeleted(id, deletedValues(data));
 }
 
 // DELETE bị từ chối (mạng, 5xx, 429…): dòng về đúng chỗ cũ như trước khi xóa và báo lỗi (nói rõ khoản nào, vì lúc đó
@@ -924,29 +978,43 @@ async function createDuplicate(pendingId, copy) {
     showNotice(caught.message, "error");
     return;
   }
-  // Thành viên bị xóa trong lúc chờ: bỏ khỏi bản sao (máy chủ sẽ từ chối cả lần lưu).
-  const memberIds = new Set(state.members.map((member) => member.id));
-  const values = {
-    ...copy,
-    payerId: memberIds.has(copy.payerId) ? copy.payerId : null,
-    participantIds: copy.participantIds.filter((memberId) => memberIds.has(memberId)),
-  };
+  // Thành viên bị xóa trong lúc chờ: bỏ khỏi bản sao.
+  const values = withCurrentMembers(copy);
   const row = placeCreatedExpense(pendingId, expense, { ...expense, ...values });
   // Lịch sử: một mục "Nhân bản" (hoàn tác = xóa bản sao); lần điền giá trị ngay sau đây không là thay đổi riêng.
   recordExpenseAdd(expense.id, { duplicate: true });
-  // Người dùng đã kịp sửa dòng tải về (placeCreatedExpense giữ dòng đó): trường họ đã sửa không bị ghi đè.
-  const edited = expenseQueue.get(expense.id);
-  const filled = {};
-  for (const field of COPIED_FIELDS) {
-    if (values[field] === expense[field] || (edited && Object.hasOwn(edited.pending, field))) continue;
-    filled[field] = values[field];
-  }
-  const ticks = values.participantIds.filter((memberId) => !edited?.participantToggles.has(memberId));
-  setRowValues(row, expense.id, { fields: filled, add: ticks, remove: [] });
-  const queued = Object.keys(filled).length > 0 || ticks.length > 0;
-  if (queued) markDuplicateFill(expense.id, filled, ticks);
+  const { fields, ticks } = fillCreatedRow(row, expense, values);
+  const queued = Object.keys(fields).length > 0 || ticks.length > 0;
+  if (queued) markDuplicateFill(expense.id, fields, ticks);
   if (queued) duplicatesAwaitingSave.add(expense.id);
   else showDuplicateNotice(expense.id);
+}
+
+// Giá trị của dòng vừa tạo (bản sao, dòng tạm khi tạo lại dòng), bỏ người chi và người tham gia đã bị xóa khỏi sổ
+// (máy chủ sẽ từ chối cả lần lưu bản sao).
+function withCurrentMembers(source) {
+  const memberIds = new Set(state.members.map((member) => member.id));
+  return {
+    payerId: memberIds.has(source.payerId) ? source.payerId : null,
+    date: source.date || null,
+    description: source.description ?? "",
+    amountVnd: source.amountVnd ?? 0,
+    participantIds: source.participantIds.filter((memberId) => memberIds.has(memberId)),
+  };
+}
+
+// Điền giá trị vào bản sao vừa tạo bằng một PUT của hàng đợi tự lưu. Người dùng đã kịp sửa dòng tải về
+// (placeCreatedExpense giữ dòng đó): trường họ đã sửa không bị ghi đè. Trả về { fields, ticks } đã xếp lưu.
+function fillCreatedRow(row, expense, values) {
+  const edited = expenseQueue.get(expense.id);
+  const fields = {};
+  for (const field of COPIED_FIELDS) {
+    if (values[field] === expense[field] || (edited && Object.hasOwn(edited.pending, field))) continue;
+    fields[field] = values[field];
+  }
+  const ticks = values.participantIds.filter((memberId) => !edited?.participantToggles.has(memberId));
+  setRowValues(row, expense.id, { fields, add: ticks, remove: [] });
+  return { fields, ticks };
 }
 
 function showDuplicateNotice(id) {
@@ -963,6 +1031,81 @@ export function readSavedExpense(id) {
   if (deleteQueue.has(id) || !findExpenseRow(id)) return null;
   const expense = state.expenses.find((item) => item.id === id);
   return expense ? { ...expense, participantIds: [...(expense.participantIds || [])] } : null;
+}
+
+// Khoản chi trang đang có (kể cả đang chờ xóa): dòng đó không cần tạo lại.
+export function expenseIsKnown(id) {
+  return deleteQueue.has(id) || state.expenses.some((expense) => expense.id === id);
+}
+
+// Hoàn tác một lần xóa đã gửi, hay làm lại "Thêm dòng"/nhân bản mà dòng đã bị xóa hẳn: tạo lại dòng với id cũ, giá
+// trị cũ, ở chỗ cũ, bằng một POST (máy chủ ghi dòng, người tham gia và nhật ký trong một lần; gửi lại, từ tab khác hay
+// lần mở sau, chỉ trả về dòng đã có: không bao giờ thành hai dòng). Dòng tạm hiện ngay ở chỗ cũ (trước dòng đầu tiên có
+// chỗ lớn hơn theo thứ tự nhập; không biết chỗ thì ở cuối); máy chủ trả về chỗ thật (chỗ cũ đã có dòng khác: cuối
+// bảng) và dòng được đặt theo đúng chỗ đó, nên thứ tự trên trang khớp máy chủ.
+// created(expense, { skipped }) khi máy chủ trả lời (dòng đã có lại; skipped: người chi hay người tham gia đã bị xóa
+// khỏi sổ nên bị bỏ); failed(lỗi) khi POST lỗi (dòng tạm bị bỏ).
+export function recreateExpense(id, snapshot, { created, failed }) {
+  const pendingId = `pending-${crypto.randomUUID()}`;
+  const placeholder = { id: pendingId, ...withCurrentMembers(snapshot) };
+  const at = snapshot.position === null ? state.expenses.length : entryIndexFor(snapshot.position);
+  state.expenses.splice(at, 0, placeholder);
+  const row = createExpenseRow(placeholder);
+  insertExpenseRow(row, followingRow(at));
+  animateRowIn(row);
+  // Đang lọc/sắp xếp: dòng theo cách xem đang chọn, không đứng theo thứ tự nhập.
+  rearrangeDetailView();
+  renderTotals();
+  queueAdd(() => createRecreated(pendingId, id, snapshot, { created, failed }));
+}
+
+async function createRecreated(pendingId, id, snapshot, { created, failed }) {
+  const { payerId, date, description, amountVnd, participantIds, position } = snapshot;
+  let expense;
+  try {
+    ({ expense } = await api("/api/expenses", {
+      method: "POST",
+      body: JSON.stringify({ id, position, payerId, date, description, amountVnd, participantIds }),
+    }));
+  } catch (caught) {
+    dropPlaceholder(pendingId);
+    failed(caught);
+    return;
+  }
+  placeCreatedExpense(pendingId, expense);
+  placeByPosition(expense.id);
+  rearrangeDetailView();
+  renderTotals();
+  const kept = new Set(expense.participantIds ?? []);
+  created(expense, {
+    skipped: Boolean(payerId && expense.payerId !== payerId) || participantIds.some((memberId) => !kept.has(memberId)),
+  });
+}
+
+// Chỗ trong state.expenses (thứ tự nhập) của một dòng có chỗ `position` trên máy chủ: trước dòng đầu tiên có chỗ lớn
+// hơn, hay trước dòng tạm còn chờ POST (máy chủ sẽ thêm chúng sau), không có thì ở cuối.
+function entryIndexFor(position) {
+  const index = state.expenses.findIndex((item) => item.id.startsWith("pending-") ||
+    (Number.isSafeInteger(item.position) && item.position > position));
+  return index === -1 ? state.expenses.length : index;
+}
+
+// Dòng trong bảng đứng sau chỗ `index` của state.expenses (null: cuối bảng).
+function followingRow(index) {
+  return state.expenses.slice(index + 1).map((item) => findExpenseRow(item.id)).find(Boolean) ?? null;
+}
+
+// Dòng vừa được máy chủ trả về chỗ thật: đặt lại theo chỗ đó, trong state.expenses và trong bảng (dòng đang được sửa
+// thì không dời trong bảng, để không mất focus).
+function placeByPosition(id) {
+  const index = state.expenses.findIndex((expense) => expense.id === id);
+  if (index === -1) return;
+  const [expense] = state.expenses.splice(index, 1);
+  const at = Number.isSafeInteger(expense.position) ? entryIndexFor(expense.position) : state.expenses.length;
+  state.expenses.splice(at, 0, expense);
+  const row = findExpenseRow(id);
+  const next = followingRow(at);
+  if (row && row.nextElementSibling !== next && !row.contains(document.activeElement)) insertExpenseRow(row, next);
 }
 
 export function expenseDescription(id) {

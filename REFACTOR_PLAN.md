@@ -21,7 +21,8 @@
 | Không gian làm việc bền vững (harness test local, đặc tả, kết quả review, baseline) | `C:\DaiNV13\DaiNV13\pyhton\restore text\refactor-workspace` |
 | Kết quả review đã kiểm chứng (82 phát hiện) | `refactor-workspace\review\findings.json` |
 | Đặc tả từng giai đoạn | `refactor-workspace\plan\*.md` |
-| Thư mục làm việc dở dang của phiên 82ca8ed4 (tạm) | `%LOCALAPPDATA%\Temp\claude\c--DaiNV13-DaiNV13-pyhton-restore-text-code\82ca8ed4-1e92-4db2-a1da-3744fb1d43c6\scratchpad\work-*` |
+| Thư mục làm việc dở dang của phiên 82ca8ed4 (tạm; Windows đã dọn các bản chốt `checkpoint-*` cũ ở đây ngày 2026-11-12) | `%LOCALAPPDATA%\Temp\claude\…\82ca8ed4-1e92-4db2-a1da-3744fb1d43c6\scratchpad\work-*` |
+| Bản chốt bền vững (từ Mốc 12) | `refactor-workspace\checkpoints\checkpoint-12` |
 
 Chạy test không cần cài Node: VS Code có sẵn Node 24.
 
@@ -221,7 +222,49 @@ $env:ELECTRON_RUN_AS_NODE = "1"
     - touch target chỉ đổi thứ tự dòng;
     - contrast và độ vừa Summary giống Mốc 10;
     - ảnh: 106 ảnh khác và 34 ảnh đổi kích thước, đúng dự kiến (đổi giao diện mặc định, dời Cấu hình). Ảnh "dark" của các kịch bản mặc định nay là giao diện sáng, vì mặc định ép Sáng.
-  - Bản chốt: `scratchpad\checkpoint-11` (= `code`), baseline `*-checkpoint-11*`.
+  - Bản chốt: `scratchpad\checkpoint-11` (đã bị Windows dọn; nội dung = `code` trước Mốc 12), baseline `*-checkpoint-11*`.
+- [x] **Bổ sung 2026-11-23 – Nút lên hàng tổng quan, lịch sử hoàn tác lưu qua các phiên, một hộp thoại cho mỗi thao tác** (chủ dự án yêu cầu). Tích hợp cùng ngày (262 test).
+  - Không hỏi lại được chủ dự án qua hộp chọn, nên làm theo phương án khuyến nghị (đã báo trong chat; chủ dự án có thể đổi):
+    - lịch sử lưu trên từng trình duyệt (localStorage), không lưu trên D1;
+    - hoàn tác bước "Xóa dòng" tạo lại dòng đúng chỗ cũ;
+    - chưa làm PUT có điều kiện (§6 vẫn mở).
+  1. "Hoàn tác", "Làm lại", "Xuất Excel" nằm ở hàng tổng quan, sau các ô Tổng chi / Khoản chi / Thành viên.
+     - Thiếu chỗ thì chỉ còn biểu tượng (container query). Trên điện thoại nằm ở cuối dòng "Expense".
+     - Tiêu đề Detail chỉ còn "+ Add line".
+     - Thông báo (toast) chuyển xuống đáy màn hình ở mọi kích thước, để không che các nút này, và tự nâng lên trên bàn phím ảo.
+  2. Lịch sử Hoàn tác / Làm lại lưu trên trình duyệt theo sổ (`so-chi:hoan-tac:<slug>`, kèm id sổ), tối đa 50 bước mỗi ngăn. Còn sau khi tải lại trang hay ở lần mở sau; các tab cùng sổ dùng chung.
+     - Hoàn tác một lần xóa đã gửi: một POST /api/expenses giữ nguyên id, giá trị và chỗ cũ. Nguyên tử và idempotent: gửi lặp không bao giờ thành hai dòng.
+     - GET /api/state trả thêm `position` của từng khoản chi và `ledger.id`.
+     - Summary ("Đã chuyển khoản", Done) và Xuất Excel (2 sheet) vốn đã áp dụng cho cả hai bảng từ Mốc 10.
+  3. Mỗi thao tác cần nhập liệu chỉ dùng một hộp thoại có đủ các ô và chạy ngay trong đó; lỗi hiện trong hộp thoại, giữ dữ liệu đã nhập.
+     - Store hỏi message và mật khẩu thao tác cùng lúc.
+     - Lỗi mật khẩu từ worker mang `field: "password"`.
+  - Review độc lập (5 góc nhìn, mỗi phát hiện có người kiểm chứng bằng cách tái hiện):
+    - 23 lỗi xác nhận, gộp còn khoảng 14 lỗi riêng; đã sửa hết;
+    - vòng 2 (góc server) xác nhận đã sửa đúng và thêm 3 lỗi nhỏ (id tạo lại, sổ tạo lại cùng slug khi trang còn mở, giới hạn position); đã sửa, kèm `g4-recreate-guard.mjs`;
+    - vòng 2 cho góc lịch sử và góc hộp thoại/giao diện (chạy xong cùng ngày, trên chính bản trong `code`):
+      - 19 lỗi cũ của hai góc này xác nhận đã sửa;
+      - 8 lỗi mới, đều được tái hiện (1 trung bình, 7 thấp); đã sửa hết:
+        - trên điện thoại, khi bàn phím ảo mở, toast lên đỉnh phần còn thấy (trước đó nó che ô đang gõ);
+        - bản sao vừa nhân bản không nằm dưới toast;
+        - ngăn Làm lại giữ bước "Xóa" nằm dưới một "Thêm dòng" tạo lại được;
+        - "Làm lại: Thêm dòng" không kẹt khi lệnh xóa gửi lúc đóng trang không tới máy chủ;
+        - lần tải dữ liệu lúc đang tạo lại dòng không làm mất bước;
+        - dòng tạo lại đứng đúng chỗ khi phản hồi GET tới muộn;
+        - mất phản hồi của lần tạo lại thì lần bấm sau hoàn tất bước, thay vì báo sai "dữ liệu đã thay đổi";
+        - dòng tạo lại theo lọc/sắp xếp đang chọn.
+      - Probe của người kiểm chứng: đạt trên bản sửa, hỏng trên bản trước. `g4-recreate-guard` thêm kiểm tra bàn phím và nhân bản (22 kiểm tra).
+  - Kiểm tra (bản cuối):
+    - 265/265 test;
+    - API: 22 bước khác, đúng dự kiến (state thêm `position` và `ledger.id`, thêm dòng trả `position`, lỗi mật khẩu thêm `field`, HTML trang); 356 query, 1274 statement như Mốc 11;
+    - E2E 54/54 giống hệt (2 lần); CSP sạch;
+    - G3 15 script đều đạt (sửa harness cho phù hợp, vẫn đạt trên Mốc 11);
+    - G4 mới: `g4-history-persist` 194, `g4-overview-popup` 102, `g4-recreate-guard` 22 (đều đạt);
+    - `g3-undo-delete` và kiểm tra motion có lúc lệch thời gian khi máy bận; chạy lại riêng thì đạt;
+    - ảnh 156: 0 lỗi, 0 tràn; 152 ảnh khác Mốc 11 vì hàng tổng quan có nút, toast ở đáy, hộp thoại hai ô;
+    - contrast, độ vừa Summary, layout shift giống Mốc 11; nomix 31/31.
+  - Chi phí D1: thêm dòng, PUT, DELETE, GET state không đổi. Tạo lại dòng 7 query, rẻ hơn POST + PUT (14). Gửi lặp, khi dòng đã có, tốn 5 query.
+  - Bản chốt: `refactor-workspace\checkpoints\checkpoint-12` (= `code`), baseline `*-checkpoint-12*`.
   - **Chưa deploy.** Khi chủ dự án muốn đưa lên server, chạy `scripts\push_to_server.bat`.
     - Lần deploy đó sẽ áp dụng migration mới `0013_cheaper_audit_log_retention.sql` (thêm ở GĐ2) lên D1 remote.
     - Các sổ khác sổ mặc định được nâng cấp schema dần, ở lần đầu mở sau deploy.
@@ -264,7 +307,7 @@ $env:ELECTRON_RUN_AS_NODE = "1"
   - Tạo sổ và Store: hỏi một lần cho mỗi phiên đăng nhập Admin, dùng chung cho mọi sổ trong phiên. Chủ dự án đã chọn cách này.
   - Xóa sổ, Khôi phục và Xóa điểm khôi phục: luôn hỏi lại, vì đây là thao tác phá hủy.
   - Form tạo sổ bỏ ô "Mật khẩu xóa" riêng. Các sổ cũ đã có mật khẩu xóa riêng chuyển sang dùng mật khẩu thao tác.
-- `change_pass`: hai mật khẩu không bị giới hạn độ dài hoặc khoảng trắng ở đầu/cuối, nhưng phải khác nhau và không được để trống.
+- `change_pass`: tên đăng nhập và mật khẩu không giới hạn độ dài hay khoảng trắng đầu/cuối nhưng không được để trống; mật khẩu thao tác vẫn phải khác mật khẩu Admin.
 
 ## 6. Đề xuất cần chủ dự án quyết định (chưa làm)
 

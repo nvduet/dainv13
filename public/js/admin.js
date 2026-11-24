@@ -1,4 +1,5 @@
 // Quản trị: thành viên, nhóm, các sổ, điểm khôi phục, nhật ký phiên; tải dữ liệu và phiên Admin.
+import { MAX_HISTORY_MESSAGE_LENGTH, MAX_NAME_LENGTH } from "/shared/constants.mjs";
 import { api } from "./api.js";
 import {
   commitPendingDeletes,
@@ -10,6 +11,7 @@ import {
   settleExpenseWork,
   watchLocalWrites,
 } from "./expenses.js";
+import { forgetLedgerHistory } from "./expense-history.js";
 import { balanceClass, escapeHtml, formatLocalDateTime, formatVnd, unbreakable } from "./format.js";
 import { ledgerSignature } from "./return-watch.js";
 import { applyDisplaySettings } from "./settings.js";
@@ -23,7 +25,8 @@ let editingGroupId = null;
 let renderedGroupName = "";
 // Số lần loadState đã áp dữ liệu (0: chưa tải xong lần đầu). Lần làm mới bỏ kết quả nếu loadState áp dữ liệu mới hơn.
 let loadGeneration = 0;
-let refreshing = false;
+// Lần làm mới khi quay lại trang đang chạy (Promise), null nếu không có.
+let refreshing = null;
 
 // GET /api/state, ghi lại những gì trang tự lưu, tạo hay xóa trong lúc chờ phản hồi (dữ liệu cũ hơn trong phản hồi
 // không được đè lên chúng, kể cả khi DELETE của thông báo "Đã xóa" tự gửi trong lúc đó).
@@ -42,7 +45,7 @@ export async function loadState() {
   state.ledger = data.ledger;
   state.members = data.members;
   state.groups = data.groups;
-  mergeServerExpenses(data.expenses, { preferLocal: writes.expenseIds, removed: writes.deletedIds });
+  mergeServerExpenses(data.expenses, { preferLocal: writes.expenseIds, removed: writes.deletedIds, loadedAt: writes.sentAt });
   // Chuyển khoản trang vừa lưu trong lúc chờ: số liệu của phản hồi lưu mới hơn.
   if (!writes.payments) state.payments = data.payments;
   state.isAdmin = data.isAdmin;
@@ -82,10 +85,17 @@ function restoreScroll({ x, y, boxes }) {
 // Quay lại trang sau ≥ 30 giây (app.js): gửi các lần xóa còn chờ và chờ lưu xong, rồi một GET /api/state. Dữ liệu mới
 // được hợp nhất mà không mất ô đang sửa, thay đổi chưa lưu hay đang lưu, bộ lọc, cách sắp xếp và vị trí cuộn; chỉ báo
 // "Đã cập nhật dữ liệu mới." khi có gì đổi và không che một lỗi (vd. xóa thất bại lúc trang ẩn) hay nút "Hoàn tác".
-// Lỗi mạng thì giữ nguyên trang (lần quay lại sau thử lại).
-export async function refreshAfterReturn() {
-  if (refreshing || loadGeneration === 0) return;
-  refreshing = true;
+// Lỗi mạng thì giữ nguyên trang (lần quay lại sau thử lại). Gọi lúc đang làm mới thì chờ chính lần đó (lịch sử hoàn
+// tác tải dữ liệu mới trước bước do tab khác ghi).
+export function refreshAfterReturn() {
+  if (loadGeneration === 0) return Promise.resolve();
+  refreshing ??= refreshFromServer().finally(() => {
+    refreshing = null;
+  });
+  return refreshing;
+}
+
+async function refreshFromServer() {
   try {
     await commitPendingDeletes();
     await settleExpenseWork();
@@ -96,8 +106,6 @@ export async function refreshAfterReturn() {
     if (changed && !hasPendingDelete() && !isImportantNoticeShown()) showNotice("Đã cập nhật dữ liệu mới.");
   } catch {
     // Không tải được: trang giữ nguyên dữ liệu đang có.
-  } finally {
-    refreshing = false;
   }
 }
 
@@ -107,6 +115,7 @@ function applyRefreshedState(data, writes) {
   const membersBefore = signature({ members: state.members, groups: state.groups, expenses: [], payments: [] });
   const wasAdmin = state.isAdmin;
   const scroll = captureScroll();
+  const orderBefore = state.expenses.map((expense) => expense.id).join();
   state.ledger = data.ledger;
   state.members = data.members;
   state.groups = data.groups;
@@ -114,9 +123,16 @@ function applyRefreshedState(data, writes) {
   if (!writes.payments) state.payments = data.payments;
   state.isAdmin = data.isAdmin;
   state.storePasswordVerified = data.storePasswordVerified;
-  mergeServerExpenses(data.expenses, { preferLocal: writes.expenseIds, removed: writes.deletedIds });
+  mergeServerExpenses(data.expenses, { preferLocal: writes.expenseIds, removed: writes.deletedIds, loadedAt: writes.sentAt });
   const freshSettings = displaySettings(data);
-  if (signature(state, freshSettings) === before) return false;
+  if (signature(state, freshSettings) === before) {
+    // Chỉ thứ tự dòng đổi (vd. dòng vừa tạo lại về đúng chỗ của nó trên máy chủ): vẽ lại bảng cho khớp, không báo gì.
+    if (state.expenses.map((expense) => expense.id).join() !== orderBefore) {
+      renderExpenses();
+      restoreScroll(scroll);
+    }
+    return false;
+  }
   const membersChanged = signature({ members: state.members, groups: state.groups, expenses: [], payments: [] }) !== membersBefore;
   if (membersChanged || JSON.stringify(freshSettings) !== JSON.stringify(settings)) applyDisplaySettings(data);
   renderExpenses();
@@ -452,21 +468,18 @@ export async function deleteMemberGroup(button) {
   showNotice("Đã xóa nhóm.");
 }
 
-// Tạo sổ và Store hỏi mật khẩu thao tác một lần cho cả phiên Admin (mọi sổ); undefined = phiên đã xác thực.
-function askOperationsPassword(title) {
-  if (state.storePasswordVerified) return Promise.resolve(undefined);
-  return showActionDialog({
-    title,
-    message: "Nhập mật khẩu thao tác. Mật khẩu sẽ được ghi nhớ cho các lần tạo sổ và Store tiếp theo trong phiên Admin này.",
-    inputLabel: "Mật khẩu thao tác",
-    inputType: "password",
-    preserveInput: true,
-    confirmLabel: "Xác thực",
-  });
-}
+// Ô mật khẩu thao tác của hộp thoại: giữ nguyên từng ký tự (không bỏ khoảng trắng).
+const PASSWORD_FIELD = Object.freeze({ name: "password", label: "Mật khẩu thao tác", type: "password", trim: false });
+// Tạo sổ và Store hỏi mật khẩu thao tác một lần cho cả phiên Admin (mọi sổ).
+const SESSION_PASSWORD_FIELD = Object.freeze({
+  ...PASSWORD_FIELD,
+  note: "Nhập mật khẩu thao tác. Mật khẩu sẽ được ghi nhớ cho các lần tạo sổ và Store tiếp theo trong phiên Admin này.",
+});
 
-// Gửi tạo sổ/Store, kèm mật khẩu nếu vừa hỏi. Gửi không kèm mật khẩu mà bị từ chối 400 (vd. đã đăng nhập lại ở
-// tab khác nên phiên mới chưa xác thực): lần sau hỏi lại mật khẩu thay vì gửi lại y như cũ.
+// Gửi tạo sổ/Store, kèm mật khẩu khi hộp thoại có ô mật khẩu. Máy chủ gắn field "password" (api.js: caught.field) cho
+// lỗi thiếu hay sai mật khẩu thao tác, nên hộp thoại hiện ô mật khẩu và đưa con trỏ về đó. Gửi không kèm mật khẩu mà
+// máy chủ đòi mật khẩu (vd. đã đăng nhập lại ở tab khác nên phiên mới chưa xác thực): lần sau hỏi mật khẩu ngay. Lỗi khác
+// (tên sổ, chưa đăng nhập Admin, quá giới hạn, mạng…) không phải lỗi mật khẩu và không đổi trạng thái xác thực.
 async function postWithOperationsPassword(path, body, password) {
   try {
     const data = await api(path, {
@@ -476,7 +489,7 @@ async function postWithOperationsPassword(path, body, password) {
     state.storePasswordVerified = true;
     return data;
   } catch (caught) {
-    if (password === undefined && caught.status === 400) state.storePasswordVerified = false;
+    if (password === undefined && caught.field === PASSWORD_FIELD.name) state.storePasswordVerified = false;
     throw caught;
   }
 }
@@ -484,20 +497,21 @@ async function postWithOperationsPassword(path, body, password) {
 // Xóa sổ luôn hỏi mật khẩu thao tác.
 export async function deleteLedger(button) {
   const { ledgerSlug, ledgerName } = button.dataset;
-  const password = await showActionDialog({
+  const deleted = await showActionDialog({
     title: `Xóa sổ "${ledgerName}"?`,
     message: "Thao tác này xóa vĩnh viễn thành viên, khoản chi, nhóm, nhật ký, cấu hình và các điểm Store. Nhập mật khẩu thao tác để xác nhận.",
-    inputLabel: "Mật khẩu thao tác",
-    inputType: "password",
-    preserveInput: true,
+    fields: [PASSWORD_FIELD],
     confirmLabel: "Xóa vĩnh viễn",
     danger: true,
+    busyLabel: "Đang xóa",
+    submit: ({ password }) => api(`/api/admin/ledgers/${encodeURIComponent(ledgerSlug)}`, {
+      method: "DELETE",
+      body: JSON.stringify({ password }),
+    }),
   });
-  if (password === null) return;
-  await api(`/api/admin/ledgers/${encodeURIComponent(ledgerSlug)}`, {
-    method: "DELETE",
-    body: JSON.stringify({ password }),
-  });
+  if (deleted === null) return;
+  // Lịch sử hoàn tác máy này lưu cho sổ đó không còn dùng được.
+  forgetLedgerHistory(ledgerSlug);
   if (ledgerSlug === state.ledger.slug) {
     window.location.assign("/g/chill-guys");
     return;
@@ -508,21 +522,22 @@ export async function deleteLedger(button) {
 
 export async function restoreHistoryPoint(button) {
   const point = state.historyPoints.find((item) => item.id === button.dataset.pointId);
-  const restorePassword = await showActionDialog({
+  const restored = await showActionDialog({
     title: "Khôi phục điểm dữ liệu?",
     message: `Dữ liệu Detail và Summary sẽ được thay bằng điểm lưu ${unbreakable(formatLocalDateTime(point?.createdAt))}. Cấu hình giao diện và nhật ký sẽ không bị thay đổi.`,
-    inputLabel: "Mật khẩu thao tác",
-    inputType: "password",
-    preserveInput: true,
+    fields: [PASSWORD_FIELD],
     confirmLabel: "Khôi phục",
     danger: true,
+    busyLabel: "Đang khôi phục",
+    submit: async ({ password }) => {
+      await flushPendingChanges();
+      return api(`/api/admin/history-points/${encodeURIComponent(button.dataset.pointId)}/restore`, {
+        method: "POST",
+        body: JSON.stringify({ password }),
+      });
+    },
   });
-  if (restorePassword === null) return;
-  await flushPendingChanges();
-  await api(`/api/admin/history-points/${encodeURIComponent(button.dataset.pointId)}/restore`, {
-    method: "POST",
-    body: JSON.stringify({ password: restorePassword }),
-  });
+  if (restored === null) return;
   await loadState();
   showNotice("Đã khôi phục dữ liệu từ điểm đã chọn.");
 }
@@ -532,20 +547,19 @@ export async function restoreHistoryPoint(button) {
 export async function deleteHistoryPoint(button) {
   const point = state.historyPoints.find((item) => item.id === button.dataset.pointId);
   const index = state.historyPoints.indexOf(point);
-  const password = await showActionDialog({
+  const deleted = await showActionDialog({
     title: "Xóa điểm khôi phục?",
     message: `Điểm "${point?.message || "Không có message"}" lưu lúc ${unbreakable(formatLocalDateTime(point?.createdAt))} sẽ bị xóa vĩnh viễn; dữ liệu sổ hiện tại không thay đổi. Nhập mật khẩu thao tác để xác nhận.`,
-    inputLabel: "Mật khẩu thao tác",
-    inputType: "password",
-    preserveInput: true,
+    fields: [PASSWORD_FIELD],
     confirmLabel: "Xóa vĩnh viễn",
     danger: true,
+    busyLabel: "Đang xóa",
+    submit: ({ password }) => api(`/api/admin/history-points/${encodeURIComponent(button.dataset.pointId)}`, {
+      method: "DELETE",
+      body: JSON.stringify({ password }),
+    }),
   });
-  if (password === null) return;
-  await api(`/api/admin/history-points/${encodeURIComponent(button.dataset.pointId)}`, {
-    method: "DELETE",
-    body: JSON.stringify({ password }),
-  });
+  if (deleted === null) return;
   await loadHistoryPoints();
   const buttons = document.querySelectorAll('#history-points [data-action="delete-history-point"]');
   (buttons[Math.min(index, buttons.length - 1)] || document.querySelector("#store-history-point")).focus();
@@ -554,17 +568,21 @@ export async function deleteHistoryPoint(button) {
 
 export async function renameMember(button) {
   const member = state.members.find((item) => item.id === button.dataset.memberId);
-  const name = await showActionDialog({
+  const renamed = await showActionDialog({
     title: "Đổi tên thành viên",
-    inputLabel: "Tên thành viên mới",
-    initialValue: member?.name || "",
+    fields: [{ name: "name", label: "Tên thành viên mới", value: member?.name || "", maxLength: MAX_NAME_LENGTH }],
     confirmLabel: "Lưu",
+    busyLabel: "Đang lưu",
+    submit: ({ name }) => api(`/api/members/${encodeURIComponent(button.dataset.memberId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }).catch((caught) => {
+      // Tên không hợp lệ (400) hay đã có trong danh sách (409): lỗi của ô tên.
+      if ([400, 409].includes(caught.status)) caught.field = "name";
+      throw caught;
+    }),
   });
-  if (name === null || !name.trim()) return;
-  await api(`/api/members/${encodeURIComponent(button.dataset.memberId)}`, {
-    method: "PATCH",
-    body: JSON.stringify({ name: name.trim() }),
-  });
+  if (renamed === null) return;
   await loadState();
   showNotice("Đã cập nhật tên thành viên.");
 }
@@ -587,20 +605,40 @@ export async function deleteMember(button) {
   showNotice(`Đã xóa thành viên và ${result.impactedExpenses} khoản chi liên quan.`);
 }
 
+// Phiên Admin đã xác thực: tạo ngay bằng nút "Tạo sổ". Chưa (hay máy chủ đòi mật khẩu vì phiên không còn xác thực):
+// một hộp thoại hỏi mật khẩu và tạo sổ ngay trong đó. Lỗi khác (vd. tên sổ không hợp lệ) báo bằng thông báo.
 export async function createLedger(form) {
   const name = document.querySelector("#new-ledger-name").value;
-  const password = await askOperationsPassword("Xác thực tạo sổ");
-  if (password === null) return;
-  const submitButton = form.querySelector('button[type="submit"]');
-  const resetLoading = setButtonLoading(submitButton, "Đang tạo sổ");
-  try {
-    const data = await postWithOperationsPassword("/api/admin/ledgers", { name }, password);
+  const create = (password) => postWithOperationsPassword("/api/admin/ledgers", { name }, password);
+  const showCreated = async (data) => {
     form.reset();
     await loadLedgers();
     showNotice(`Đã tạo sổ "${data.ledger.name}". Link: ${window.location.origin}/g/${data.ledger.slug}`);
-  } finally {
-    resetLoading();
+  };
+  let refused = null;
+  if (state.storePasswordVerified) {
+    const resetLoading = setButtonLoading(form.querySelector('button[type="submit"]'), "Đang tạo sổ");
+    try {
+      await showCreated(await create());
+      return;
+    } catch (caught) {
+      // Trong lúc chờ đã mở một hộp thoại khác: không thay nó, báo bằng thông báo (lần "Tạo sổ" sau hỏi mật khẩu ngay).
+      if (caught.field !== PASSWORD_FIELD.name || document.querySelector("dialog[open]")) throw caught;
+      refused = caught;
+    } finally {
+      resetLoading();
+    }
   }
+  const data = await showActionDialog({
+    title: "Xác thực tạo sổ",
+    message: `Tạo sổ "${name.trim()}".`,
+    fields: [SESSION_PASSWORD_FIELD],
+    error: refused,
+    confirmLabel: "Xác thực",
+    busyLabel: "Đang tạo sổ",
+    submit: ({ password }) => create(password),
+  });
+  if (data !== null) await showCreated(data);
 }
 
 export async function addMember(form) {
@@ -635,6 +673,8 @@ export async function saveMemberGroup(form) {
   await loadState();
 }
 
+// Một hộp thoại: message và, khi phiên Admin chưa xác thực, mật khẩu thao tác. Store chạy trong hộp thoại, sau khi gửi
+// các lần xóa còn chờ và lưu mọi thay đổi.
 export async function storeHistoryPoint() {
   const button = document.querySelector("#store-history-point");
   button.disabled = true;
@@ -642,14 +682,19 @@ export async function storeHistoryPoint() {
     const message = await showActionDialog({
       title: "Store điểm dữ liệu",
       message: "Viết một message để nhận biết ý nghĩa của điểm lưu này.",
-      inputLabel: "Message",
-      confirmLabel: "Tiếp tục",
+      fields: [
+        { name: "message", label: "Message", maxLength: MAX_HISTORY_MESSAGE_LENGTH },
+        { ...SESSION_PASSWORD_FIELD, hidden: state.storePasswordVerified },
+      ],
+      confirmLabel: "Store",
+      busyLabel: "Đang Store",
+      submit: async (values) => {
+        await flushPendingChanges();
+        await postWithOperationsPassword("/api/admin/history-points", { message: values.message }, values.password);
+        return values.message;
+      },
     });
     if (message === null) return;
-    const password = await askOperationsPassword("Xác thực Store");
-    if (password === null) return;
-    await flushPendingChanges();
-    await postWithOperationsPassword("/api/admin/history-points", { message }, password);
     await loadHistoryPoints();
     showNotice(`Đã Store: ${message}`);
   } catch (caught) {
